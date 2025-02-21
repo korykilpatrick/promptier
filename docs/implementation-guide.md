@@ -4,7 +4,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
 
 ## Server Setup
 
-- [ ] **Step 1: Initialize Server Project**
+- [x] **Step 1: Initialize Server Project**
   - **Task**: Set up a Node.js project with TypeScript, install essential dependencies (express, pg, typescript, etc.), and configure TypeScript compilation.
   - **Files**:
     - `package.json`: Initialize with dependencies (`express`, `pg`, `typescript`, `@types/node`, `@types/express`, `ts-node`).
