@@ -12,14 +12,14 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: None
   - **User Instructions**: Run `npm install` in the server directory to install dependencies.
 
-- [ ] **Step 2: Set Up Database Connection**
+- [x] **Step 2: Set Up Database Connection**
   - **Task**: Create a module to connect to a PostgreSQL database using the `pg` library, with placeholder credentials.
   - **Files**:
     - `src/config/db.ts`: Export a `Pool` instance from `pg` with config `{ user, host, database, password, port }`.
   - **Step Dependencies**: Step 1
   - **User Instructions**: Update `src/config/db.ts` with your PostgreSQL credentials (user, host, database, password, port).
 
-- [ ] **Step 3: Create Database Schema**
+- [x] **Step 3: Create Database Schema**
   - **Task**: Write an SQL script to create tables for `users`, `templates`, `prompt_chains`, and `chain_steps` as per the technical specification.
   - **Files**:
     - `src/migrations/001_create_tables.sql`: Define tables with columns and relationships (e.g., `users(id, clerk_id)`, `templates(id, user_id, name, category, template_text, is_pinned)`, etc.).
