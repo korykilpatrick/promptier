@@ -1,0 +1,12 @@
+# Project Notes: Handling Clerk Authentication
+
+## Background
+We integrated Clerk authentication into our Express backend and encountered issues with TypeScript errors when trying to access custom properties (e.g., `req.userId`). The Clerk docs recommend using helper functions rather than directly attaching properties to the Express Request object. Reference the Express quickstart guide found here https://clerk.com/docs/quickstarts/express#add-global-type-script-type-optional
+
+## Key Learnings
+
+1. **Do Not Rely on Direct Property Access**  
+   Instead of expecting a property like `req.userId` to exist, always retrieve authentication details using the helper function provided by Clerk:
+   ```ts
+   import { getAuth } from '@clerk/express';
+   const { userId } = getAuth(req);

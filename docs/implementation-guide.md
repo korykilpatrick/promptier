@@ -26,7 +26,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: Step 2
   - **User Instructions**: Run the script with `psql -U <user> -d <database> -f src/migrations/001_create_tables.sql` to create the tables.
 
-- [ ] **Step 4: Implement Clerk Authentication on Server**
+- [x] **Step 4: Implement Clerk Authentication on Server**
   - **Task**: Integrate Clerk middleware to verify authentication tokens and set up the Express server with basic routing.
   - **Files**:
     - `src/utils/auth.ts`: Export a middleware function using `@clerk/express` to verify tokens.
@@ -34,7 +34,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: Step 1
   - **User Instructions**: Sign up for Clerk, obtain API keys, and update `src/utils/auth.ts` with your Clerk publishable key and secret key.
 
-- [ ] **Step 5: Implement API Routes for Templates**
+- [x] **Step 5: Implement API Routes for Templates**
   - **Task**: Create CRUD endpoints for managing prompt templates, protected by Clerk authentication.
   - **Files**:
     - `src/routes/templates.ts`: Define routes (`GET /templates`, `POST /templates`, `PUT /templates/:id`, `DELETE /templates/:id`) with SQL queries to `templates` table.

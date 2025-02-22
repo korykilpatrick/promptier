@@ -13,36 +13,8 @@
   - **Client-side (Chrome extension)**: Written in TypeScript, with content scripts for injecting a floating toolbar on supported sites, a background script for extension logic, and a sidebar for managing templates and chains.
   - **Server-side**: A Node.js + Express RESTful API, also written in TypeScript, with a PostgreSQL database for storing templates and prompt chains.
 
-## 2. Project Structure
-- **Chrome Extension**:
-  - `manifest.json`: Defines permissions (`activeTab`, `storage`, `clipboardWrite`, `fileSystem`), content scripts, and background script.
-  - `content_scripts/`:
-    - `grok.ts`: Injects toolbar on grok.com.
-    - `chatgpt.ts`: Injects toolbar on chat.openai.com.
-  - `background.ts`: Handles authentication, server communication, and messaging.
-  - `sidebar.html`: UI structure for the sidebar.
-  - `sidebar.ts`: Logic for sidebar interactions, including template and chain management.
-  - `styles/`:
-    - `toolbar.css`: Styles for the floating toolbar.
-    - `sidebar.css`: Styles for the sidebar.
-  - `images/`:
-    - `icon16.png`, `icon48.png`, `icon128.png`: Extension icons.
-  - `tsconfig.json`: TypeScript configuration for the extension.
-- **Server**:
-  - `server.ts`: Initializes Express app and routes.
-  - `routes/`:
-    - `auth.ts`: Authentication endpoints.
-    - `templates.ts`: Template CRUD endpoints.
-    - `chains.ts`: Prompt chain CRUD endpoints.
-  - `models/`:
-    - `user.ts`: User schema.
-    - `template.ts`: Template schema.
-    - `chain.ts`: Prompt chain schema.
-  - `config/`:
-    - `db.ts`: PostgreSQL connection setup.
-  - `utils/`:
-    - `auth.ts`: Clerk token verification.
-  - `tsconfig.json`: TypeScript configuration for the server.
+## Project File Map
+### TBD
 
 ## 3. Feature Specification
 
