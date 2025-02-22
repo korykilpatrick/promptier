@@ -66,7 +66,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
     - Configure Clerk application in dashboard for Chrome extension
     - Generate and add CRX public key
 
-- [ ] **Step 8: Configure React Router and Clerk Provider**
+- [x] **Step 8: Configure React Router and Clerk Provider**
   - **Task**: Set up React Router with memory router and wrap the app in Clerk's provider.
   - **Files**:
     - `src/popup/layouts/root-layout.tsx`: Create root layout with `<ClerkProvider>` and navigation.
@@ -78,20 +78,24 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: Step 7
   - **User Instructions**: None
 
-- [ ] **Step 9: Implement Background Service Worker with Clerk**
+- [x] **Step 9: Implement Background Service Worker with Clerk**
   - **Task**: Create a background service worker that maintains fresh Clerk sessions.
   - **Files**:
     - `src/background/index.ts`: Implement `createClerkClient()` and message handling.
+    - `src/utils/api.ts`: Create utility functions for making authenticated API requests.
   - **Step Dependencies**: Step 8
   - **User Instructions**: None
 
 ## Sidebar Implementation
 
 - [ ] **Step 10: Implement Sidebar UI Structure**
-  - **Task**: Create the basic HTML and CSS structure for the sidebar, with sections for templates, chains, and response saving.
+  - **Task**: Create React components for the sidebar UI, with sections for templates, chains, and response saving.
   - **Files**:
-    - `src/sidebar.html`: Add `<div>` sections for template management, chain management, and response saving, with placeholders for forms and lists.
-    - `src/styles/sidebar.css`: Style with a fixed position, light gray background (`#f8f9fa`), and basic layout (e.g., `width: 300px`).
+    - `src/components/sidebar/TemplateSection.tsx`: Component for template management section.
+    - `src/components/sidebar/ChainSection.tsx`: Component for chain management section.
+    - `src/components/sidebar/ResponseSection.tsx`: Component for response saving section.
+    - `src/components/sidebar/Sidebar.tsx`: Main sidebar component combining all sections.
+    - `src/styles/sidebar.css`: Tailwind styles for sidebar components.
   - **Step Dependencies**: None
   - **User Instructions**: None
 
