@@ -42,7 +42,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: Steps 1-4
   - **User Instructions**: Ensure the server is running with `npx ts-node src/server.ts`.
 
-- [ ] **Step 6: Implement API Routes for Prompt Chains**
+- [x] **Step 6: Implement API Routes for Prompt Chains**
   - **Task**: Create CRUD endpoints for managing prompt chains and their steps, protected by Clerk authentication.
   - **Files**:
     - `src/routes/chains.ts`: Define routes (`GET /chains`, `POST /chains`, `PUT /chains/:id`, `DELETE /chains/:id`) with SQL queries to `prompt_chains` and `chain_steps` tables.
