@@ -52,35 +52,38 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
 
 ## Chrome Extension Setup
 
-- [x] **Step 7: Set Up Extension Project Structure**
-  - **Task**: Create the Chrome extension’s manifest and directory structure, including content scripts, background script, sidebar, and assets.
+- [x] **Step 7: Initialize Plasmo Extension Project**
+  - **Task**: Set up a new Plasmo extension project with TypeScript and React, configure Clerk, and set up the basic project structure.
   - **Files**:
-    - `manifest.json`: Define version 3, permissions (`activeTab`, `storage`, `clipboardWrite`), content scripts for `grok.com` and `chat.openai.com`, and background script.
-    - `src/content_scripts/grok.ts`: Empty file for Grok content script.
-    - `src/content_scripts/chatgpt.ts`: Empty file for ChatGPT content script.
-    - `src/background.ts`: Empty background script.
-    - `src/sidebar.html`: Empty HTML file.
-    - `src/sidebar.ts`: Empty TypeScript file.
-    - `src/styles/toolbar.css`: Empty CSS file.
-    - `src/styles/sidebar.css`: Empty CSS file.
-    - `images/icon16.png`, `images/icon48.png`, `images/icon128.png`: Placeholder icons (16x16, 48x48, 128x128).
-    - `tsconfig.json`: Configure with `"target": "ES6"`, `"module": "ESNext"`, `"outDir": "./dist"`.
+    - `package.json`: Initialize with dependencies (`plasmo`, `@clerk/chrome-extension`, `react-router-dom`).
+    - `.env.development`: Add Clerk publishable key and frontend API URL.
+    - `.env.chrome`: Add CRX public key for consistent extension ID.
+    - `tsconfig.json`: Configure with Plasmo's recommended TypeScript settings.
   - **Step Dependencies**: None
-  - **User Instructions**: Load the extension in Chrome via Developer Mode by selecting the project directory.
+  - **User Instructions**: 
+    - Run `pnpm create plasmo` to create new project
+    - Run `pnpm add @clerk/chrome-extension react-router-dom`
+    - Configure Clerk application in dashboard for Chrome extension
+    - Generate and add CRX public key
 
-- [ ] **Step 8: Implement Background Script for Authentication**
-  - **Task**: Integrate Clerk SDK in the background script to handle user authentication and store the token.
+- [ ] **Step 8: Configure React Router and Clerk Provider**
+  - **Task**: Set up React Router with memory router and wrap the app in Clerk's provider.
   - **Files**:
-    - `src/background.ts`: Add Clerk SDK, initialize with publishable key, and store token in `chrome.storage.local` on sign-in.
-  - **Step Dependencies**: Step 4
-  - **User Instructions**: Add Clerk publishable key to `src/background.ts` and ensure `@clerk/chrome-extension` is installed via `npm install` in the extension directory.
+    - `src/popup/layouts/root-layout.tsx`: Create root layout with `<ClerkProvider>` and navigation.
+    - `src/popup/routes/home.tsx`: Create home page component.
+    - `src/popup/routes/sign-in.tsx`: Create sign-in page with `<SignIn>` component.
+    - `src/popup/routes/sign-up.tsx`: Create sign-up page with `<SignUp>` component.
+    - `src/popup/routes/settings.tsx`: Create settings page with `<UserProfile>` component.
+    - `src/popup/index.tsx`: Configure routes with `createMemoryRouter`.
+  - **Step Dependencies**: Step 7
+  - **User Instructions**: None
 
-- [ ] **Step 9: Implement Server Communication in Background Script**
-  - **Task**: Add functions to the background script to make authenticated API requests to the server, handling messages from other scripts.
+- [ ] **Step 9: Implement Background Service Worker with Clerk**
+  - **Task**: Create a background service worker that maintains fresh Clerk sessions.
   - **Files**:
-    - `src/background.ts`: Implement `chrome.runtime.onMessage` listener for actions like `fetchTemplates`, `saveTemplate`, etc., using `fetch` with Clerk token in headers.
+    - `src/background/index.ts`: Implement `createClerkClient()` and message handling.
   - **Step Dependencies**: Step 8
-  - **User Instructions**: Update the server URL in `src/background.ts` to match your running server (e.g., `http://localhost:3000`).
+  - **User Instructions**: None
 
 ## Sidebar Implementation
 
@@ -129,7 +132,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **User Instructions**: None
 
 - [ ] **Step 15: Implement Saving AI Responses to Disk in Sidebar**
-  - **Task**: Add a textarea and logic to save AI responses to disk, either standalone or as part of a chain’s `save_to_disk` step.
+  - **Task**: Add a textarea and logic to save AI responses to disk, either standalone or as part of a chain's `save_to_disk` step.
   - **Files**:
     - `src/sidebar.html`: Add a response textarea and "Save" checkbox/button in the response section.
     - `src/sidebar.ts`: Parse response for content (e.g., between ```), use `window.showSaveFilePicker` to save with a timestamped name (e.g., `response_YYYYMMDD_HHMMSS.txt`).
@@ -149,7 +152,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **User Instructions**: Reload the extension in Chrome after updating content scripts.
 
 - [ ] **Step 17: Implement Hotkey to Toggle Sidebar**
-  - **Task**: Add a keyboard listener to toggle the sidebar iframe’s visibility with `Cmd+Shift+P`.
+  - **Task**: Add a keyboard listener to toggle the sidebar iframe's visibility with `Cmd+Shift+P`.
   - **Files**:
     - `src/content_scripts/grok.ts`: Add `document.addEventListener('keydown')` to toggle iframe `display` style.
     - `src/content_scripts/chatgpt.ts`: Same as above.
