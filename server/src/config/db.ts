@@ -24,15 +24,26 @@
  */
 
 import { Pool } from 'pg';
+import dotenv from 'dotenv';
 
-// Create a new Pool instance with placeholder configuration
-// This pool manages database connections and is reused across the application
+// Load environment variables from .env file
+dotenv.config();
+
+// Verify required environment variables are present
+const requiredEnvVars = ['DB_USER', 'DB_HOST', 'DB_NAME', 'DB_PASSWORD'];
+for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+        throw new Error(`Missing required environment variable: ${envVar}`);
+    }
+}
+
+// Create a new Pool instance with configuration from environment variables
 const pool = new Pool({
-  user: 'postgres',     // Replace with your PostgreSQL username
-  host: 'localhost',         // Replace with your PostgreSQL host (e.g., 'localhost' or a remote IP)
-  database: 'promptier', // Replace with your PostgreSQL database name
-  password: '', // Replace with your PostgreSQL password
-  port: 5432,                // Replace with your PostgreSQL port if different (5432 is the default)
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '5432'),
 });
 
 export default pool;
