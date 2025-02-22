@@ -8,25 +8,25 @@
  * Key features:
  * - Authentication: All routes are protected and require a valid Clerk authentication token.
  * - Data Validation: Basic validation for required fields in requests.
- * - Database Interactions: Uses PostgreSQL with the `pg` library for database operations.
- * - Action Mapping: Converts action names (e.g., 'execute_prompt') to action IDs from the `actions` table.
+ * - Database Interactions: Uses PostgreSQL with utility functions from `db.ts`.
+ * - Action Mapping: Uses `getActionId` to convert action names to IDs.
  * 
  * @dependencies
  * - express: Web framework for Node.js, used to define routes and handle HTTP requests.
  * - pg: PostgreSQL client for Node.js, used via the `pool` instance from `db.ts`.
  * - @clerk/express: Provides `getAuth` for retrieving authenticated user details.
+ * - ../utils/db: Utility functions for database operations.
  * 
  * @notes
- * - Uses `created_by` instead of `user_id` to match the `prompt_chains` table schema in `001_create_tables.sql`.
+ * - Uses `created_by` to match the `prompt_chains` table schema in `001_create_tables.sql`.
  * - Steps are replaced entirely on updates for simplicity; future iterations could support partial updates.
- * - Error handling is basic; consider enhancing with specific error codes or messages in later steps (e.g., Step 18).
- * - Assumes the `actions` table is populated as per the migration script.
- * - Performance note: Fetching steps in a loop for GET /chains may be inefficient for many chains; consider optimizing with a single JOIN query if needed.
+ * - Error handling leverages utility-thrown errors for specific cases (e.g., invalid action).
  */
 
 import express, { Request, Response } from 'express';
 import pool from '../config/db';
 import { getAuth } from '@clerk/express';
+import { getActionId, getUserIdFromClerk } from '../utils/db';
 
 const router = express.Router();
 
@@ -43,10 +43,12 @@ router.get('/', async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
 
+    const internalUserId = await getUserIdFromClerk(userId);
+
     // Fetch all chains for the user
     const chainsResult = await pool.query(
       'SELECT * FROM prompt_chains WHERE created_by = $1',
-      [userId]
+      [internalUserId]
     );
     const chains = chainsResult.rows;
 
@@ -86,10 +88,12 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
 
+    const internalUserId = await getUserIdFromClerk(userId);
+
     // Fetch the chain, ensuring it belongs to the user
     const chainResult = await pool.query(
       'SELECT * FROM prompt_chains WHERE id = $1 AND created_by = $2',
-      [chainId, userId]
+      [chainId, internalUserId]
     );
     if (chainResult.rows.length === 0) return res.status(404).json({ error: 'Chain not found' });
 
@@ -133,27 +137,22 @@ router.post('/', async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
 
+    const internalUserId = await getUserIdFromClerk(userId);
+
     // Insert the chain into prompt_chains
     const chainResult = await pool.query(
       'INSERT INTO prompt_chains (created_by, name) VALUES ($1, $2) RETURNING id',
-      [userId, name]
+      [internalUserId, name]
     );
     const chainId = chainResult.rows[0].id;
 
-    // Insert each step, converting action name to action_id
+    // Insert each step, using getActionId to convert action name to action_id
     for (const step of steps) {
       const { action, data, step_order } = step;
       if (!action || !data || step_order == null) {
         return res.status(400).json({ error: 'Each step must have action, data, and step_order' });
       }
-      const actionResult = await pool.query(
-        'SELECT id FROM actions WHERE name = $1',
-        [action]
-      );
-      if (actionResult.rows.length === 0) {
-        return res.status(400).json({ error: `Invalid action: ${action}` });
-      }
-      const actionId = actionResult.rows[0].id;
+      const actionId = await getActionId(action); // Throws if action is invalid
       await pool.query(
         'INSERT INTO chain_steps (chain_id, action_id, data, step_order) VALUES ($1, $2, $3, $4)',
         [chainId, actionId, data, step_order]
@@ -161,8 +160,11 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     res.status(201).json({ id: chainId });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating chain:', error);
+    if (error.message.includes('Action not found')) {
+      return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -190,10 +192,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
 
+    const internalUserId = await getUserIdFromClerk(userId);
+
     // Verify the chain exists and belongs to the user
     const checkResult = await pool.query(
       'SELECT id FROM prompt_chains WHERE id = $1 AND created_by = $2',
-      [chainId, userId]
+      [chainId, internalUserId]
     );
     if (checkResult.rows.length === 0) return res.status(404).json({ error: 'Chain not found' });
 
@@ -209,20 +213,13 @@ router.put('/:id', async (req: Request, res: Response) => {
       [chainId]
     );
 
-    // Insert new steps, converting action name to action_id
+    // Insert new steps, using getActionId to convert action name to action_id
     for (const step of steps) {
       const { action, data, step_order } = step;
       if (!action || !data || step_order == null) {
         return res.status(400).json({ error: 'Each step must have action, data, and step_order' });
       }
-      const actionResult = await pool.query(
-        'SELECT id FROM actions WHERE name = $1',
-        [action]
-      );
-      if (actionResult.rows.length === 0) {
-        return res.status(400).json({ error: `Invalid action: ${action}` });
-      }
-      const actionId = actionResult.rows[0].id;
+      const actionId = await getActionId(action); // Throws if action is invalid
       await pool.query(
         'INSERT INTO chain_steps (chain_id, action_id, data, step_order) VALUES ($1, $2, $3, $4)',
         [chainId, actionId, data, step_order]
@@ -230,8 +227,11 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     res.status(200).json({ message: 'Chain updated' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating chain:', error);
+    if (error.message.includes('Action not found')) {
+      return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -252,10 +252,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
 
+    const internalUserId = await getUserIdFromClerk(userId);
+
     // Verify the chain exists and belongs to the user
     const checkResult = await pool.query(
       'SELECT id FROM prompt_chains WHERE id = $1 AND created_by = $2',
-      [chainId, userId]
+      [chainId, internalUserId]
     );
     if (checkResult.rows.length === 0) return res.status(404).json({ error: 'Chain not found' });
 
