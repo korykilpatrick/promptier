@@ -1,33 +1,19 @@
-/**
- * @description
- * This TypeScript configuration file sets up the compilation settings for the Promptier Chrome extension.
- * It defines how TypeScript files in the `src/` directory are compiled into JavaScript in the `dist/` directory,
- * ensuring compatibility with Chrome’s runtime.
- * 
- * Key features:
- * - Target: ES6 for modern JavaScript compatibility in Chrome.
- * - Module: ESNext for potential future module features.
- * - Output: Compiles to `dist/` as referenced in manifest.json.
- * - Strict: Enforces type safety and best practices.
- * 
- * @dependencies
- * - None (this is a configuration file for the TypeScript compiler).
- * 
- * @notes
- * - Excludes `node_modules` to avoid unnecessary compilation.
- * - Updated `include` to catch root-level `.ts` files if added.
- * - Separate from server/tsconfig.json to isolate build configurations.
- */
 {
+  "extends": "plasmo/templates/tsconfig.base",
+  "exclude": [
+    "node_modules"
+  ],
+  "include": [
+    ".plasmo/index.d.ts",
+    "./**/*.ts",
+    "./**/*.tsx"
+  ],
   "compilerOptions": {
-    "target": "ES6",
-    "module": "ESNext",
-    "outDir": "./dist",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src/**/*.ts", "*.ts"],
-  "exclude": ["node_modules"]
+    "paths": {
+      "~*": [
+        "./src/*"
+      ]
+    },
+    "baseUrl": "."
+  }
 }

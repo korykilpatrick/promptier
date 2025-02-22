@@ -52,7 +52,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
 
 ## Chrome Extension Setup
 
-- [ ] **Step 7: Set Up Extension Project Structure**
+- [x] **Step 7: Set Up Extension Project Structure**
   - **Task**: Create the Chrome extension’s manifest and directory structure, including content scripts, background script, sidebar, and assets.
   - **Files**:
     - `manifest.json`: Define version 3, permissions (`activeTab`, `storage`, `clipboardWrite`), content scripts for `grok.com` and `chat.openai.com`, and background script.
