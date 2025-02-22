@@ -26,7 +26,6 @@
 import pool from '../config/db';
 import { getActionId } from '../utils/db';
 import { ChainStepRequest, ChainResponse } from '../types/api';
-import { Client } from 'pg';
 
 /**
  * Retrieves all chains for a user, including their steps.
@@ -64,7 +63,7 @@ export async function getChains(userId: number): Promise<ChainResponse[]> {
  * @param {number} chainId - The ID of the chain.
  * @param {number} userId - The internal user ID.
  * @returns {Promise<ChainResponse>} The chain with embedded steps.
- * @throws {Error} 'Chain not found' if the chain doesn’t exist or isn’t owned by the user.
+ * @throws {Error} 'Chain not found' if the chain doesn't exist or isn't owned by the user.
  * @throws {Error} If a database error occurs.
  */
 export async function getChain(chainId: number, userId: number): Promise<ChainResponse> {
@@ -106,13 +105,12 @@ export async function createChain(userId: number, name: string, steps: ChainStep
     throw new Error('Name and steps array are required');
   }
 
-  const client: Client = await pool.connect();
   try {
     // Start transaction
-    await client.query('BEGIN');
+    await pool.query('BEGIN');
 
     // Insert the chain
-    const chainResult = await client.query(
+    const chainResult = await pool.query(
       'INSERT INTO prompt_chains (created_by, name) VALUES ($1, $2) RETURNING id',
       [userId, name]
     );
@@ -125,32 +123,30 @@ export async function createChain(userId: number, name: string, steps: ChainStep
         throw new Error('Invalid step data: Each step must have action, data, and step_order');
       }
       const actionId = await getActionId(action);
-      await client.query(
+      await pool.query(
         'INSERT INTO chain_steps (chain_id, action_id, data, step_order) VALUES ($1, $2, $3, $4)',
         [chainId, actionId, data, step_order]
       );
     }
 
     // Commit transaction
-    await client.query('COMMIT');
+    await pool.query('COMMIT');
     return chainId;
   } catch (error) {
     // Roll back transaction on error
-    await client.query('ROLLBACK');
+    await pool.query('ROLLBACK');
     throw error; // Re-throw to be handled by the route
-  } finally {
-    client.release();
   }
 }
 
 /**
- * Updates an existing chain’s name and steps within a transaction, if it belongs to the user.
+ * Updates an existing chain's name and steps within a transaction, if it belongs to the user.
  * 
  * @param {number} chainId - The ID of the chain.
  * @param {number} userId - The internal user ID.
  * @param {string} name - The updated name.
  * @param {ChainStepRequest[]} steps - Array of updated steps.
- * @throws {Error} 'Chain not found' if the chain doesn’t exist or isn’t owned by the user.
+ * @throws {Error} 'Chain not found' if the chain doesn't exist or isn't owned by the user.
  * @throws {Error} 'Invalid step data' if any step is missing required fields.
  * @throws {Error} 'Action not found: <name>' if an action is invalid.
  * @throws {Error} If a database error occurs (rolls back transaction).
@@ -160,13 +156,12 @@ export async function updateChain(chainId: number, userId: number, name: string,
     throw new Error('Name and steps array are required');
   }
 
-  const client: Client = await pool.connect();
   try {
     // Start transaction
-    await client.query('BEGIN');
+    await pool.query('BEGIN');
 
     // Verify chain ownership
-    const checkResult = await client.query(
+    const checkResult = await pool.query(
       'SELECT id FROM prompt_chains WHERE id = $1 AND created_by = $2',
       [chainId, userId]
     );
@@ -175,13 +170,13 @@ export async function updateChain(chainId: number, userId: number, name: string,
     }
 
     // Update chain name
-    await client.query(
+    await pool.query(
       'UPDATE prompt_chains SET name = $1 WHERE id = $2',
       [name, chainId]
     );
 
     // Delete existing steps
-    await client.query(
+    await pool.query(
       'DELETE FROM chain_steps WHERE chain_id = $1',
       [chainId]
     );
@@ -193,20 +188,18 @@ export async function updateChain(chainId: number, userId: number, name: string,
         throw new Error('Invalid step data: Each step must have action, data, and step_order');
       }
       const actionId = await getActionId(action);
-      await client.query(
+      await pool.query(
         'INSERT INTO chain_steps (chain_id, action_id, data, step_order) VALUES ($1, $2, $3, $4)',
         [chainId, actionId, data, step_order]
       );
     }
 
     // Commit transaction
-    await client.query('COMMIT');
+    await pool.query('COMMIT');
   } catch (error) {
     // Roll back transaction on error
-    await client.query('ROLLBACK');
+    await pool.query('ROLLBACK');
     throw error; // Re-throw to be handled by the route
-  } finally {
-    client.release();
   }
 }
 
@@ -215,7 +208,7 @@ export async function updateChain(chainId: number, userId: number, name: string,
  * 
  * @param {number} chainId - The ID of the chain.
  * @param {number} userId - The internal user ID.
- * @throws {Error} 'Chain not found' if the chain doesn’t exist or isn’t owned by the user.
+ * @throws {Error} 'Chain not found' if the chain doesn't exist or isn't owned by the user.
  * @throws {Error} If a database error occurs.
  */
 export async function deleteChain(chainId: number, userId: number): Promise<void> {
