@@ -1,0 +1,12 @@
+{
+  "name": "promptier-extension",
+  "version": "1.0.0",
+  "description": "Promptier Chrome Extension",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.246",
+    "typescript": "^5.2.2"
+  }
+}
