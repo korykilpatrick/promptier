@@ -1,3 +1,7 @@
+---
+description: general rules to keep in mind before doing ANYTHING, with the intention to avoid common pitfalls
+globs: 
+---
 # Project Notes: Handling Clerk Authentication
 
 ## Background
@@ -10,3 +14,5 @@ We integrated Clerk authentication into our Express backend and encountered issu
    ```ts
    import { getAuth } from '@clerk/express';
    const { userId } = getAuth(req);
+
+2. **Always ensure you are in the right starting directory before making changes. E.g. when changing stuff for the extension, make sure you are editing the files in the extension dir and not the root dir
