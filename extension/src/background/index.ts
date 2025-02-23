@@ -57,6 +57,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           try {
             // Construct full URL by combining base URL with request path
             const fullUrl = new URL(request.url, API_BASE_URL).toString()
+            console.log('[Background] Making API request to:', fullUrl);
             
             const response = await fetch(fullUrl, {
               method: request.method || 'GET',
@@ -68,8 +69,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               body: request.body ? JSON.stringify(request.body) : undefined,
             })
 
+            console.log('[Background] API response status:', response.status);
+            
             const data = await response.json()
-            sendResponse({ data })
+            console.log('[Background] API response data:', data);
+
+            if (!response.ok) {
+              sendResponse({ error: data.error || `HTTP error! status: ${response.status}` })
+              return
+            }
+            
+            sendResponse({ data: data.data }) // Unwrap the data property from the response
           } catch (error) {
             console.error('[Background] API request error:', error)
             sendResponse({ error: error.message })

@@ -53,12 +53,15 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
 
   const fetchTemplates = useCallback(async () => {
     try {
+      console.log('Fetching templates...');
       setOperationState("fetch", { isLoading: true, error: null });
       
       const response = await makeApiRequest<TemplateResponse[]>({
         url: "/templates",
         method: "GET"
       });
+
+      console.log('Templates response:', response);
 
       if (response.error) {
         throw new Error(response.error);
@@ -69,11 +72,14 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
       }
 
       const allTemplates = response.data.map(toFrontendTemplate);
+      console.log('Transformed templates:', allTemplates);
+      
       setTemplates(allTemplates.filter((t) => !t.isFavorite));
       setFavoriteTemplates(allTemplates.filter((t) => t.isFavorite));
       setOperationState("fetch", { isLoading: false, error: null });
       return allTemplates;
     } catch (err) {
+      console.error('Error in fetchTemplates:', err);
       const error = err instanceof Error ? err : new Error("Failed to load templates");
       setOperationState("fetch", { isLoading: false, error });
       setTemplates([]);

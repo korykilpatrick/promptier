@@ -51,17 +51,32 @@ router.get('/', async (req: Request, res: Response) => {
     if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
 
     const internalUserId = await getUserIdFromClerk(userId);
+    console.log('Internal user ID:', internalUserId);
 
     // Get templates and their favorite status for this user
     const result = await pool.query(
-      `SELECT t.*, COALESCE(is_favorite, false) as is_favorite 
+      `SELECT t.*, COALESCE(ut.is_favorite, false) as is_favorite 
        FROM templates t
        LEFT JOIN user_templates ut ON t.id = ut.template_id AND ut.user_id = $1
        WHERE t.created_by = $1`,
       [internalUserId]
     );
     
-    res.json({ data: result.rows });
+    console.log('Templates found:', result.rows);
+    
+    // Transform rows to match TemplateResponse type
+    const templates = result.rows.map(row => ({
+      id: row.id,
+      created_by: row.created_by,
+      name: row.name,
+      category: row.category,
+      template_text: row.template_text,
+      is_favorite: row.is_favorite,
+      created_at: row.created_at
+    }));
+
+    console.log('Transformed templates:', templates);
+    res.json({ data: templates });
   } catch (error) {
     console.error('Error fetching templates:', error);
     res.status(500).json({ error: 'Internal server error' });
