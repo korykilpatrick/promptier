@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base transitions */
+.transition-base {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Section transitions */
+.section-content {
+  @apply transition-all duration-200 ease-in-out;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-8px);
+}
+
+.section-content.expanded {
+  max-height: 1000px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Focus transitions */
+.focus-ring {
+  @apply transition-shadow duration-150 ease-in-out;
+}
+
+/* Button transitions */
+.button-transition {
+  @apply transition-colors duration-150 ease-in-out;
+}
+
+/* Loading transitions */
+.loading-fade {
+  @apply transition-opacity duration-200 ease-in-out;
+}
+
+/* Hover transitions */
+.hover-transition {
+  @apply transition-all duration-150 ease-in-out;
+}
+
+/* Scale transitions */
+.scale-transition {
+  @apply transition-transform duration-150 ease-in-out;
+}
+
+/* Rotate transitions */
+.rotate-transition {
+  @apply transition-transform duration-200 ease-in-out;
+}
+
+/* Custom animation keyframes */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Animation classes */
+.animate-slide-down {
+  animation: slideDown 200ms ease-in-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 200ms ease-in-out forwards;
+} 

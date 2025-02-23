@@ -88,7 +88,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
 
 ## Sidebar Implementation
 
-- [ ] **Step 10: Implement Sidebar UI Structure**
+- [x] **Step 10: Implement Sidebar UI Structure**
   - **Task**: Create React components for the sidebar UI, with sections for templates, chains, and response saving.
   - **Files**:
     - `src/components/sidebar/TemplateSection.tsx`: Component for template management section.
