@@ -1,6 +1,7 @@
 import { createClerkClient } from '@clerk/chrome-extension/background'
 
 const PUBLISHABLE_KEY = process.env.PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY
+const API_BASE_URL = process.env.PLASMO_PUBLIC_API_URL || 'http://localhost:3000'
 
 if (!PUBLISHABLE_KEY) {
   throw new Error('Please add the PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY to the .env.development file')
@@ -44,7 +45,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
           try {
-            const response = await fetch(request.url, {
+            const apiUrl = new URL(request.url, API_BASE_URL).toString()
+            const response = await fetch(apiUrl, {
               method: request.method || 'GET',
               headers: {
                 'Content-Type': 'application/json',
@@ -54,8 +56,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               body: request.body ? JSON.stringify(request.body) : undefined,
             })
 
-            const data = await response.json()
-            sendResponse({ data })
+            const responseData = await response.json()
+            
+            if (!response.ok) {
+              sendResponse({ 
+                error: responseData.error || `HTTP error! status: ${response.status}`
+              })
+              return
+            }
+
+            sendResponse({ data: responseData.data })
           } catch (error) {
             console.error('[Background] API request error:', error)
             sendResponse({ error: error.message })

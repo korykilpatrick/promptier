@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { Template } from "../types/sidebar";
 import type { Toast } from "../components/common/Toast"; // For toast type
+import { makeApiRequest } from "../utils/api";
 
 interface UseTemplatesOptions {
   onError?: (error: Error) => void;
@@ -18,10 +19,6 @@ interface OperationState {
   error: Error | null;
   retryCount: number;
 }
-
-// In-memory store for templates (empty by default)
-let mockTemplates: Template[] = [];
-let nextId = 1;
 
 export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
   const { maxRetries = 3, debounceDelay = 300 } = options;
@@ -45,7 +42,7 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
   }, []);
 
   const cleanup = useCallback(() => {
-    // No cleanup needed for mock data in this case
+    // No cleanup needed for API-based implementation
   }, []);
 
   useEffect(() => {
@@ -55,11 +52,25 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
   const fetchTemplates = useCallback(async () => {
     try {
       setOperationState("fetch", { isLoading: true, error: null });
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setTemplates(mockTemplates.filter((t) => !t.isPinned));
-      setPinnedTemplates(mockTemplates.filter((t) => t.isPinned));
+      
+      const response = await makeApiRequest<Template[]>({
+        url: "/templates",
+        method: "GET"
+      });
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      if (!response.data) {
+        throw new Error("No data received from server");
+      }
+
+      const allTemplates = response.data;
+      setTemplates(allTemplates.filter((t) => !t.isPinned));
+      setPinnedTemplates(allTemplates.filter((t) => t.isPinned));
       setOperationState("fetch", { isLoading: false, error: null });
-      return mockTemplates;
+      return allTemplates;
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to load templates");
       setOperationState("fetch", { isLoading: false, error });
@@ -73,19 +84,22 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
     async (data: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
       try {
         setOperationState("create", { isLoading: true, error: null });
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        const response = await makeApiRequest<Template>({
+          url: "/templates",
+          method: "POST",
+          body: data
+        });
 
-        const newTemplate: Template = {
-          id: String(nextId++),
-          name: data.name,
-          content: data.content,
-          category: data.category,
-          isPinned: data.isPinned ?? false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
+        if (response.error) {
+          throw new Error(response.error);
+        }
 
-        mockTemplates = [...mockTemplates, newTemplate];
+        if (!response.data) {
+          throw new Error("No data received from server");
+        }
+
+        const newTemplate = response.data;
 
         if (newTemplate.isPinned) {
           setPinnedTemplates((prev) => [...prev, newTemplate]);
@@ -111,19 +125,22 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
     async (data: Partial<Template> & { id: string }) => {
       try {
         setOperationState("update", { isLoading: true, error: null });
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        const response = await makeApiRequest<Template>({
+          url: `/templates/${data.id}`,
+          method: "PUT",
+          body: data
+        });
 
-        const templateIndex = mockTemplates.findIndex((t) => t.id === data.id);
-        if (templateIndex === -1) throw new Error("Template not found");
+        if (response.error) {
+          throw new Error(response.error);
+        }
 
-        const updatedTemplate: Template = {
-          ...mockTemplates[templateIndex],
-          ...data,
-          isPinned: data.isPinned ?? mockTemplates[templateIndex].isPinned,
-          updatedAt: new Date().toISOString()
-        };
+        if (!response.data) {
+          throw new Error("No data received from server");
+        }
 
-        mockTemplates[templateIndex] = updatedTemplate;
+        const updatedTemplate = response.data;
 
         const updateTemplateList = (list: Template[]) =>
           list.map((t) => (t.id === data.id ? updatedTemplate : t));
@@ -154,9 +171,15 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
     async (id: string) => {
       try {
         setOperationState("delete", { isLoading: true, error: null });
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        const response = await makeApiRequest({
+          url: `/templates/${id}`,
+          method: "DELETE"
+        });
 
-        mockTemplates = mockTemplates.filter((t) => t.id !== id);
+        if (response.error) {
+          throw new Error(response.error);
+        }
 
         setTemplates((prev) => prev.filter((t) => t.id !== id));
         setPinnedTemplates((prev) => prev.filter((t) => t.id !== id));
