@@ -1,18 +1,23 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "outDir": "./dist",
-    "baseUrl": "..",
+    "rootDir": ".",
+    "baseUrl": ".",
     "paths": {
-      "shared/*": ["shared/*"]
-    }
+      "shared/*": ["../shared/*"]
+    },
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "src/config/**/*.ts",
-    "src/routes/**/*.ts",
-    "src/utils/**/*.ts",
-    "src/*.ts",
+    "src/**/*.ts",
     "../shared/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

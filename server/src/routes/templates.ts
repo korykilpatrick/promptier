@@ -54,7 +54,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     // Get templates and their favorite status for this user
     const result = await pool.query(
-      `SELECT t.*, COALESCE(ut.is_favorite, false) as is_favorite 
+      `SELECT t.*, COALESCE(is_favorite, false) as is_favorite 
        FROM templates t
        LEFT JOIN user_templates ut ON t.id = ut.template_id AND ut.user_id = $1
        WHERE t.created_by = $1`,
