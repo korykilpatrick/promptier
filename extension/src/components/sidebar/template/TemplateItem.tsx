@@ -1,24 +1,24 @@
 import React, { memo } from "react"
-import type { Template } from "../../../types/sidebar"
+import type { Template } from "shared/types/templates"
 
 interface TemplateItemProps {
   template: Template
-  isPinned: boolean
+  isFavorite: boolean
   isSelected: boolean
   onSelect: (template: Template) => void
-  onPin: (templateId: string) => void
-  onUnpin: (templateId: string) => void
+  onFavorite: (templateId: number) => void
+  onUnfavorite: (templateId: number) => void
   onEdit: (template: Template) => void
-  onDelete: (templateId: string) => void
+  onDelete: (templateId: number) => void
 }
 
 export const TemplateItem = memo(function TemplateItem({
   template,
-  isPinned,
+  isFavorite,
   isSelected,
   onSelect,
-  onPin,
-  onUnpin,
+  onFavorite,
+  onUnfavorite,
   onEdit,
   onDelete
 }: TemplateItemProps) {
@@ -33,7 +33,7 @@ export const TemplateItem = memo(function TemplateItem({
       onKeyDown={(e) => {
         if (e.key === 'Enter') onSelect(template)
         if (e.key === 'e') onEdit(template)
-        if (e.key === 'p') isPinned ? onUnpin(template.id) : onPin(template.id)
+        if (e.key === 'f') isFavorite ? onUnfavorite(template.id) : onFavorite(template.id)
         if (e.key === 'Delete') onDelete(template.id)
       }}
     >
@@ -61,13 +61,13 @@ export const TemplateItem = memo(function TemplateItem({
         <button
           onClick={(e) => {
             e.stopPropagation()
-            isPinned ? onUnpin(template.id) : onPin(template.id)
+            isFavorite ? onUnfavorite(template.id) : onFavorite(template.id)
           }}
           className="p-1 text-gray-400 hover:text-gray-600"
-          aria-label={isPinned ? `Unpin template: ${template.name}` : `Pin template: ${template.name}`}
+          aria-label={isFavorite ? `Remove from favorites: ${template.name}` : `Add to favorites: ${template.name}`}
         >
-          <svg className="w-4 h-4" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          <svg className="w-4 h-4" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
 
@@ -86,13 +86,13 @@ export const TemplateItem = memo(function TemplateItem({
       </div>
     </div>
   )
-}, (prevProps, nextProps) => {
+},
   // Custom comparison function for memoization
-  return (
+  (prevProps, nextProps) => (
     prevProps.template.id === nextProps.template.id &&
     prevProps.template.name === nextProps.template.name &&
     prevProps.template.category === nextProps.template.category &&
-    prevProps.isPinned === nextProps.isPinned &&
+    prevProps.isFavorite === nextProps.isFavorite &&
     prevProps.isSelected === nextProps.isSelected
   )
-}) 
+) 

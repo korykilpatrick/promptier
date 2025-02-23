@@ -39,15 +39,8 @@ CREATE TABLE IF NOT EXISTS templates (
 CREATE TABLE IF NOT EXISTS user_templates (
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     template_id INT REFERENCES templates(id) ON DELETE CASCADE,
+    is_favorite BOOLEAN DEFAULT FALSE,
     associated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, template_id)
-);
-
--- Create the favorite_templates join table to link users with templates they want featured in the UI.
-CREATE TABLE IF NOT EXISTS favorite_templates (
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    template_id INT REFERENCES templates(id) ON DELETE CASCADE,
-    favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, template_id)
 );
 
@@ -103,8 +96,6 @@ CREATE TABLE IF NOT EXISTS prompt_history (
 CREATE INDEX IF NOT EXISTS idx_templates_created_by ON templates(created_by);
 CREATE INDEX IF NOT EXISTS idx_user_templates_user_id ON user_templates(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_templates_template_id ON user_templates(template_id);
-CREATE INDEX IF NOT EXISTS idx_favorite_templates_user_id ON favorite_templates(user_id);
-CREATE INDEX IF NOT EXISTS idx_favorite_templates_template_id ON favorite_templates(template_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_chains_created_by ON prompt_chains(created_by);
 CREATE INDEX IF NOT EXISTS idx_user_prompt_chains_user_id ON user_prompt_chains(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_prompt_chains_prompt_chain_id ON user_prompt_chains(prompt_chain_id);

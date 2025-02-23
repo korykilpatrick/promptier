@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from "react"
-import type { Template } from "../../../types/sidebar"
+import type { Template } from "shared/types/templates"
 import { VirtualList } from "../../common/VirtualList"
 import { TemplateItem } from "./TemplateItem"
 import { KeyboardShortcutsHelp } from "../../common/KeyboardShortcutsHelp"
@@ -7,12 +7,12 @@ import { useTemplateKeyboardShortcuts } from "../../../hooks/useTemplateKeyboard
 
 interface TemplateListProps {
   templates?: Template[]
-  pinnedTemplates?: Template[]
+  favoriteTemplates?: Template[]
   onSelectTemplate: (template: Template) => void
-  onPinTemplate: (templateId: string) => void
-  onUnpinTemplate: (templateId: string) => void
+  onFavoriteTemplate: (templateId: number) => void
+  onUnfavoriteTemplate: (templateId: number) => void
   onEditTemplate: (template: Template) => void
-  onDeleteTemplate: (templateId: string) => void
+  onDeleteTemplate: (templateId: number) => void
   isCreating?: boolean
   onCreateTemplate?: () => void
 }
@@ -22,24 +22,24 @@ const CONTAINER_HEIGHT = 400 // Maximum height of the list container
 
 export const TemplateList: React.FC<TemplateListProps> = ({
   templates = [],
-  pinnedTemplates = [],
+  favoriteTemplates = [],
   onSelectTemplate,
-  onPinTemplate,
-  onUnpinTemplate,
+  onFavoriteTemplate,
+  onUnfavoriteTemplate,
   onEditTemplate,
   onDeleteTemplate,
   isCreating = false,
   onCreateTemplate
 }) => {
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
   // Memoize the combined templates array
   const allTemplates = useMemo(() => {
-    const pinned = (pinnedTemplates || []).map(template => ({ ...template, isPinned: true }))
-    const unpinned = (templates || []).map(template => ({ ...template, isPinned: false }))
-    return [...pinned, ...unpinned]
-  }, [templates, pinnedTemplates])
+    const favorites = (favoriteTemplates || []).map(template => ({ ...template }))
+    const regular = (templates || []).map(template => ({ ...template }))
+    return [...favorites, ...regular]
+  }, [templates, favoriteTemplates])
 
   // Find the selected template
   const selectedTemplate = useMemo(() => 
@@ -62,8 +62,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const { shortcuts } = useTemplateKeyboardShortcuts({
     onCreateTemplate,
     onEditTemplate: handleEditTemplate,
-    onPinTemplate,
-    onUnpinTemplate,
+    onFavoriteTemplate,
+    onUnfavoriteTemplate,
     onDeleteTemplate,
     onSelectTemplate,
     selectedTemplate,
@@ -72,19 +72,19 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   })
 
   // Memoize the render function for template items
-  const renderTemplateItem = useCallback((template: Template & { isPinned: boolean }, index: number) => {
+  const renderTemplateItem = useCallback((template: Template, index: number) => {
     return (
       <TemplateItem
         key={template.id}
         template={template}
-        isPinned={template.isPinned}
+        isFavorite={template.isFavorite}
         isSelected={template.id === selectedTemplateId}
         onSelect={(template) => {
           setSelectedTemplateId(template.id)
           onSelectTemplate(template)
         }}
-        onPin={onPinTemplate}
-        onUnpin={onUnpinTemplate}
+        onFavorite={onFavoriteTemplate}
+        onUnfavorite={onUnfavoriteTemplate}
         onEdit={(template) => {
           setIsEditing(true)
           onEditTemplate(template)
@@ -92,24 +92,24 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         onDelete={onDeleteTemplate}
       />
     )
-  }, [selectedTemplateId, onSelectTemplate, onPinTemplate, onUnpinTemplate, onEditTemplate, onDeleteTemplate])
+  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, onDeleteTemplate])
 
-  // Render pinned templates section if there are any
-  const renderPinnedSection = () => {
-    if (!pinnedTemplates?.length) return null
+  // Render favorite templates section if there are any
+  const renderFavoriteSection = () => {
+    if (!favoriteTemplates?.length) return null
 
     return (
       <div>
         <h2 className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider plasmo-mb-3">
-          Pinned Templates
+          Favorite Templates
         </h2>
         <VirtualList
-          items={pinnedTemplates.map(template => ({ ...template, isPinned: true }))}
+          items={favoriteTemplates}
           renderItem={renderTemplateItem}
           itemHeight={ITEM_HEIGHT}
-          containerHeight={Math.min(CONTAINER_HEIGHT, pinnedTemplates.length * ITEM_HEIGHT)}
+          containerHeight={Math.min(CONTAINER_HEIGHT, favoriteTemplates.length * ITEM_HEIGHT)}
           className="plasmo-mb-6"
-          onItemFocus={(index) => handleItemFocus(pinnedTemplates[index])}
+          onItemFocus={(index) => handleItemFocus(favoriteTemplates[index])}
         />
       </div>
     )
@@ -129,7 +129,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">No templates yet</p>
         ) : (
           <VirtualList
-            items={templates.map(template => ({ ...template, isPinned: false }))}
+            items={templates}
             renderItem={renderTemplateItem}
             itemHeight={ITEM_HEIGHT}
             containerHeight={Math.min(CONTAINER_HEIGHT, templates.length * ITEM_HEIGHT)}
@@ -142,7 +142,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   return (
     <div className="plasmo-space-y-6">
-      {renderPinnedSection()}
+      {renderFavoriteSection()}
       {renderAllTemplatesSection()}
     </div>
   )

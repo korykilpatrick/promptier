@@ -1,4 +1,8 @@
 /**
+ * Types for template variable handling, shared between frontend and backend
+ */
+
+/**
  * Valid variable name pattern:
  * - Must start with a letter or underscore
  * - Can contain letters, numbers, and underscores

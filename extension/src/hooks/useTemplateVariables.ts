@@ -1,13 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
-import {
-  TemplateVariableError
-} from '../types/template-variables';
+import { TemplateVariableError } from 'shared/types/template-variables';
 import type {
   TemplateVariable,
   TemplateVariableValues,
   TemplateVariableValidationError,
   VariableValidationOptions
-} from '../types/template-variables';
+} from 'shared/types/template-variables';
 import { useTemplateParser } from './useTemplateParser';
 
 interface UseTemplateVariablesProps {

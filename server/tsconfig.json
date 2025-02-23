@@ -1,13 +1,18 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "target": "ES6",
-    "module": "commonjs",
     "outDir": "./dist",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "baseUrl": "..",
+    "paths": {
+      "shared/*": ["shared/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "include": [
+    "src/config/**/*.ts",
+    "src/routes/**/*.ts",
+    "src/utils/**/*.ts",
+    "src/*.ts",
+    "../shared/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

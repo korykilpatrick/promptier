@@ -1,12 +1,12 @@
 import { useEffect, useCallback } from "react"
-import type { Template } from "../types/sidebar"
+import type { Template } from "shared/types/templates"
 
 interface UseTemplateKeyboardShortcutsProps {
   onCreateTemplate?: () => void
   onEditTemplate?: (template: Template) => void
-  onPinTemplate?: (templateId: string) => void
-  onUnpinTemplate?: (templateId: string) => void
-  onDeleteTemplate?: (templateId: string) => void
+  onFavoriteTemplate?: (templateId: number) => void
+  onUnfavoriteTemplate?: (templateId: number) => void
+  onDeleteTemplate?: (templateId: number) => void
   onSelectTemplate?: (template: Template) => void
   selectedTemplate?: Template | null
   isEditing?: boolean
@@ -16,8 +16,8 @@ interface UseTemplateKeyboardShortcutsProps {
 export function useTemplateKeyboardShortcuts({
   onCreateTemplate,
   onEditTemplate,
-  onPinTemplate,
-  onUnpinTemplate,
+  onFavoriteTemplate,
+  onUnfavoriteTemplate,
   onDeleteTemplate,
   onSelectTemplate,
   selectedTemplate,
@@ -55,13 +55,13 @@ export function useTemplateKeyboardShortcuts({
         return
       }
 
-      // Pin/Unpin template: Ctrl/Cmd + P
-      if (ctrlKey && event.key === "p") {
+      // Favorite/Unfavorite template: Ctrl/Cmd + F
+      if (ctrlKey && event.key === "f") {
         event.preventDefault()
-        if (selectedTemplate.isPinned) {
-          onUnpinTemplate?.(selectedTemplate.id)
+        if (selectedTemplate.isFavorite) {
+          onUnfavoriteTemplate?.(selectedTemplate.id)
         } else {
-          onPinTemplate?.(selectedTemplate.id)
+          onFavoriteTemplate?.(selectedTemplate.id)
         }
         return
       }
@@ -76,8 +76,8 @@ export function useTemplateKeyboardShortcuts({
   }, [
     onCreateTemplate,
     onEditTemplate,
-    onPinTemplate,
-    onUnpinTemplate,
+    onFavoriteTemplate,
+    onUnfavoriteTemplate,
     onDeleteTemplate,
     selectedTemplate,
     isEditing,
@@ -96,7 +96,7 @@ export function useTemplateKeyboardShortcuts({
       { key: "Enter", description: "Select template" },
       { key: "Ctrl/⌘ + N", description: "Create new template" },
       { key: "Ctrl/⌘ + E", description: "Edit selected template" },
-      { key: "Ctrl/⌘ + P", description: "Pin/unpin selected template" },
+      { key: "Ctrl/⌘ + F", description: "Favorite/unfavorite selected template" },
       { key: "Ctrl/⌘ + Delete", description: "Delete selected template" },
       { key: "Esc", description: "Clear selection" }
     ]

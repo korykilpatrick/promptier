@@ -1,13 +1,10 @@
-import {
-  TemplateVariableError
-} from '../types/template-variables';
+import { TemplateVariableError, VARIABLE_NAME_PATTERN } from 'shared/types/template-variables';
 import type {
   TemplateVariable,
   TemplateVariableValidationError,
   TemplateParseResult,
   TemplateVariableValues
-} from '../types/template-variables';
-import { VARIABLE_NAME_PATTERN } from '../types/template-variables';
+} from 'shared/types/template-variables';
 
 /**
  * Regex patterns for template parsing and validation

@@ -1,9 +1,14 @@
 import { createClerkClient } from '@clerk/chrome-extension/background'
 
 const PUBLISHABLE_KEY = process.env.PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY
+const API_BASE_URL = process.env.PLASMO_PUBLIC_API_URL
 
 if (!PUBLISHABLE_KEY) {
   throw new Error('Please add the PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY to the .env.development file')
+}
+
+if (!API_BASE_URL) {
+  throw new Error('Please add the PLASMO_PUBLIC_API_URL to the .env.development file')
 }
 
 // Create a Clerk client and get a fresh token
@@ -30,6 +35,7 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Listen for messages from content scripts or side panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[Background] Received message:', request);
   switch (request.type) {
     case 'GET_TOKEN':
       getToken()
@@ -49,7 +55,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
           try {
-            const response = await fetch(request.url, {
+            // Construct full URL by combining base URL with request path
+            const fullUrl = new URL(request.url, API_BASE_URL).toString()
+            
+            const response = await fetch(fullUrl, {
               method: request.method || 'GET',
               headers: {
                 'Content-Type': 'application/json',

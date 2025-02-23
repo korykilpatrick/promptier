@@ -23,11 +23,21 @@
  */
 
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import templatesRouter from './routes/templates';
 import chainsRouter from './routes/chains';
 import { requireAuth } from '@clerk/express';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
+
+// Configure CORS to allow requests from your extension
+app.use(cors({
+  origin: `chrome-extension://${process.env.EXTENSION_ID}`,
+  credentials: true
+}));
 
 // Enable JSON body parsing for all requests
 app.use(express.json());
