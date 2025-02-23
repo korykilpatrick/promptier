@@ -1,6 +1,8 @@
 import React from 'react'
 import { ClerkProvider, SignedIn, SignedOut, UserButton } from '@clerk/chrome-extension'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { ToastContainer } from "../../components/common/Toast"
+import { useToast } from "../../hooks/useToast"
 
 const PUBLISHABLE_KEY = process.env.PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY
 const EXTENSION_URL = chrome.runtime.getURL('.')
@@ -11,6 +13,7 @@ if (!PUBLISHABLE_KEY) {
 
 export const RootLayout = () => {
   const navigate = useNavigate()
+  const { toasts, removeToast } = useToast()
 
   return (
     <ClerkProvider
@@ -45,6 +48,7 @@ export const RootLayout = () => {
             </div>
           </SignedOut>
         </footer>
+        <ToastContainer toasts={toasts} onDismiss={removeToast} />
       </div>
     </ClerkProvider>
   )
