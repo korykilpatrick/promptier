@@ -2,6 +2,14 @@
 
 Below is a detailed, step-by-step plan to build the Promptier Chrome extension and its backend server. Each step is designed to be implemented in a single iteration by an AI code generation system, modifying a limited number of files, and building logically on previous steps.
 
+## NOTES
+
+The strict file paths in this plan *are just loose suggestions*. Do not blindly create them - ensure that they are being named and creating in the appropriate place. And make sure they dont already exist somewhere else before you create them.
+
+This implementation is split into two phases:
+1. Core Functionality: Building the sidebar as a standalone feature with template/chain management
+2. DOM Integration: Adding content scripts and DOM interaction features
+
 ## Server Setup
 
 - [x] **Step 1: Initialize Server Project**
@@ -86,7 +94,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: Step 8
   - **User Instructions**: None
 
-## Sidebar Implementation
+## Phase 1: Core Sidebar Functionality
 
 - [x] **Step 10: Implement Sidebar UI Structure**
   - **Task**: Create React components for the sidebar UI, with sections for templates, chains, and response saving.
@@ -99,68 +107,94 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
   - **Step Dependencies**: None
   - **User Instructions**: None
 
-- [ ] **Step 11: Implement Template Management in Sidebar**
-  - **Task**: Add a form to create templates, a list to display them, and pin toggles, with logic to save and fetch via the background script.
+- [ ] **Step 11: Create Standalone Sidebar View**
+  - **Task**: Create a standalone page to host the sidebar for development and testing.
   - **Files**:
-    - `src/sidebar.html`: Add form with `name`, `category`, `template_text` fields, and a template list `<ul>`.
-    - `src/sidebar.ts`: Add event listeners for form submission (send `saveTemplate` message), fetch templates on load (send `fetchTemplates` message), and toggle `is_pinned` via `updateTemplate`.
-    - `src/styles/sidebar.css`: Style form inputs and list items.
-  - **Step Dependencies**: Step 10, Step 9
-  - **User Instructions**: None
+    - `src/pages/sidebar-view.tsx`: Create a page that renders the sidebar in a full-window view.
+    - `src/popup/routes/sidebar.tsx`: Add route for accessing the standalone sidebar view.
+    - Update `src/popup/index.tsx`: Add route for sidebar view.
+  - **Step Dependencies**: Step 10
+  - **User Instructions**: Access the sidebar view through the extension popup menu.
 
-- [ ] **Step 12: Implement Dynamic Variables in Sidebar**
-  - **Task**: Add logic to parse placeholders in a selected template, display inputs for mapping variables, and generate prompts.
+- [ ] **Step 12: Implement Template Management**
+  - **Task**: Add template creation, editing, and management functionality.
   - **Files**:
-    - `src/sidebar.html`: Add a section for variable mappings below the template list.
-    - `src/sidebar.ts`: Parse placeholders with regex (e.g., `/{{([^}]+)}}/g`), render text/file inputs per variable, and on "Generate" click, replace placeholders and copy to clipboard with `navigator.clipboard.writeText`.
-    - `src/styles/sidebar.css`: Style variable input section.
+    - `src/components/sidebar/template/TemplateForm.tsx`: Form component for creating/editing templates.
+    - `src/components/sidebar/template/TemplateList.tsx`: List component for displaying and managing templates.
+    - `src/hooks/useTemplates.ts`: Hook for template CRUD operations.
   - **Step Dependencies**: Step 11
   - **User Instructions**: None
 
-- [ ] **Step 13: Implement Prompt Chain Management in Sidebar**
-  - **Task**: Add a UI section for creating prompt chains, allowing users to define steps with actions and referrants.
+- [ ] **Step 13: Implement Template Variables**
+  - **Task**: Add support for dynamic variables in templates.
   - **Files**:
-    - `src/sidebar.html`: Add a chain creation form with `name` input and a step list, each step with an action dropdown and conditional inputs (e.g., template selector).
-    - `src/sidebar.ts`: Add logic to manage step list state, save chain via `saveChain` message to background script with `{ name, steps }`.
-    - `src/styles/sidebar.css`: Style chain section.
+    - `src/components/sidebar/template/VariableMapping.tsx`: Component for variable input fields.
+    - `src/utils/template-parser.ts`: Utility for parsing and replacing template variables.
+    - `src/hooks/useTemplateVariables.ts`: Hook for managing template variable state.
   - **Step Dependencies**: Step 12
   - **User Instructions**: None
 
-- [ ] **Step 14: Implement Prompt Chain Execution in Sidebar**
-  - **Task**: Add logic to execute prompt chains step-by-step, handling actions like `execute_prompt`, `save_to_disk`, and `restart_chain`.
+- [ ] **Step 14: Implement Chain Management**
+  - **Task**: Add chain creation and management functionality.
   - **Files**:
-    - `src/sidebar.html`: Add "Execute" and "Next" buttons for chains.
-    - `src/sidebar.ts`: Fetch chain steps via `fetchChain` message, maintain execution state, process each step (e.g., generate prompt, show textarea for `save_to_disk`), and advance on "Next" click.
-    - `src/styles/sidebar.css`: Style execution controls.
+    - `src/components/sidebar/chain/ChainForm.tsx`: Form for creating/editing chains.
+    - `src/components/sidebar/chain/ChainList.tsx`: List component for chains.
+    - `src/hooks/useChains.ts`: Hook for chain CRUD operations.
   - **Step Dependencies**: Step 13
   - **User Instructions**: None
 
-- [ ] **Step 15: Implement Saving AI Responses to Disk in Sidebar**
-  - **Task**: Add a textarea and logic to save AI responses to disk, either standalone or as part of a chain's `save_to_disk` step.
+- [ ] **Step 15: Implement Chain Execution**
+  - **Task**: Add chain execution and step processing.
   - **Files**:
-    - `src/sidebar.html`: Add a response textarea and "Save" checkbox/button in the response section.
-    - `src/sidebar.ts`: Parse response for content (e.g., between ```), use `window.showSaveFilePicker` to save with a timestamped name (e.g., `response_YYYYMMDD_HHMMSS.txt`).
-    - `src/styles/sidebar.css`: Style response section.
+    - `src/components/sidebar/chain/ChainExecutor.tsx`: Component for executing chains.
+    - `src/utils/chain-executor.ts`: Logic for processing chain steps.
+    - `src/hooks/useChainExecution.ts`: Hook for managing chain execution state.
   - **Step Dependencies**: Step 14
   - **User Instructions**: None
 
-## Content Scripts
-
-- [ ] **Step 16: Implement Content Scripts to Inject Toolbar and Sidebar**
-  - **Task**: Inject a floating toolbar with pinned templates and a sidebar iframe into supported sites, handling toolbar button clicks.
+- [ ] **Step 16: Implement Response Management**
+  - **Task**: Add response viewing and saving functionality.
   - **Files**:
-    - `src/content_scripts/grok.ts`: Inject toolbar `<div>` with pinned template buttons and sidebar `<iframe>` sourcing `sidebar.html`.
-    - `src/content_scripts/chatgpt.ts`: Same as above for ChatGPT.
-    - `src/styles/toolbar.css`: Style toolbar with horizontal layout, blue buttons (`#007bff`), and hover effects.
-  - **Step Dependencies**: Step 11
-  - **User Instructions**: Reload the extension in Chrome after updating content scripts.
+    - `src/components/sidebar/response/ResponseViewer.tsx`: Component for viewing responses.
+    - `src/components/sidebar/response/ResponseActions.tsx`: Component for response actions.
+    - `src/hooks/useResponses.ts`: Hook for managing responses.
+  - **Step Dependencies**: Step 15
+  - **User Instructions**: None
 
-- [ ] **Step 17: Implement Hotkey to Toggle Sidebar**
-  - **Task**: Add a keyboard listener to toggle the sidebar iframe's visibility with `Cmd+Shift+P`.
+## Phase 2: DOM Integration
+
+- [ ] **Step 17: Implement Content Script Infrastructure**
+  - **Task**: Set up basic content script structure and messaging.
   - **Files**:
-    - `src/content_scripts/grok.ts`: Add `document.addEventListener('keydown')` to toggle iframe `display` style.
-    - `src/content_scripts/chatgpt.ts`: Same as above.
+    - `src/content_scripts/index.ts`: Base content script setup.
+    - `src/utils/messaging.ts`: Messaging utilities between content script and background.
   - **Step Dependencies**: Step 16
+  - **User Instructions**: None
+
+- [ ] **Step 18: Implement DOM Interaction Features**
+  - **Task**: Add DOM interaction capabilities to the sidebar.
+  - **Files**:
+    - `src/utils/dom-utils.ts`: DOM manipulation utilities.
+    - `src/hooks/useDOMInteraction.ts`: Hook for managing DOM interactions.
+    - Update relevant components to support DOM interaction.
+  - **Step Dependencies**: Step 17
+  - **User Instructions**: None
+
+- [ ] **Step 19: Implement Site Integration**
+  - **Task**: Add site-specific integrations for supported platforms.
+  - **Files**:
+    - `src/content_scripts/chatgpt.ts`: ChatGPT-specific integration.
+    - `src/content_scripts/grok.ts`: Grok-specific integration.
+  - **Step Dependencies**: Step 18
+  - **User Instructions**: None
+
+- [ ] **Step 20: Implement Toolbar and Hotkeys**
+  - **Task**: Add toolbar and keyboard shortcuts for sidebar control.
+  - **Files**:
+    - `src/components/toolbar/Toolbar.tsx`: Floating toolbar component.
+    - `src/hooks/useHotkeys.ts`: Hook for managing keyboard shortcuts.
+    - `src/styles/toolbar.css`: Toolbar styles.
+  - **Step Dependencies**: Step 19
   - **User Instructions**: None
 
 ## Additional Features
