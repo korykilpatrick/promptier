@@ -107,7 +107,7 @@ This implementation is split into two phases:
   - **Step Dependencies**: None
   - **User Instructions**: None
 
-- [ ] **Step 11: Create Standalone Sidebar View**
+- [x] **Step 11: Create Standalone Sidebar View**
   - **Task**: Create a standalone page to host the sidebar for development and testing.
   - **Files**:
     - `src/pages/sidebar-view.tsx`: Create a page that renders the sidebar in a full-window view.
