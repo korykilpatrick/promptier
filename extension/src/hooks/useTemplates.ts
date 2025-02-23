@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import type { Template } from "../types/sidebar";
-import { useToast } from "./useToast";
-import { useDebouncedCallback } from "./useDebounce";
+import type { Toast } from "../components/common/Toast"; // For toast type
 
 interface UseTemplatesOptions {
   onError?: (error: Error) => void;
@@ -9,15 +8,9 @@ interface UseTemplatesOptions {
   debounceDelay?: number;
 }
 
-interface CreateTemplateData {
-  name: string;
-  content: string;
-  category?: string;
-  isPinned?: boolean;
-}
-
-interface UpdateTemplateData extends Partial<CreateTemplateData> {
-  id: string;
+interface UseTemplatesProps {
+  toast: ReturnType<typeof useToast>; // Toast instance from useToast
+  options?: UseTemplatesOptions;
 }
 
 interface OperationState {
@@ -30,25 +23,24 @@ interface OperationState {
 let mockTemplates: Template[] = [];
 let nextId = 1;
 
-export function useTemplates(options: UseTemplatesOptions = {}) {
+export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
   const { maxRetries = 3, debounceDelay = 300 } = options;
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pinnedTemplates, setPinnedTemplates] = useState<Template[]>([]);
   const [operationStates, setOperationStates] = useState<Record<string, OperationState>>({
-    fetch: { isLoading: false, error: null, retryCount: 0 },
+    fetch: { isLoading: true, error: null, retryCount: 0 },
     create: { isLoading: false, error: null, retryCount: 0 },
     update: { isLoading: false, error: null, retryCount: 0 },
-    delete: { isLoading: false, error: null, retryCount: 0 },
+    delete: { isLoading: false, error: null, retryCount: 0 }
   });
-  const toast = useToast();
 
   const setOperationState = useCallback((operation: string, state: Partial<OperationState>) => {
     setOperationStates((prev) => ({
       ...prev,
       [operation]: {
         ...prev[operation],
-        ...state,
-      },
+        ...state
+      }
     }));
   }, []);
 
@@ -63,10 +55,7 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
   const fetchTemplates = useCallback(async () => {
     try {
       setOperationState("fetch", { isLoading: true, error: null });
-      // Simulate API delay (replace with real API call later)
       await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // For now, return the in-memory mockTemplates (empty by default)
       setTemplates(mockTemplates.filter((t) => !t.isPinned));
       setPinnedTemplates(mockTemplates.filter((t) => t.isPinned));
       setOperationState("fetch", { isLoading: false, error: null });
@@ -80,126 +69,138 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
     }
   }, [setOperationState, options, toast]);
 
-  const [debouncedFetch, cancelFetch] = useDebouncedCallback(fetchTemplates, { delay: debounceDelay });
+  const createTemplate = useCallback(
+    async (data: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
+      try {
+        setOperationState("create", { isLoading: true, error: null });
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const createTemplate = useCallback(async (data: CreateTemplateData) => {
-    try {
-      setOperationState("create", { isLoading: true, error: null });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+        const newTemplate: Template = {
+          id: String(nextId++),
+          name: data.name,
+          content: data.content,
+          category: data.category,
+          isPinned: data.isPinned ?? false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
 
-      const newTemplate: Template = {
-        id: String(nextId++),
-        name: data.name,
-        content: data.content,
-        category: data.category,
-        isPinned: data.isPinned ?? false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+        mockTemplates = [...mockTemplates, newTemplate];
 
-      mockTemplates = [...mockTemplates, newTemplate];
+        if (newTemplate.isPinned) {
+          setPinnedTemplates((prev) => [...prev, newTemplate]);
+        } else {
+          setTemplates((prev) => [...prev, newTemplate]);
+        }
 
-      if (newTemplate.isPinned) {
-        setPinnedTemplates((prev) => [...prev, newTemplate]);
-      } else {
-        setTemplates((prev) => [...prev, newTemplate]);
+        setOperationState("create", { isLoading: false, error: null });
+        toast.success("Template created successfully");
+        return newTemplate;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Failed to create template");
+        setOperationState("create", { isLoading: false, error });
+        options.onError?.(error);
+        toast.error("Failed to create template");
+        throw error;
       }
+    },
+    [setOperationState, options, toast]
+  );
 
-      setOperationState("create", { isLoading: false, error: null });
-      toast.success("Template created successfully");
-      return newTemplate;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to create template");
-      setOperationState("create", { isLoading: false, error });
-      options.onError?.(error);
-      toast.error("Failed to create template");
-      throw error;
-    }
-  }, [setOperationState, options, toast]);
+  const updateTemplate = useCallback(
+    async (data: Partial<Template> & { id: string }) => {
+      try {
+        setOperationState("update", { isLoading: true, error: null });
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const updateTemplate = useCallback(async (data: UpdateTemplateData) => {
-    try {
-      setOperationState("update", { isLoading: true, error: null });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+        const templateIndex = mockTemplates.findIndex((t) => t.id === data.id);
+        if (templateIndex === -1) throw new Error("Template not found");
 
-      const templateIndex = mockTemplates.findIndex((t) => t.id === data.id);
-      if (templateIndex === -1) throw new Error("Template not found");
+        const updatedTemplate: Template = {
+          ...mockTemplates[templateIndex],
+          ...data,
+          isPinned: data.isPinned ?? mockTemplates[templateIndex].isPinned,
+          updatedAt: new Date().toISOString()
+        };
 
-      const updatedTemplate: Template = {
-        ...mockTemplates[templateIndex],
-        ...data,
-        isPinned: data.isPinned ?? mockTemplates[templateIndex].isPinned,
-        updatedAt: new Date().toISOString(),
-      };
+        mockTemplates[templateIndex] = updatedTemplate;
 
-      mockTemplates[templateIndex] = updatedTemplate;
+        const updateTemplateList = (list: Template[]) =>
+          list.map((t) => (t.id === data.id ? updatedTemplate : t));
 
-      const updateTemplateList = (list: Template[]) => list.map((t) => (t.id === data.id ? updatedTemplate : t));
+        if (updatedTemplate.isPinned) {
+          setPinnedTemplates((prev) => updateTemplateList(prev));
+          setTemplates((prev) => prev.filter((t) => t.id !== data.id));
+        } else {
+          setTemplates((prev) => updateTemplateList(prev));
+          setPinnedTemplates((prev) => prev.filter((t) => t.id !== data.id));
+        }
 
-      if (updatedTemplate.isPinned) {
-        setPinnedTemplates((prev) => updateTemplateList(prev));
-        setTemplates((prev) => prev.filter((t) => t.id !== data.id));
-      } else {
-        setTemplates((prev) => updateTemplateList(prev));
-        setPinnedTemplates((prev) => prev.filter((t) => t.id !== data.id));
+        setOperationState("update", { isLoading: false, error: null });
+        toast.success("Template updated successfully");
+        return updatedTemplate;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Failed to update template");
+        setOperationState("update", { isLoading: false, error });
+        options.onError?.(error);
+        toast.error("Failed to update template");
+        throw error;
       }
+    },
+    [setOperationState, options, toast]
+  );
 
-      setOperationState("update", { isLoading: false, error: null });
-      toast.success("Template updated successfully");
-      return updatedTemplate;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to update template");
-      setOperationState("update", { isLoading: false, error });
-      options.onError?.(error);
-      toast.error("Failed to update template");
-      throw error;
-    }
-  }, [setOperationState, options, toast]);
+  const deleteTemplate = useCallback(
+    async (id: string) => {
+      try {
+        setOperationState("delete", { isLoading: true, error: null });
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const deleteTemplate = useCallback(async (id: string) => {
-    try {
-      setOperationState("delete", { isLoading: true, error: null });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+        mockTemplates = mockTemplates.filter((t) => t.id !== id);
 
-      mockTemplates = mockTemplates.filter((t) => t.id !== id);
+        setTemplates((prev) => prev.filter((t) => t.id !== id));
+        setPinnedTemplates((prev) => prev.filter((t) => t.id !== id));
+        setOperationState("delete", { isLoading: false, error: null });
+        toast.success("Template deleted successfully");
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Failed to delete template");
+        setOperationState("delete", { isLoading: false, error });
+        options.onError?.(error);
+        toast.error("Failed to delete template");
+        throw error;
+      }
+    },
+    [setOperationState, options, toast]
+  );
 
-      setTemplates((prev) => prev.filter((t) => t.id !== id));
-      setPinnedTemplates((prev) => prev.filter((t) => t.id !== id));
-      setOperationState("delete", { isLoading: false, error: null });
-      toast.success("Template deleted successfully");
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to delete template");
-      setOperationState("delete", { isLoading: false, error });
-      options.onError?.(error);
-      toast.error("Failed to delete template");
-      throw error;
-    }
-  }, [setOperationState, options, toast]);
+  const pinTemplate = useCallback(
+    async (id: string) => {
+      const template = [...templates, ...pinnedTemplates].find((t) => t.id === id);
+      if (!template) throw new Error("Template not found");
+      await updateTemplate({ id, isPinned: true });
+    },
+    [templates, pinnedTemplates, updateTemplate]
+  );
 
-  const pinTemplate = useCallback(async (id: string) => {
-    const template = [...templates, ...pinnedTemplates].find((t) => t.id === id);
-    if (!template) throw new Error("Template not found");
-    await updateTemplate({ id, isPinned: true });
-  }, [templates, pinnedTemplates, updateTemplate]);
-
-  const unpinTemplate = useCallback(async (id: string) => {
-    const template = [...templates, ...pinnedTemplates].find((t) => t.id === id);
-    if (!template) throw new Error("Template not found");
-    await updateTemplate({ id, isPinned: false });
-  }, [templates, pinnedTemplates, updateTemplate]);
+  const unpinTemplate = useCallback(
+    async (id: string) => {
+      const template = [...templates, ...pinnedTemplates].find((t) => t.id === id);
+      if (!template) throw new Error("Template not found");
+      await updateTemplate({ id, isPinned: false });
+    },
+    [templates, pinnedTemplates, updateTemplate]
+  );
 
   return {
     templates,
     pinnedTemplates,
     operationStates,
     fetchTemplates,
-    debouncedFetch,
-    cancelFetch,
     createTemplate,
     updateTemplate,
     deleteTemplate,
     pinTemplate,
     unpinTemplate,
-    cleanup,
+    cleanup
   };
 }

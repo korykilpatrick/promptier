@@ -39,22 +39,22 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  const { templates: internalTemplates, pinnedTemplates: internalPinnedTemplates, operationStates, debouncedFetch, cancelFetch, createTemplate, updateTemplate, deleteTemplate, pinTemplate, unpinTemplate, cleanup } = useTemplates({ maxRetries: 3, debounceDelay: 300 });
+  const { templates: internalTemplates, pinnedTemplates: internalPinnedTemplates, operationStates, createTemplate, updateTemplate, deleteTemplate, pinTemplate, unpinTemplate } = useTemplates({ maxRetries: 3, debounceDelay: 300 });
 
   const templates = externalTemplates ?? internalTemplates;
   const pinnedTemplates = externalPinnedTemplates ?? internalPinnedTemplates;
   const isLoading = externalIsLoading ?? operationStates["fetch"]?.isLoading;
 
-  // Fetch only when expanded and no external templates are provided, but rely on Sidebar's initial fetch
-  useEffect(() => {
-    if (isExpanded && !externalTemplates && !templates.length && !isLoading) {
-      debouncedFetch();
-    }
-    return () => {
-      cancelFetch();
-      cleanup();
-    };
-  }, [isExpanded, externalTemplates, templates.length, isLoading, debouncedFetch, cancelFetch, cleanup]);
+  // Debug logging
+  console.log('TemplateSection render:', {
+    isExpanded,
+    isLoading,
+    templatesLength: templates?.length,
+    pinnedTemplatesLength: pinnedTemplates?.length,
+    isCreating,
+    hasEditingTemplate: !!editingTemplate,
+    operationStates
+  });
 
   const handleCreateTemplate = async (data: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
     try {
@@ -63,7 +63,6 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
       } else {
         await createTemplate(data);
         setIsCreating(false);
-        debouncedFetch();
       }
     } catch (error) {
       console.error("Failed to create template:", error);
@@ -75,7 +74,6 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
     try {
       await updateTemplate({ id: editingTemplate.id, ...data });
       setEditingTemplate(null);
-      if (!externalTemplates) debouncedFetch();
     } catch (error) {
       console.error("Failed to update template:", error);
     }
@@ -85,7 +83,6 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
     if (!window.confirm("Are you sure you want to delete this template?")) return;
     try {
       await deleteTemplate(templateId);
-      if (!externalTemplates) debouncedFetch();
     } catch (error) {
       console.error("Failed to delete template:", error);
     }
@@ -97,7 +94,6 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
         externalOnPinTemplate(templateId);
       } else {
         await pinTemplate(templateId);
-        if (!externalTemplates) debouncedFetch();
       }
     } catch (error) {
       console.error("Failed to pin template:", error);
@@ -110,7 +106,6 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
         externalOnUnpinTemplate(templateId);
       } else {
         await unpinTemplate(templateId);
-        if (!externalTemplates) debouncedFetch();
       }
     } catch (error) {
       console.error("Failed to unpin template:", error);
@@ -120,14 +115,14 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   return (
     <section className="plasmo-border-b plasmo-border-gray-200">
       <SectionHeader title="Templates" isExpanded={isExpanded} onToggle={onToggle} id="templates-header" />
-      <div className={`plasmo-px-6 ${isExpanded ? "plasmo-animate-slide-down" : "plasmo-animate-slide-up plasmo-hidden"}`}>
+      <div className={`plasmo-px-6 ${isExpanded ? "" : "plasmo-hidden"}`}>
         {isLoading ? (
-          <LoadingSkeleton />
+          <LoadingSkeleton variant="card" count={2} size="large" />
         ) : operationStates["fetch"]?.error && !externalTemplates ? (
           <ErrorState
             title="Failed to load templates"
             message="There was an error loading your templates. Please try again."
-            onRetry={debouncedFetch}
+            onRetry={() => Promise.resolve()}
           />
         ) : (templates.length === 0 && pinnedTemplates.length === 0 && !isCreating && !editingTemplate) ? (
           <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-py-4">No templates yet</p>

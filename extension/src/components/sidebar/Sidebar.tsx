@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import type { Template, PromptChain } from "../../types/sidebar";
 import { TemplateSection } from "./TemplateSection";
 import { ChainSection } from "./ChainSection";
@@ -7,20 +7,49 @@ import { ErrorBoundary } from "../common/ErrorBoundary";
 import { useFocusManagement } from "../../hooks/useFocusManagement";
 import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation";
 import { useTemplates } from "../../hooks/useTemplates";
+import { useToast } from "../../hooks/useToast";
 
 export const Sidebar: React.FC = () => {
-  const { templates, pinnedTemplates, operationStates, fetchTemplates, cleanup } = useTemplates();
+  const toast = useToast();
+  const fetchTemplatesRef = useRef<(() => Promise<Template[]>) | null>(null);
 
-  // Fetch templates on mount
+  const options = useMemo(() => ({
+    onError: (error: Error) => {
+      console.error("Template operation error:", error);
+      toast.error("An error occurred with templates");
+    },
+    maxRetries: 3,
+    debounceDelay: 300
+  }), [toast]);
+
+  const { templates, pinnedTemplates, operationStates, fetchTemplates, cleanup } = useTemplates({ toast, options });
+
+  // Store fetchTemplates in a ref on first render
   useEffect(() => {
-    fetchTemplates(); // Immediate fetch to get the initial state
+    if (!fetchTemplatesRef.current) {
+      fetchTemplatesRef.current = fetchTemplates;
+    }
+  }, [fetchTemplates]);
+
+  console.log("Sidebar render:", {
+    templatesLength: templates?.length,
+    pinnedTemplatesLength: pinnedTemplates?.length,
+    isTemplatesLoading: operationStates["fetch"]?.isLoading,
+    operationStates
+  });
+
+  useEffect(() => {
+    console.log("Sidebar mounting, fetching templates");
+    fetchTemplatesRef.current!().catch((error) => {
+      console.error("Failed to fetch templates:", error);
+    });
     return cleanup;
-  }, [fetchTemplates, cleanup]);
+  }, [cleanup]); // Only depend on cleanup, not fetchTemplates
 
   const [expandedSections, setExpandedSections] = useState({
     templates: true,
     chains: true,
-    response: true,
+    response: true
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,14 +57,14 @@ export const Sidebar: React.FC = () => {
   useKeyboardNavigation({
     onArrowDown: focusNext,
     onArrowUp: focusPrevious,
-    onEscape: () => {},
+    onEscape: () => {}
   });
 
   const toggleSection = (section: "templates" | "chains" | "response") => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const isTemplatesLoading = operationStates["fetch"]?.isLoading ?? false;
+  const isTemplatesLoading = operationStates?.fetch?.isLoading ?? false;
   const [chains, setChains] = useState<PromptChain[]>([]);
   const [activeChain, setActiveChain] = useState<PromptChain | undefined>();
   const [isChainsLoading] = useState(false);
