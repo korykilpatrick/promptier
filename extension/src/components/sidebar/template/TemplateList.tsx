@@ -6,8 +6,8 @@ import { KeyboardShortcutsHelp } from "../../common/KeyboardShortcutsHelp"
 import { useTemplateKeyboardShortcuts } from "../../../hooks/useTemplateKeyboardShortcuts"
 
 interface TemplateListProps {
-  templates: Template[]
-  pinnedTemplates: Template[]
+  templates?: Template[]
+  pinnedTemplates?: Template[]
   onSelectTemplate: (template: Template) => void
   onPinTemplate: (templateId: string) => void
   onUnpinTemplate: (templateId: string) => void
@@ -21,8 +21,8 @@ const ITEM_HEIGHT = 72 // Height of each template item in pixels
 const CONTAINER_HEIGHT = 400 // Maximum height of the list container
 
 export const TemplateList: React.FC<TemplateListProps> = ({
-  templates,
-  pinnedTemplates,
+  templates = [],
+  pinnedTemplates = [],
   onSelectTemplate,
   onPinTemplate,
   onUnpinTemplate,
@@ -36,8 +36,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   // Memoize the combined templates array
   const allTemplates = useMemo(() => {
-    const pinned = pinnedTemplates.map(template => ({ ...template, isPinned: true }))
-    const unpinned = templates.map(template => ({ ...template, isPinned: false }))
+    const pinned = (pinnedTemplates || []).map(template => ({ ...template, isPinned: true }))
+    const unpinned = (templates || []).map(template => ({ ...template, isPinned: false }))
     return [...pinned, ...unpinned]
   }, [templates, pinnedTemplates])
 
@@ -96,11 +96,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   // Render pinned templates section if there are any
   const renderPinnedSection = () => {
-    if (pinnedTemplates.length === 0) return null
+    if (!pinnedTemplates?.length) return null
 
     return (
       <div>
-        <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+        <h2 className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider plasmo-mb-3">
           Pinned Templates
         </h2>
         <VirtualList
@@ -108,7 +108,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           renderItem={renderTemplateItem}
           itemHeight={ITEM_HEIGHT}
           containerHeight={Math.min(CONTAINER_HEIGHT, pinnedTemplates.length * ITEM_HEIGHT)}
-          className="mb-6"
+          className="plasmo-mb-6"
           onItemFocus={(index) => handleItemFocus(pinnedTemplates[index])}
         />
       </div>
@@ -119,14 +119,14 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const renderAllTemplatesSection = () => {
     return (
       <div>
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-3">
+          <h2 className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider">
             All Templates
           </h2>
           <KeyboardShortcutsHelp shortcuts={shortcuts} />
         </div>
-        {templates.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No templates yet</p>
+        {!templates?.length ? (
+          <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">No templates yet</p>
         ) : (
           <VirtualList
             items={templates.map(template => ({ ...template, isPinned: false }))}
@@ -141,7 +141,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="plasmo-space-y-6">
       {renderPinnedSection()}
       {renderAllTemplatesSection()}
     </div>

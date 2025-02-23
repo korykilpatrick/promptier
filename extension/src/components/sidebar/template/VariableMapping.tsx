@@ -25,13 +25,14 @@ export function VariableMapping({
   multilineVariables = [],
   className = ''
 }: VariableMappingProps) {
-  const hasVariables = variables.length > 0;
+  const safeVariables = variables ?? []; // Default to empty array if undefined
+  const hasVariables = safeVariables.length > 0;
   const hasModifiedValues = Object.values(values).some(state => state.isDirty);
   const hasValidationErrors = Object.values(values).some(state => !state.isValid);
 
   // Count modified and total variables
   const modifiedCount = Object.values(values).filter(state => state.isDirty).length;
-  const totalCount = variables.length;
+  const totalCount = safeVariables.length;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -66,7 +67,7 @@ export function VariableMapping({
       </div>
 
       <VariableList
-        variables={variables}
+        variables={safeVariables}
         values={values}
         onVariableChange={onVariableChange}
         validationOptions={validationOptions}
@@ -74,4 +75,4 @@ export function VariableMapping({
       />
     </div>
   );
-} 
+}

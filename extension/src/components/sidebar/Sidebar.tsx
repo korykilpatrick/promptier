@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import type { Template, PromptChain } from "../../types/sidebar"
 import { TemplateSection } from "./TemplateSection"
 import { ChainSection } from "./ChainSection"
@@ -6,8 +6,27 @@ import { ResponseSection } from "./ResponseSection"
 import { ErrorBoundary } from "../common/ErrorBoundary"
 import { useFocusManagement } from "../../hooks/useFocusManagement"
 import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation"
+import { useTemplates } from "../../hooks/useTemplates"
 
 export const Sidebar: React.FC = () => {
+  // Initialize templates hook
+  const {
+    templates,
+    pinnedTemplates,
+    operationStates,
+    fetchTemplates,
+    createTemplate,
+    pinTemplate,
+    unpinTemplate,
+    cleanup
+  } = useTemplates()
+
+  // Fetch templates once on mount
+  useEffect(() => {
+    fetchTemplates()
+    return cleanup
+  }, []) // Empty dependency array to run only once on mount
+
   // Section expansion state
   const [expandedSections, setExpandedSections] = useState({
     templates: true,
@@ -43,9 +62,7 @@ export const Sidebar: React.FC = () => {
   }
 
   // Templates state
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [pinnedTemplates, setPinnedTemplates] = useState<Template[]>([])
-  const [isTemplatesLoading, setIsTemplatesLoading] = useState(false)
+  const isTemplatesLoading = operationStates["fetch"]?.isLoading ?? false
 
   // Chains state
   const [chains, setChains] = useState<PromptChain[]>([])
@@ -109,16 +126,12 @@ export const Sidebar: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="fixed right-0 top-0 h-screen w-80 bg-white shadow-lg z-50 flex flex-col"
+      className="plasmo-h-full plasmo-bg-white plasmo-flex plasmo-flex-col"
       role="complementary"
       aria-label="Promptier Sidebar"
-      tabIndex={0} // Make the container focusable
-    >
-      <div className="p-4 border-b border-gray-200">
-        <h1 className="text-xl font-semibold text-gray-800">Promptier</h1>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto">
+      tabIndex={0}
+    >      
+      <div className="plasmo-flex-1 plasmo-overflow-y-auto">
         <ErrorBoundary>
           <TemplateSection 
             isExpanded={expandedSections.templates}

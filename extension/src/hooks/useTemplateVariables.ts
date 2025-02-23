@@ -35,17 +35,20 @@ interface UseTemplateVariablesReturn {
 
 export function useTemplateVariables({
   template,
-  initialValues = {},
+  initialValues = {}, // Default to empty object
   validationOptions = {},
   parserOptions = {}
 }: UseTemplateVariablesProps): UseTemplateVariablesReturn {
   // Use optimized template parser
   const { parseResult, cacheStats } = useTemplateParser(template, parserOptions);
-  
+
+  // Ensure variables is always an array
+  const safeVariables = parseResult.variables ?? [];
+
   // Initialize values with defaults from variables
   const initialState = useMemo(() => {
     const state: TemplateVariableValues = {};
-    parseResult.variables.forEach(v => {
+    safeVariables.forEach(v => {
       const initialValue = initialValues[v.name] ?? v.defaultValue ?? '';
       state[v.name] = {
         value: initialValue,
@@ -55,13 +58,13 @@ export function useTemplateVariables({
       };
     });
     return state;
-  }, [parseResult.variables, initialValues]);
+  }, [safeVariables, initialValues]);
 
   const [values, setValues] = useState<TemplateVariableValues>(initialState);
 
   // Validate a single variable value
   const validateValue = useCallback((name: string, value: string) => {
-    const variable = parseResult.variables.find(v => v.name === name);
+    const variable = safeVariables.find(v => v.name === name);
     const options = validationOptions[name];
     const errors: TemplateVariableValidationError[] = [];
 
@@ -102,7 +105,7 @@ export function useTemplateVariables({
     }
 
     return errors;
-  }, [parseResult.variables, validationOptions]);
+  }, [safeVariables, validationOptions]);
 
   // Set a single variable value
   const setVariableValue = useCallback((name: string, value: string) => {
@@ -127,14 +130,14 @@ export function useTemplateVariables({
 
   // Get all validation errors
   const validationErrors = useMemo(() => {
-    return parseResult.variables
+    return safeVariables
       .map(variable => {
         const state = values[variable.name];
         if (!state) return [];
         return state.errors;
       })
       .flat();
-  }, [parseResult.variables, values]);
+  }, [safeVariables, values]);
 
   const hasAllRequiredValues = validationErrors.length === 0;
 
@@ -147,4 +150,4 @@ export function useTemplateVariables({
     validationErrors,
     parserStats: cacheStats
   };
-} 
+}

@@ -12,6 +12,13 @@ import "../../styles/transitions.css"
 interface TemplateSectionProps {
   isExpanded: boolean
   onToggle: () => void
+  templates?: Template[]
+  pinnedTemplates?: Template[]
+  isLoading?: boolean
+  onCreateTemplate?: () => void
+  onPinTemplate?: (templateId: string) => void
+  onUnpinTemplate?: (templateId: string) => void
+  onSelectTemplate?: (template: Template) => void
 }
 
 export const TemplateSection: React.FC<TemplateSectionProps> = (props) => {
@@ -24,13 +31,20 @@ export const TemplateSection: React.FC<TemplateSectionProps> = (props) => {
 
 const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   isExpanded,
-  onToggle
+  onToggle,
+  templates: externalTemplates,
+  pinnedTemplates: externalPinnedTemplates,
+  isLoading: externalIsLoading,
+  onCreateTemplate: externalOnCreateTemplate,
+  onPinTemplate: externalOnPinTemplate,
+  onUnpinTemplate: externalOnUnpinTemplate,
+  onSelectTemplate: externalOnSelectTemplate
 }) => {
   const [isCreating, setIsCreating] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
   const {
-    templates,
-    pinnedTemplates,
+    templates: internalTemplates,
+    pinnedTemplates: internalPinnedTemplates,
     operationStates,
     debouncedFetch,
     cancelFetch,
@@ -45,22 +59,30 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
     debounceDelay: 300
   })
 
+  // Use external state if provided, otherwise fall back to internal state
+  const templates = externalTemplates ?? internalTemplates
+  const pinnedTemplates = externalPinnedTemplates ?? internalPinnedTemplates
+  const isLoading = externalIsLoading ?? operationStates["fetch"]?.isLoading
+
   useEffect(() => {
-    if (isExpanded) {
+    if (isExpanded && !externalTemplates) {
       debouncedFetch()
     }
     return () => {
       cancelFetch()
       cleanup()
     }
-  }, [isExpanded, debouncedFetch, cancelFetch, cleanup])
+  }, [isExpanded, debouncedFetch, cancelFetch, cleanup, externalTemplates])
 
   const handleCreateTemplate = async (data: Omit<Template, "id" | "createdAt" | "updatedAt">) => {
     try {
-      await createTemplate(data)
-      setIsCreating(false)
-      // Refresh the list after creating
-      debouncedFetch()
+      if (externalOnCreateTemplate) {
+        externalOnCreateTemplate()
+      } else {
+        await createTemplate(data)
+        setIsCreating(false)
+        debouncedFetch()
+      }
     } catch (error) {
       // Error is handled by the hook and shown in toast
     }
@@ -73,7 +95,9 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
       await updateTemplate({ id: editingTemplate.id, ...data })
       setEditingTemplate(null)
       // Refresh the list after updating
-      debouncedFetch()
+      if (!externalTemplates) {
+        debouncedFetch()
+      }
     } catch (error) {
       // Error is handled by the hook and shown in toast
     }
@@ -85,7 +109,9 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
     try {
       await deleteTemplate(templateId)
       // Refresh the list after deleting
-      debouncedFetch()
+      if (!externalTemplates) {
+        debouncedFetch()
+      }
     } catch (error) {
       // Error is handled by the hook and shown in toast
     }
@@ -93,9 +119,14 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
 
   const handlePinTemplate = async (templateId: string) => {
     try {
-      await pinTemplate(templateId)
-      // Refresh the list after pinning
-      debouncedFetch()
+      if (externalOnPinTemplate) {
+        externalOnPinTemplate(templateId)
+      } else {
+        await pinTemplate(templateId)
+        if (!externalTemplates) {
+          debouncedFetch()
+        }
+      }
     } catch (error) {
       // Error is handled by the hook and shown in toast
     }
@@ -103,22 +134,25 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
 
   const handleUnpinTemplate = async (templateId: string) => {
     try {
-      await unpinTemplate(templateId)
-      // Refresh the list after unpinning
-      debouncedFetch()
+      if (externalOnUnpinTemplate) {
+        externalOnUnpinTemplate(templateId)
+      } else {
+        await unpinTemplate(templateId)
+        if (!externalTemplates) {
+          debouncedFetch()
+        }
+      }
     } catch (error) {
       // Error is handled by the hook and shown in toast
     }
   }
 
   const renderContent = () => {
-    const fetchState = operationStates["fetch"]
-
-    if (fetchState?.isLoading) {
+    if (isLoading) {
       return <LoadingSkeleton />
     }
 
-    if (fetchState?.error) {
+    if (operationStates["fetch"]?.error && !externalTemplates) {
       return (
         <ErrorState
           title="Failed to load templates"
@@ -132,8 +166,8 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
       <>
         {/* Create/Edit Form */}
         {(isCreating || editingTemplate) && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">
+          <div className="plasmo-mb-6">
+            <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900 plasmo-mb-3">
               {isCreating ? "Create New Template" : "Edit Template"}
             </h3>
             <TemplateForm
@@ -150,7 +184,7 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
         {/* Create Button */}
         {!isCreating && !editingTemplate && (
           <button
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+            className="plasmo-w-full plasmo-bg-blue-600 plasmo-text-white plasmo-py-2 plasmo-px-4 plasmo-rounded plasmo-hover:bg-blue-700 plasmo-transition-colors plasmo-disabled:opacity-50 plasmo-disabled:cursor-not-allowed plasmo-mb-6"
             onClick={() => setIsCreating(true)}
             disabled={operationStates["create"]?.isLoading}
           >
@@ -163,8 +197,12 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
           templates={templates}
           pinnedTemplates={pinnedTemplates}
           onSelectTemplate={(template) => {
-            // Handle template selection - this will be implemented in a later step
-            console.log("Selected template:", template)
+            if (externalOnSelectTemplate) {
+              externalOnSelectTemplate(template)
+            } else {
+              // Handle template selection - this will be implemented in a later step
+              console.log("Selected template:", template)
+            }
           }}
           onPinTemplate={handlePinTemplate}
           onUnpinTemplate={handleUnpinTemplate}
@@ -178,7 +216,7 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   }
 
   return (
-    <section className="p-4 border-b border-gray-200">
+    <section className="plasmo-p-4 plasmo-border-b plasmo-border-gray-200">
       <SectionHeader
         title="Templates"
         isExpanded={isExpanded}
@@ -186,7 +224,7 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
       />
 
       {isExpanded && (
-        <div className="mt-4">
+        <div className="plasmo-mt-4">
           {renderContent()}
         </div>
       )}

@@ -27,18 +27,16 @@ interface OperationState {
   retryCount: number
 }
 
+// Mock data store
+let mockTemplates: Template[] = []
+let nextId = 1
+
 export function useTemplates(options: UseTemplatesOptions = {}) {
   const { maxRetries = 3, debounceDelay = 300 } = options
   const [templates, setTemplates] = useState<Template[]>([])
   const [pinnedTemplates, setPinnedTemplates] = useState<Template[]>([])
   const [operationStates, setOperationStates] = useState<Record<string, OperationState>>({})
   const toast = useToast()
-
-  // Create request instances for each operation type
-  const fetchRequest = useRequest<Template[]>({ timeout: 5000, retries: maxRetries })
-  const createRequest = useRequest<Template>({ timeout: 5000, retries: maxRetries })
-  const updateRequest = useRequest<Template>({ timeout: 5000, retries: maxRetries })
-  const deleteRequest = useRequest<void>({ timeout: 5000, retries: maxRetries })
 
   const setOperationState = useCallback((operation: string, state: Partial<OperationState>) => {
     setOperationStates(prev => ({
@@ -52,11 +50,8 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
 
   // Cleanup function
   const cleanup = useCallback(() => {
-    fetchRequest.cleanup()
-    createRequest.cleanup()
-    updateRequest.cleanup()
-    deleteRequest.cleanup()
-  }, [fetchRequest, createRequest, updateRequest, deleteRequest])
+    // No cleanup needed for mock data
+  }, [])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -66,17 +61,13 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
   const fetchTemplates = useCallback(async () => {
     try {
       setOperationState("fetch", { isLoading: true, error: null })
-      const allTemplates = await fetchRequest.execute(async (signal) => {
-        const response = await fetch("/api/templates", { signal })
-        if (!response.ok) throw new Error("Failed to fetch templates")
-        const data = await response.json()
-        return data.templates as Template[]
-      })
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
       
-      setTemplates(allTemplates.filter(t => !t.isPinned))
-      setPinnedTemplates(allTemplates.filter(t => t.isPinned))
+      setTemplates(mockTemplates.filter(t => !t.isPinned))
+      setPinnedTemplates(mockTemplates.filter(t => t.isPinned))
       setOperationState("fetch", { isLoading: false, error: null })
-      return allTemplates
+      return mockTemplates
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to load templates")
       setOperationState("fetch", { isLoading: false, error })
@@ -84,24 +75,28 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
       toast.error("Failed to load templates")
       throw error
     }
-  }, [fetchRequest, setOperationState, options, toast])
+  }, [setOperationState, options, toast])
 
   // Debounced version of fetchTemplates
-  const [debouncedFetch, cancelFetch] = useDebouncedCallback(fetchTemplates, debounceDelay)
+  const [debouncedFetch, cancelFetch] = useDebouncedCallback(fetchTemplates, { delay: debounceDelay })
 
   const createTemplate = useCallback(async (data: CreateTemplateData) => {
     try {
       setOperationState("create", { isLoading: true, error: null })
-      const newTemplate = await createRequest.execute(async () => {
-        const response = await fetch("/api/templates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        })
-        
-        if (!response.ok) throw new Error("Failed to create template")
-        return response.json()
-      })
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const newTemplate: Template = {
+        id: String(nextId++),
+        name: data.name,
+        content: data.content,
+        category: data.category,
+        isPinned: data.isPinned ?? false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      mockTemplates = [...mockTemplates, newTemplate]
 
       if (newTemplate.isPinned) {
         setPinnedTemplates(prev => [...prev, newTemplate])
@@ -119,21 +114,25 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
       toast.error("Failed to create template")
       throw error
     }
-  }, [createRequest, setOperationState, options, toast])
+  }, [setOperationState, options, toast])
 
   const updateTemplate = useCallback(async (data: UpdateTemplateData) => {
     try {
       setOperationState("update", { isLoading: true, error: null })
-      const updatedTemplate = await updateRequest.execute(async () => {
-        const response = await fetch(`/api/templates/${data.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        })
-        
-        if (!response.ok) throw new Error("Failed to update template")
-        return response.json()
-      })
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const templateIndex = mockTemplates.findIndex(t => t.id === data.id)
+      if (templateIndex === -1) throw new Error("Template not found")
+
+      const updatedTemplate: Template = {
+        ...mockTemplates[templateIndex],
+        ...data,
+        isPinned: data.isPinned ?? mockTemplates[templateIndex].isPinned,
+        updatedAt: new Date().toISOString()
+      }
+
+      mockTemplates[templateIndex] = updatedTemplate
 
       const updateTemplateList = (list: Template[]) =>
         list.map(t => t.id === data.id ? updatedTemplate : t)
@@ -156,18 +155,15 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
       toast.error("Failed to update template")
       throw error
     }
-  }, [updateRequest, setOperationState, options, toast])
+  }, [setOperationState, options, toast])
 
   const deleteTemplate = useCallback(async (id: string) => {
     try {
       setOperationState("delete", { isLoading: true, error: null })
-      await deleteRequest.execute(async () => {
-        const response = await fetch(`/api/templates/${id}`, {
-          method: "DELETE"
-        })
-        
-        if (!response.ok) throw new Error("Failed to delete template")
-      })
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      mockTemplates = mockTemplates.filter(t => t.id !== id)
       
       setTemplates(prev => prev.filter(t => t.id !== id))
       setPinnedTemplates(prev => prev.filter(t => t.id !== id))
@@ -180,7 +176,7 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
       toast.error("Failed to delete template")
       throw error
     }
-  }, [deleteRequest, setOperationState, options, toast])
+  }, [setOperationState, options, toast])
 
   const pinTemplate = useCallback(async (id: string) => {
     const template = [...templates, ...pinnedTemplates].find(t => t.id === id)
