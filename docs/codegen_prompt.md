@@ -4,7 +4,7 @@ Your task is to systematically implement each step of the plan, one at a time.
 
 First, carefully review the following inputs:
 
-<insert>
+{{YOUR_CODE}}
 
 Your task is to:
 1. Identify the next incomplete step from the implementation plan (marked with `- [ ]`)
