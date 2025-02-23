@@ -1,141 +1,70 @@
-import React, { useState, useRef, useEffect } from "react"
-import type { Template, PromptChain } from "../../types/sidebar"
-import { TemplateSection } from "./TemplateSection"
-import { ChainSection } from "./ChainSection"
-import { ResponseSection } from "./ResponseSection"
-import { ErrorBoundary } from "../common/ErrorBoundary"
-import { useFocusManagement } from "../../hooks/useFocusManagement"
-import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation"
-import { useTemplates } from "../../hooks/useTemplates"
+import React, { useState, useRef, useEffect } from "react";
+import type { Template, PromptChain } from "../../types/sidebar";
+import { TemplateSection } from "./TemplateSection";
+import { ChainSection } from "./ChainSection";
+import { ResponseSection } from "./ResponseSection";
+import { ErrorBoundary } from "../common/ErrorBoundary";
+import { useFocusManagement } from "../../hooks/useFocusManagement";
+import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation";
+import { useTemplates } from "../../hooks/useTemplates";
 
 export const Sidebar: React.FC = () => {
-  // Initialize templates hook
-  const {
-    templates,
-    pinnedTemplates,
-    operationStates,
-    fetchTemplates,
-    createTemplate,
-    pinTemplate,
-    unpinTemplate,
-    cleanup
-  } = useTemplates()
+  const { templates, pinnedTemplates, operationStates, fetchTemplates, cleanup } = useTemplates();
 
-  // Fetch templates once on mount
+  // Fetch templates on mount
   useEffect(() => {
-    fetchTemplates()
-    return cleanup
-  }, []) // Empty dependency array to run only once on mount
+    fetchTemplates(); // Immediate fetch to get the initial state
+    return cleanup;
+  }, [fetchTemplates, cleanup]);
 
-  // Section expansion state
   const [expandedSections, setExpandedSections] = useState({
     templates: true,
     chains: true,
-    response: true
-  })
+    response: true,
+  });
 
-  // Container ref for focus management
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Focus and keyboard navigation
-  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({
-    itemCount: 3, // Three sections: templates, chains, response
-    onFocusChange: (index) => {
-      // Handle focus change if needed
-    }
-  })
-
-  // Setup keyboard navigation
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({ itemCount: 3 });
   useKeyboardNavigation({
     onArrowDown: focusNext,
     onArrowUp: focusPrevious,
-    onEscape: () => {
-      // TODO: Implement close sidebar
-    }
-  })
+    onEscape: () => {},
+  });
 
-  const toggleSection = (section: 'templates' | 'chains' | 'response') => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }))
-  }
+  const toggleSection = (section: "templates" | "chains" | "response") => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
-  // Templates state
-  const isTemplatesLoading = operationStates["fetch"]?.isLoading ?? false
+  const isTemplatesLoading = operationStates["fetch"]?.isLoading ?? false;
+  const [chains, setChains] = useState<PromptChain[]>([]);
+  const [activeChain, setActiveChain] = useState<PromptChain | undefined>();
+  const [isChainsLoading] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState("");
+  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Chains state
-  const [chains, setChains] = useState<PromptChain[]>([])
-  const [activeChain, setActiveChain] = useState<PromptChain | undefined>()
-  const [isChainsLoading, setIsChainsLoading] = useState(false)
-
-  // Response state
-  const [currentResponse, setCurrentResponse] = useState("")
-  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-
-  // Template handlers
-  const handleCreateTemplate = () => {
-    // TODO: Implement template creation
-  }
-
-  const handlePinTemplate = (templateId: string) => {
-    // TODO: Implement template pinning
-  }
-
-  const handleUnpinTemplate = (templateId: string) => {
-    // TODO: Implement template unpinning
-  }
-
-  const handleSelectTemplate = (template: Template) => {
-    // TODO: Implement template selection
-  }
-
-  // Chain handlers
-  const handleCreateChain = () => {
-    // TODO: Implement chain creation
-  }
-
-  const handleSelectChain = (chain: PromptChain) => {
-    setActiveChain(chain)
-  }
-
-  const handleExecuteStep = (chainId: string, stepId: string) => {
-    // TODO: Implement step execution
-  }
-
-  // Response handlers
-  const handleResponseChange = (response: string) => {
-    setCurrentResponse(response)
-  }
-
-  const handleToggleAutoSave = () => {
-    setIsAutoSaveEnabled(!isAutoSaveEnabled)
-  }
-
+  const handleCreateTemplate = () => {};
+  const handlePinTemplate = (templateId: string) => {};
+  const handleUnpinTemplate = (templateId: string) => {};
+  const handleSelectTemplate = (template: Template) => {};
+  const handleCreateChain = () => {};
+  const handleSelectChain = (chain: PromptChain) => setActiveChain(chain);
+  const handleExecuteStep = (chainId: string, stepId: string) => {};
+  const handleResponseChange = (response: string) => setCurrentResponse(response);
+  const handleToggleAutoSave = () => setIsAutoSaveEnabled(!isAutoSaveEnabled);
   const handleSaveResponse = async () => {
-    setIsSaving(true)
-    try {
-      // TODO: Implement response saving
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulated delay
-    } finally {
-      setIsSaving(false)
-    }
-  }
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsSaving(false);
+  };
 
   return (
-    <div 
-      ref={containerRef}
-      className="plasmo-h-full plasmo-bg-white plasmo-flex plasmo-flex-col"
-      role="complementary"
-      aria-label="Promptier Sidebar"
-      tabIndex={0}
-    >      
+    <div ref={containerRef} className="plasmo-sidebar" role="complementary" aria-label="Promptier Sidebar" tabIndex={0}>
       <div className="plasmo-flex-1 plasmo-overflow-y-auto">
         <ErrorBoundary>
-          <TemplateSection 
+          <TemplateSection
             isExpanded={expandedSections.templates}
-            onToggle={() => toggleSection('templates')}
+            onToggle={() => toggleSection("templates")}
             templates={templates}
             pinnedTemplates={pinnedTemplates}
             isLoading={isTemplatesLoading}
@@ -144,9 +73,9 @@ export const Sidebar: React.FC = () => {
             onUnpinTemplate={handleUnpinTemplate}
             onSelectTemplate={handleSelectTemplate}
           />
-          <ChainSection 
+          <ChainSection
             isExpanded={expandedSections.chains}
-            onToggle={() => toggleSection('chains')}
+            onToggle={() => toggleSection("chains")}
             chains={chains}
             activeChain={activeChain}
             isLoading={isChainsLoading}
@@ -154,9 +83,9 @@ export const Sidebar: React.FC = () => {
             onSelectChain={handleSelectChain}
             onExecuteStep={handleExecuteStep}
           />
-          <ResponseSection 
+          <ResponseSection
             isExpanded={expandedSections.response}
-            onToggle={() => toggleSection('response')}
+            onToggle={() => toggleSection("response")}
             currentResponse={currentResponse}
             isAutoSaveEnabled={isAutoSaveEnabled}
             isSaving={isSaving}
@@ -167,5 +96,5 @@ export const Sidebar: React.FC = () => {
         </ErrorBoundary>
       </div>
     </div>
-  )
-} 
+  );
+};

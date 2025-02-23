@@ -1,10 +1,41 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-#plasmo-shadow-container {
-  all: initial;
-  box-sizing: border-box;
+@layer base {
+  :host(plasmo-csui) {
+    font-family: "Inter", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+}
+
+@layer components {
+  .plasmo-btn-primary {
+    @apply plasmo-bg-blue-600 plasmo-text-white plasmo-px-4 plasmo-py-2 plasmo-rounded-md plasmo-font-medium plasmo-text-sm plasmo-transition-colors hover:plasmo-bg-blue-700 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500 focus:plasmo-ring-offset-2 disabled:plasmo-opacity-50 disabled:plasmo-cursor-not-allowed;
+  }
+
+  .plasmo-btn-secondary {
+    @apply plasmo-bg-white plasmo-text-gray-700 plasmo-px-4 plasmo-py-2 plasmo-rounded-md plasmo-font-medium plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-transition-colors hover:plasmo-bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500 focus:plasmo-ring-offset-2;
+  }
+
+  .plasmo-section-header {
+    @apply plasmo-flex plasmo-justify-between plasmo-items-center plasmo-p-4 plasmo-cursor-pointer plasmo-transition-colors hover:plasmo-bg-gray-50;
+  }
+
+  .plasmo-sidebar {
+    @apply plasmo-h-full plasmo-bg-white plasmo-flex plasmo-flex-col plasmo-shadow-sleek plasmo-rounded-lg plasmo-overflow-hidden;
+  }
+}
+
+@layer utilities {
+  .plasmo-animate-slide-down {
+    animation: slide-down 0.2s ease-out forwards;
+  }
+
+  .plasmo-animate-slide-up {
+    animation: slide-up 0.2s ease-out forwards;
+  }
 }

@@ -1,44 +1,29 @@
-import React from 'react'
-import { SignedIn, SignedOut } from '@clerk/chrome-extension'
-import { Link } from 'react-router-dom'
+import React from "react";
+import { SignedIn, SignedOut } from "@clerk/chrome-extension";
+import { Link } from "react-router-dom";
 
 export const Home = () => {
   return (
-    <div className="p-4 space-y-4">
+    <div className="plasmo-space-y-6">
       <SignedIn>
-        <h1 className="text-2xl font-bold">Welcome to Promptier</h1>
-        <p className="text-gray-600">
-          Create and manage your prompt templates and chains.
-        </p>
-        <div className="mt-6 space-x-4">
-          <Link 
-            to="/sidebar"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
+        <h1 className="plasmo-text-2xl plasmo-font-semibold plasmo-text-gray-900">Welcome to Promptier</h1>
+        <p className="plasmo-text-gray-500 plasmo-text-sm">Create and manage your prompt templates and chains.</p>
+        <div className="plasmo-flex plasmo-gap-4">
+          <Link to="/sidebar" className="plasmo-btn-primary">
             Open Template Manager
           </Link>
-          <Link
-            to="/settings"
-            className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-          >
+          <Link to="/settings" className="plasmo-btn-secondary">
             Settings
           </Link>
         </div>
       </SignedIn>
       <SignedOut>
-        <h1 className="text-2xl font-bold">Promptier</h1>
-        <p className="text-gray-600">
-          Sign in to create and manage your prompt templates.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/sign-in"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
+        <h1 className="plasmo-text-2xl plasmo-font-semibold plasmo-text-gray-900">Promptier</h1>
+        <p className="plasmo-text-gray-500 plasmo-text-sm">Sign in to create and manage your prompt templates.</p>
+        <Link to="/sign-in" className="plasmo-btn-primary">
+          Sign In
+        </Link>
       </SignedOut>
     </div>
-  )
-} 
+  );
+};
