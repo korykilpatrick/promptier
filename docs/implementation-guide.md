@@ -33,7 +33,7 @@ Below is a detailed, step-by-step plan to build the Promptier Chrome extension a
 
 ## Phase 1: Frontend-Backend Integration (Starting from Step 14)
 
-- [ ] **Step 14: Fetch Templates from Backend in `useTemplates` Hook**
+- [x] **Step 14: Fetch Templates from Backend in `useTemplates` Hook**
   - **Task**: Update the `fetchTemplates` function in the `useTemplates` hook to call the `/templates` GET API route using `makeApiRequest`, replacing mock data.
   - **Deliverable**: **User Story**: "As a user, when I open the sidebar, I see my saved templates fetched from the backend." Test by manually inserting templates into the `templates` table in your database (e.g., via `psql`) and verifying they appear in the `TemplateSection` component.
   - **User Instructions**: Ensure the server is running, insert a template (e.g., `INSERT INTO templates (created_by, name, template_text, is_pinned) VALUES (1, 'Test Template', 'Hello {{name}}', false);`), then open the sidebar to confirm the template appears.
