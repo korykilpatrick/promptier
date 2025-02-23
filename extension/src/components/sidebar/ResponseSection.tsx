@@ -57,119 +57,72 @@ const ResponseSectionContent: React.FC<ResponseSectionProps> = ({
   }
 
   return (
-    <div 
-      className="border-b border-gray-200"
-      role="region"
-      aria-labelledby="response-header"
-      onKeyDown={handleKeyDown}
+    <section 
+      className="p-4"
+      aria-expanded={isExpanded}
     >
-      <SectionHeader 
-        title="Response"
-        isExpanded={isExpanded}
-        onToggle={onToggle}
-        id="response-header"
-      />
-
       <div 
-        id="response-content"
-        className={`section-content ${isExpanded ? "expanded" : ""}`}
-        role="region"
-        aria-labelledby="response-header"
+        className="flex items-center justify-between mb-4 cursor-pointer"
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} response section`}
       >
-        <div className="p-4 space-y-4">
-          {/* Response Text Area */}
-          <div 
-            className="space-y-2"
-            role="group"
-            aria-label="Response editor"
+        <h2 className="text-lg font-medium text-gray-800">Save Response</h2>
+        <button 
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
+        >
+          <svg 
+            className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
           >
-            {isSaving ? (
-              <LoadingSkeleton variant="input" size="large" count={1} />
-            ) : (
-              <textarea
-                id="response-textarea"
-                className="w-full h-32 p-2 border border-gray-300 rounded-md text-sm resize-none focus-ring hover-transition"
-                placeholder="AI response will appear here..."
-                value={currentResponse}
-                onChange={(e) => onResponseChange(e.target.value)}
-                disabled={isSaving}
-                aria-label="AI response text"
-                aria-disabled={isSaving}
-              />
-            )}
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      {isExpanded && (
+        <>
+          {/* Response Text Area */}
+          <div className="mb-4">
+            <textarea
+              className="w-full h-32 p-2 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Paste AI response here..."
+              value={currentResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              aria-label="AI response content"
+            />
           </div>
 
           {/* Save Controls */}
-          <div 
-            className="flex justify-between items-center"
-            role="group"
-            aria-label="Save controls"
-          >
-            {isSaving ? (
-              <div className="flex justify-between items-center w-full">
-                <LoadingSkeleton variant="button" size="small" count={1} className="w-32" />
-                <LoadingSkeleton variant="button" size="small" count={1} className="w-20" />
-              </div>
-            ) : (
-              <>
-                <label 
-                  className="flex items-center space-x-2 hover-transition"
-                  role="checkbox"
-                  aria-checked={isAutoSaveEnabled}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      if (!isSaving) {
-                        onToggleAutoSave()
-                      }
-                    }
-                  }}
-                >
-                  <input 
-                    type="checkbox" 
-                    className="form-checkbox text-blue-600 transition-colors"
-                    checked={isAutoSaveEnabled}
-                    onChange={onToggleAutoSave}
-                    disabled={isSaving}
-                    aria-label="Enable auto-save"
-                  />
-                  <span 
-                    className={`text-sm transition-colors ${isSaving ? "text-gray-400" : "text-gray-600"}`}
-                    aria-hidden="true"
-                  >
-                    Auto-save responses
-                  </span>
-                </label>
-                <button 
-                  className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md button-transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed scale-transition hover:scale-105"
-                  disabled={!currentResponse.trim() || isSaving}
-                  onClick={onSaveResponse}
-                  aria-label={isSaving ? "Saving response..." : "Save response"}
-                  aria-busy={isSaving}
-                  title="Press Ctrl+S or ⌘+S to save"
-                >
-                  <span className="flex items-center">
-                    {isSaving && (
-                      <svg 
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        fill="none" 
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    )}
-                    {isSaving ? "Saving..." : "Save"}
-                  </span>
-                </button>
-              </>
-            )}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                className="form-checkbox text-blue-600"
+                checked={isAutoSaveEnabled}
+                onChange={onToggleAutoSave}
+                aria-label="Enable auto-save responses"
+              />
+              <span className="text-sm text-gray-700">Auto-save responses</span>
+            </label>
+            <button 
+              className={`bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors ${
+                isSaving ? 'opacity-75 cursor-not-allowed' : ''
+              }`}
+              onClick={onSaveResponse}
+              disabled={isSaving}
+              aria-label="Save response"
+              aria-busy={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
           </div>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </section>
   )
 } 

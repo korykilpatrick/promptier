@@ -87,104 +87,110 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   )
 
   return (
-    <div 
-      className="border-b border-gray-200"
-      role="region"
-      aria-labelledby="templates-header"
+    <section 
+      className="p-4 border-b border-gray-200"
+      aria-expanded={isExpanded}
     >
-      <SectionHeader 
-        title="Templates"
-        isExpanded={isExpanded}
-        onToggle={onToggle}
-        id="templates-header"
-      />
-
       <div 
-        id="templates-content"
-        className={`section-content ${isExpanded ? "expanded" : ""}`}
-        role="region"
-        aria-labelledby="templates-header"
+        className="flex items-center justify-between mb-4 cursor-pointer"
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} templates section`}
       >
-        <div className="p-4 space-y-4">
-          {/* Template List */}
-          <div 
-            className="space-y-2"
-            role="region"
-            aria-labelledby="my-templates-header"
+        <h2 className="text-lg font-medium text-gray-800">Templates</h2>
+        <button 
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
+        >
+          <svg 
+            className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
           >
-            <div className="flex justify-between items-center">
-              <h3 
-                id="my-templates-header"
-                className="text-sm font-medium text-gray-600"
-              >
-                My Templates
-              </h3>
-              <button 
-                className="text-sm text-blue-600 button-transition hover:text-blue-700 disabled:opacity-50"
-                onClick={onCreateTemplate}
-                disabled={isLoading}
-                aria-label="Create new template"
-              >
-                + New Template
-              </button>
-            </div>
-            <div 
-              className="space-y-2"
-              role="list"
-              aria-label="Template list"
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      {isExpanded && (
+        <>
+          {/* Template Creation Form */}
+          <div className="mb-4">
+            <button 
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+              onClick={onCreateTemplate}
+              aria-label="Create new template"
             >
-              {isLoading ? (
-                <LoadingSkeleton variant="card" size="small" count={3} />
-              ) : templates.length > 0 ? (
-                templates.map((template, index) => renderTemplateItem(template, false, index))
-              ) : (
-                <div 
-                  className="text-sm text-gray-500 italic loading-fade"
-                  role="status"
-                  aria-label="No templates available"
-                >
-                  No templates yet
-                </div>
-              )}
-            </div>
+              Create New Template
+            </button>
           </div>
 
-          {/* Pinned Templates */}
-          <div 
-            className="space-y-2"
-            role="region"
-            aria-labelledby="pinned-templates-header"
-          >
-            <h3 
-              id="pinned-templates-header"
-              className="text-sm font-medium text-gray-600"
-            >
-              Pinned Templates
-            </h3>
-            <div 
-              className="space-y-2"
-              role="list"
-              aria-label="Pinned template list"
-            >
-              {isLoading ? (
-                <LoadingSkeleton variant="card" size="small" count={2} />
-              ) : pinnedTemplates.length > 0 ? (
-                pinnedTemplates.map((template, index) => 
-                  renderTemplateItem(template, true, templates.length + index)
-                )
-              ) : (
-                <div 
-                  className="text-sm text-gray-500 italic loading-fade"
-                  role="status"
-                  aria-label="No pinned templates available"
-                >
-                  No pinned templates
+          {/* Template List */}
+          {isLoading ? (
+            <div className="text-sm text-gray-600">Loading templates...</div>
+          ) : (
+            <div className="space-y-2">
+              {pinnedTemplates.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">Pinned Templates</h3>
+                  {pinnedTemplates.map(template => (
+                    <div 
+                      key={template.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="text-sm text-gray-800">{template.name}</span>
+                      <button
+                        onClick={() => onUnpinTemplate(template.id)}
+                        className="text-gray-500 hover:text-gray-700"
+                        aria-label={`Unpin template ${template.name}`}
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">All Templates</h3>
+                {templates.length === 0 ? (
+                  <div className="text-sm text-gray-600">No templates yet</div>
+                ) : (
+                  templates.map(template => (
+                    <div 
+                      key={template.id}
+                      className="flex items-center justify-between p-2 bg-white rounded hover:bg-gray-50 transition-colors"
+                    >
+                      <button
+                        className="flex-1 text-left text-sm text-gray-800"
+                        onClick={() => onSelectTemplate(template)}
+                        aria-label={`Select template ${template.name}`}
+                      >
+                        {template.name}
+                      </button>
+                      {!pinnedTemplates.some(pinned => pinned.id === template.id) && (
+                        <button
+                          onClick={() => onPinTemplate(template.id)}
+                          className="text-gray-500 hover:text-gray-700"
+                          aria-label={`Pin template ${template.name}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          )}
+        </>
+      )}
+    </section>
   )
 } 

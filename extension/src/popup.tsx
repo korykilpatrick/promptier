@@ -8,6 +8,7 @@ import { Home } from './popup/routes/home'
 import { Settings } from './popup/routes/settings'
 import { SignInPage } from './popup/routes/sign-in'
 import { SignUpPage } from './popup/routes/sign-up'
+import SidebarRoute from './popup/routes/sidebar'
 
 const router = createMemoryRouter([
   {
@@ -17,6 +18,7 @@ const router = createMemoryRouter([
       { path: '/sign-in', element: <SignInPage /> },
       { path: '/sign-up', element: <SignUpPage /> },
       { path: '/settings', element: <Settings /> },
+      { path: '/sidebar', element: <SidebarRoute /> },
     ],
   },
 ])

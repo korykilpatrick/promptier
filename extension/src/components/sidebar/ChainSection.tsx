@@ -101,145 +101,98 @@ const ChainSectionContent: React.FC<ChainSectionProps> = ({
   )
 
   return (
-    <div 
-      className="border-b border-gray-200"
-      role="region"
-      aria-labelledby="chains-header"
+    <section 
+      className="p-4 border-b border-gray-200"
+      aria-expanded={isExpanded}
     >
-      <SectionHeader 
-        title="Prompt Chains"
-        isExpanded={isExpanded}
-        onToggle={onToggle}
-        id="chains-header"
-      />
-
       <div 
-        id="chains-content"
-        className={`section-content ${isExpanded ? "expanded" : ""}`}
-        role="region"
-        aria-labelledby="chains-header"
+        className="flex items-center justify-between mb-4 cursor-pointer"
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} prompt chains section`}
       >
-        <div className="p-4 space-y-4">
-          {/* Chain List */}
-          <div 
-            className="space-y-2"
-            role="region"
-            aria-labelledby="my-chains-header"
+        <h2 className="text-lg font-medium text-gray-800">Prompt Chains</h2>
+        <button 
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
+        >
+          <svg 
+            className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
           >
-            <div className="flex justify-between items-center">
-              <h3 
-                id="my-chains-header"
-                className="text-sm font-medium text-gray-600"
-              >
-                My Chains
-              </h3>
-              <button 
-                className="text-sm text-blue-600 button-transition hover:text-blue-700 disabled:opacity-50"
-                onClick={onCreateChain}
-                disabled={isLoading}
-                aria-label="Create new chain"
-              >
-                + New Chain
-              </button>
-            </div>
-            <div 
-              className="space-y-2"
-              role="list"
-              aria-label="Chain list"
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      {isExpanded && (
+        <>
+          {/* Chain Creation Button */}
+          <div className="mb-4">
+            <button 
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+              onClick={onCreateChain}
+              aria-label="Create new prompt chain"
             >
-              {isLoading ? (
-                <LoadingSkeleton variant="card" size="small" count={2} />
-              ) : chains.length > 0 ? (
-                chains.map((chain, index) => renderChainItem(chain, index))
-              ) : (
-                <div 
-                  className="text-sm text-gray-500 italic loading-fade"
-                  role="status"
-                  aria-label="No chains available"
-                >
-                  No chains yet
-                </div>
-              )}
-            </div>
+              Create New Chain
+            </button>
           </div>
 
-          {/* Active Chain */}
-          <div 
-            className="space-y-2"
-            role="region"
-            aria-labelledby="active-chain-header"
-          >
-            <h3 
-              id="active-chain-header"
-              className="text-sm font-medium text-gray-600"
-            >
-              Active Chain
-            </h3>
-            <div 
-              className="p-3 bg-gray-50 rounded-md transition-base"
-              role="region"
-              aria-label="Active chain details"
-            >
-              {isLoading ? (
-                <div className="space-y-2">
-                  <LoadingSkeleton variant="text" size="small" count={1} />
-                  <div className="space-y-1">
-                    <LoadingSkeleton variant="text" size="small" count={3} />
-                  </div>
-                </div>
-              ) : activeChain ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{activeChain.name}</span>
-                    <span 
-                      className="text-xs text-gray-500"
-                      aria-label={`Contains ${activeChain.steps.length} steps`}
-                    >
-                      {activeChain.steps.length} steps
-                    </span>
-                  </div>
-                  <div 
-                    className="space-y-1"
-                    role="list"
-                    aria-label="Chain steps"
-                  >
-                    {activeChain.steps.map((step, index) => (
-                      <div 
-                        key={step.id}
-                        ref={el => stepRefs.current[index] = el}
-                        className={`text-xs text-gray-600 flex justify-between items-center hover-transition hover:bg-white rounded p-1 ${
-                          stepFocus === index ? 'ring-2 ring-blue-500' : ''
-                        }`}
-                        role="listitem"
-                        tabIndex={stepFocus === index ? 0 : -1}
-                        onFocus={() => setStepFocus(index)}
-                      >
-                        <span>{step.type}</span>
-                        <button
-                          className="text-blue-600 button-transition hover:text-blue-700 scale-transition hover:scale-105"
-                          onClick={() => onExecuteStep(activeChain.id, step.id)}
-                          aria-label={`Execute ${step.type} step`}
-                          tabIndex={-1}
-                        >
-                          Execute
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          {/* Chain List */}
+          {isLoading ? (
+            <div className="text-sm text-gray-600">Loading chains...</div>
+          ) : (
+            <div className="space-y-2">
+              {chains.length === 0 ? (
+                <div className="text-sm text-gray-600">No chains yet</div>
               ) : (
-                <div 
-                  className="text-sm text-gray-500 italic loading-fade"
-                  role="status"
-                  aria-label="No active chain selected"
-                >
-                  No active chain
-                </div>
+                chains.map(chain => (
+                  <div 
+                    key={chain.id}
+                    className={`p-2 rounded transition-colors ${
+                      activeChain?.id === chain.id 
+                        ? 'bg-blue-50 border border-blue-200' 
+                        : 'bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <button
+                        className="flex-1 text-left text-sm font-medium text-gray-800"
+                        onClick={() => onSelectChain(chain)}
+                        aria-label={`Select chain ${chain.name}`}
+                      >
+                        {chain.name}
+                      </button>
+                      {activeChain?.id === chain.id && (
+                        <span className="text-xs text-blue-600 font-medium">Active</span>
+                      )}
+                    </div>
+                    {activeChain?.id === chain.id && chain.steps.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {chain.steps.map(step => (
+                          <button
+                            key={step.id}
+                            className="w-full text-left text-xs text-gray-600 hover:text-gray-800 py-1 px-2 rounded hover:bg-gray-100 transition-colors"
+                            onClick={() => onExecuteStep(chain.id, step.id)}
+                            aria-label={`Execute step ${step.type}`}
+                          >
+                            {step.type === 'execute_prompt' && step.templateId && '🔄 Execute Template'}
+                            {step.type === 'save_to_disk' && '💾 Save to Disk'}
+                            {step.type === 'restart_chain' && '🔄 Restart Chain'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          )}
+        </>
+      )}
+    </section>
   )
 } 

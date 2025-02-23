@@ -2,84 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base transitions */
-.transition-base {
-  @apply transition-all duration-200 ease-in-out;
-}
+@layer components {
+  /* Base transitions */
+  .plasmo-transition-base {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
 
-/* Section transitions */
-.section-content {
-  @apply transition-all duration-200 ease-in-out;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transform: translateY(-8px);
-}
-
-.section-content.expanded {
-  max-height: 1000px;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Focus transitions */
-.focus-ring {
-  @apply transition-shadow duration-150 ease-in-out;
-}
-
-/* Button transitions */
-.button-transition {
-  @apply transition-colors duration-150 ease-in-out;
-}
-
-/* Loading transitions */
-.loading-fade {
-  @apply transition-opacity duration-200 ease-in-out;
-}
-
-/* Hover transitions */
-.hover-transition {
-  @apply transition-all duration-150 ease-in-out;
-}
-
-/* Scale transitions */
-.scale-transition {
-  @apply transition-transform duration-150 ease-in-out;
-}
-
-/* Rotate transitions */
-.rotate-transition {
-  @apply transition-transform duration-200 ease-in-out;
-}
-
-/* Custom animation keyframes */
-@keyframes slideDown {
-  from {
+  /* Section transitions */
+  .plasmo-section-content {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+    max-height: 0;
     opacity: 0;
+    overflow: hidden;
     transform: translateY(-8px);
   }
-  to {
+
+  .plasmo-section-content.expanded {
+    max-height: 1000px;
     opacity: 1;
     transform: translateY(0);
   }
-}
 
-@keyframes slideUp {
-  from {
-    opacity: 1;
-    transform: translateY(0);
+  /* Focus ring transition */
+  .plasmo-focus-ring {
+    transition-property: box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+    @apply plasmo-ring-2 plasmo-ring-offset-2 plasmo-ring-blue-500;
   }
-  to {
+
+  /* Button transition */
+  .plasmo-button-transition {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+  .plasmo-button-transition:hover {
+    transform: scale(1.05);
+  }
+
+  /* Loading fade transition */
+  .plasmo-loading-fade {
+    transition-property: opacity;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
     opacity: 0;
-    transform: translateY(-8px);
+  }
+
+  /* Hover transition */
+  .plasmo-hover-transition {
+    transition-property: opacity;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+  .plasmo-hover-transition:hover {
+    opacity: 0.8;
+  }
+
+  /* Scale transition */
+  .plasmo-scale-transition {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+  .plasmo-scale-transition:hover {
+    transform: scale(1.1);
+  }
+
+  /* Rotate transition */
+  .plasmo-rotate-transition {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+  .plasmo-rotate-transition:hover {
+    transform: rotate(180deg);
   }
 }
 
-/* Animation classes */
-.animate-slide-down {
-  animation: slideDown 200ms ease-in-out forwards;
-}
+@layer utilities {
+  /* Slide animations */
+  @keyframes plasmo-slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-.animate-slide-up {
-  animation: slideUp 200ms ease-in-out forwards;
+  @keyframes plasmo-slide-up {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+
+  .plasmo-animate-slide-down {
+    animation: plasmo-slide-down 0.2s ease-out forwards;
+  }
+
+  .plasmo-animate-slide-up {
+    animation: plasmo-slide-up 0.2s ease-out forwards;
+  }
 } 

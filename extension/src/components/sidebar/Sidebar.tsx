@@ -1,14 +1,46 @@
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import type { Template, PromptChain } from "../../types/sidebar"
 import { TemplateSection } from "./TemplateSection"
 import { ChainSection } from "./ChainSection"
 import { ResponseSection } from "./ResponseSection"
+import { ErrorBoundary } from "../common/ErrorBoundary"
+import { useFocusManagement } from "../../hooks/useFocusManagement"
+import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation"
 
 export const Sidebar: React.FC = () => {
-  // Section expansion states
-  const [templateExpanded, setTemplateExpanded] = useState(true)
-  const [chainExpanded, setChainExpanded] = useState(true)
-  const [responseExpanded, setResponseExpanded] = useState(true)
+  // Section expansion state
+  const [expandedSections, setExpandedSections] = useState({
+    templates: true,
+    chains: true,
+    response: true
+  })
+
+  // Container ref for focus management
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Focus and keyboard navigation
+  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({
+    itemCount: 3, // Three sections: templates, chains, response
+    onFocusChange: (index) => {
+      // Handle focus change if needed
+    }
+  })
+
+  // Setup keyboard navigation
+  useKeyboardNavigation({
+    onArrowDown: focusNext,
+    onArrowUp: focusPrevious,
+    onEscape: () => {
+      // TODO: Implement close sidebar
+    }
+  })
+
+  const toggleSection = (section: 'templates' | 'chains' | 'response') => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }))
+  }
 
   // Templates state
   const [templates, setTemplates] = useState<Template[]>([])
@@ -75,43 +107,51 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <div className="w-80 h-screen bg-white shadow-lg flex flex-col">
+    <div 
+      ref={containerRef}
+      className="fixed right-0 top-0 h-screen w-80 bg-white shadow-lg z-50 flex flex-col"
+      role="complementary"
+      aria-label="Promptier Sidebar"
+      tabIndex={0} // Make the container focusable
+    >
       <div className="p-4 border-b border-gray-200">
         <h1 className="text-xl font-semibold text-gray-800">Promptier</h1>
       </div>
       
-      <div className="flex-1 overflow-y-auto sidebar-scrollbar">
-        <TemplateSection 
-          isExpanded={templateExpanded}
-          onToggle={() => setTemplateExpanded(!templateExpanded)}
-          templates={templates}
-          pinnedTemplates={pinnedTemplates}
-          isLoading={isTemplatesLoading}
-          onCreateTemplate={handleCreateTemplate}
-          onPinTemplate={handlePinTemplate}
-          onUnpinTemplate={handleUnpinTemplate}
-          onSelectTemplate={handleSelectTemplate}
-        />
-        <ChainSection 
-          isExpanded={chainExpanded}
-          onToggle={() => setChainExpanded(!chainExpanded)}
-          chains={chains}
-          activeChain={activeChain}
-          isLoading={isChainsLoading}
-          onCreateChain={handleCreateChain}
-          onSelectChain={handleSelectChain}
-          onExecuteStep={handleExecuteStep}
-        />
-        <ResponseSection 
-          isExpanded={responseExpanded}
-          onToggle={() => setResponseExpanded(!responseExpanded)}
-          currentResponse={currentResponse}
-          isAutoSaveEnabled={isAutoSaveEnabled}
-          isSaving={isSaving}
-          onResponseChange={handleResponseChange}
-          onToggleAutoSave={handleToggleAutoSave}
-          onSaveResponse={handleSaveResponse}
-        />
+      <div className="flex-1 overflow-y-auto">
+        <ErrorBoundary>
+          <TemplateSection 
+            isExpanded={expandedSections.templates}
+            onToggle={() => toggleSection('templates')}
+            templates={templates}
+            pinnedTemplates={pinnedTemplates}
+            isLoading={isTemplatesLoading}
+            onCreateTemplate={handleCreateTemplate}
+            onPinTemplate={handlePinTemplate}
+            onUnpinTemplate={handleUnpinTemplate}
+            onSelectTemplate={handleSelectTemplate}
+          />
+          <ChainSection 
+            isExpanded={expandedSections.chains}
+            onToggle={() => toggleSection('chains')}
+            chains={chains}
+            activeChain={activeChain}
+            isLoading={isChainsLoading}
+            onCreateChain={handleCreateChain}
+            onSelectChain={handleSelectChain}
+            onExecuteStep={handleExecuteStep}
+          />
+          <ResponseSection 
+            isExpanded={expandedSections.response}
+            onToggle={() => toggleSection('response')}
+            currentResponse={currentResponse}
+            isAutoSaveEnabled={isAutoSaveEnabled}
+            isSaving={isSaving}
+            onResponseChange={handleResponseChange}
+            onToggleAutoSave={handleToggleAutoSave}
+            onSaveResponse={handleSaveResponse}
+          />
+        </ErrorBoundary>
       </div>
     </div>
   )
