@@ -76,9 +76,11 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to load templates");
       setOperationState("fetch", { isLoading: false, error });
+      setTemplates([]);
+      setFavoriteTemplates([]);
       options.onError?.(error);
       toast.error("Failed to load templates");
-      throw error;
+      return [];
     }
   }, [setOperationState, options, toast]);
 
