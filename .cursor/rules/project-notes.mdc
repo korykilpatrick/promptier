@@ -15,4 +15,6 @@ We integrated Clerk authentication into our Express backend and encountered issu
    import { getAuth } from '@clerk/express';
    const { userId } = getAuth(req);
 
-2. **Always ensure you are in the right starting directory before making changes. E.g. when changing stuff for the extension, make sure you are editing the files in the extension dir and not the root dir
+2. **Always ensure you are in the right starting directory before making changes. E.g. when changing stuff for the extension, make sure you are editing the files in the extension dir and not the root dir.
+
+3. Before creating any new files, ALWAYS check to ensure you are not making a file that already exists somewhere else. Before each change, understand the whole code base thoroughly and ensure you are making decisions that a world-class engineer would make.

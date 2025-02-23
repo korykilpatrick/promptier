@@ -116,7 +116,7 @@ This implementation is split into two phases:
   - **Step Dependencies**: Step 10
   - **User Instructions**: Access the sidebar view through the extension popup menu.
 
-- [ ] **Step 12: Implement Template Management**
+- [x] **Step 12: Implement Template Management**
   - **Task**: Add template creation, editing, and management functionality.
   - **Files**:
     - `src/components/sidebar/template/TemplateForm.tsx`: Form component for creating/editing templates.
@@ -125,7 +125,7 @@ This implementation is split into two phases:
   - **Step Dependencies**: Step 11
   - **User Instructions**: None
 
-- [ ] **Step 13: Implement Template Variables**
+- [x] **Step 13: Implement Template Variables**
   - **Task**: Add support for dynamic variables in templates.
   - **Files**:
     - `src/components/sidebar/template/VariableMapping.tsx`: Component for variable input fields.

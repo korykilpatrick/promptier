@@ -13,6 +13,7 @@ export interface Template {
   category?: string
   createdAt: string
   updatedAt: string
+  variables?: Record<string, string>
 }
 
 export interface TemplateSectionProps extends BaseSection {
