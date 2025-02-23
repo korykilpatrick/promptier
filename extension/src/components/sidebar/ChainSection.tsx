@@ -170,7 +170,7 @@ const ChainSectionContent: React.FC<ChainSectionProps> = ({
                         <span className="text-xs text-blue-600 font-medium">Active</span>
                       )}
                     </div>
-                    {activeChain?.id === chain.id && chain.steps.length > 0 && (
+                    {activeChain?.id === chain.id && chain.steps?.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {chain.steps.map(step => (
                           <button
