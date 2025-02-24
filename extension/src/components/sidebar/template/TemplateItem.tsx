@@ -1,18 +1,28 @@
-import React, { memo } from "react"
-import type { Template } from "shared/types/templates"
+const React = require("react");
+const reactRouterDom = require("react-router-dom");
+const { memo } = React;
+const { useNavigate } = reactRouterDom;
 
-interface TemplateItemProps {
-  template: Template
-  isFavorite: boolean
-  isSelected: boolean
-  onSelect: (template: Template) => void
-  onFavorite: (templateId: number) => void
-  onUnfavorite: (templateId: number) => void
-  onEdit: (template: Template) => void
-  onDelete: (templateId: number) => void
-}
+/** @typedef {import("shared/types/templates").Template} Template */
 
-export const TemplateItem: React.FC<TemplateItemProps> = memo(({
+/**
+ * @typedef {Object} TemplateItemProps
+ * @property {Template} template - The template object
+ * @property {boolean} isFavorite - Whether the template is a favorite
+ * @property {boolean} isSelected - Whether the template is selected
+ * @property {Function} onSelect - Function to select the template
+ * @property {Function} onFavorite - Function to favorite the template
+ * @property {Function} onUnfavorite - Function to unfavorite the template
+ * @property {Function} onEdit - Function to edit the template
+ * @property {Function} onDelete - Function to delete the template
+ */
+
+/**
+ * Template item component
+ * @param {TemplateItemProps} props - Component props
+ * @returns {JSX.Element} Component JSX
+ */
+const TemplateItem = memo(({
   template,
   isFavorite,
   isSelected,
@@ -22,30 +32,38 @@ export const TemplateItem: React.FC<TemplateItemProps> = memo(({
   onEdit,
   onDelete,
 }) => {
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    isFavorite ? onUnfavorite(template.id) : onFavorite(template.id)
-  }
+  const navigate = useNavigate();
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onEdit(template)
-  }
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    isFavorite ? onUnfavorite(template.id) : onFavorite(template.id);
+  };
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    console.log(`[TemplateItem] Delete clicked for template ID: ${template.id}`)
-    onDelete(template.id)
-  }
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    // Navigate to the template details view with edit mode active
+    navigate(`/templates/${template.id}`, {
+      state: {
+        template,
+        editMode: true
+      }
+    });
+  };
 
-  const handleCopyClick = async (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    console.log(`[TemplateItem] Delete clicked for template ID: ${template.id}`);
+    onDelete(template.id);
+  };
+
+  const handleCopyClick = async (e) => {
+    e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(template.content)
+      await navigator.clipboard.writeText(template.content);
     } catch (error) {
-      console.error('Failed to copy template:', error)
+      console.error('Failed to copy template:', error);
     }
-  }
+  };
 
   return (
     <div
@@ -61,8 +79,8 @@ export const TemplateItem: React.FC<TemplateItemProps> = memo(({
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onSelect(template)
+          e.preventDefault();
+          onSelect(template);
         }
       }}
     >
@@ -130,5 +148,9 @@ export const TemplateItem: React.FC<TemplateItemProps> = memo(({
         </div>
       </div>
     </div>
-  )
-}) 
+  );
+});
+
+module.exports = {
+  TemplateItem
+}; 

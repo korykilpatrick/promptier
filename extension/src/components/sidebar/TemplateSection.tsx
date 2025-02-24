@@ -1,5 +1,7 @@
 const React = require("react");
 const { useState, useEffect } = React;
+const reactRouterDom = require("react-router-dom");
+const { useNavigate } = reactRouterDom;
 
 /** @typedef {import("shared/types/templates").Template} Template */
 
@@ -63,6 +65,7 @@ function TemplateSectionContent({
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const navigate = useNavigate();
   
   // Watch for editingTemplate changes
   useEffect(() => {
@@ -72,37 +75,20 @@ function TemplateSectionContent({
   }, [editingTemplate]);
 
   const handleCreateClick = () => {
-    setIsCreating(true);
+    // Navigate to the template details view in create mode
+    navigate("/templates/new");
   };
 
   const handleCancel = () => {
-    setIsCreating(false);
-    setIsEditing(false);
+    // This is no longer needed but kept for compatibility
   };
 
   const handleSubmit = async (data) => {
-    try {
-      console.log("Creating new template:", data);
-      setIsCreating(false);
-    } catch (error) {
-      console.error("Failed to create template:", error);
-      // Optionally show error message
-    }
+    // This is no longer needed but kept for compatibility
   };
   
   const handleUpdate = async (data) => {
-    if (!editingTemplate || !onUpdateTemplate) return;
-    
-    try {
-      await onUpdateTemplate({
-        id: editingTemplate.id,
-        ...data
-      });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to update template:", error);
-      // Optionally show error message
-    }
+    // This is no longer needed but kept for compatibility
   };
 
   return (
@@ -110,13 +96,12 @@ function TemplateSectionContent({
       React.createElement(SectionHeader, { title: "Templates", isExpanded: expanded, onToggle: onToggle, id: "templates-header" }),
       expanded && (
         React.createElement("div", { className: "plasmo-animate-slide-down" },
-          isCreating ? (
-            React.createElement(TemplateForm, { onSubmit: handleSubmit, onCancel: handleCancel })
-          ) : isEditing && editingTemplate ? (
+          isCreating || isEditing ? (
             React.createElement(TemplateForm, { 
-              template: editingTemplate, 
-              onSubmit: handleUpdate, 
-              onCancel: handleCancel })
+              template: isEditing ? editingTemplate : undefined, 
+              onSubmit: isEditing ? handleUpdate : handleSubmit, 
+              onCancel: handleCancel 
+            })
           ) : (
             React.createElement("div", { className: "plasmo-mb-4" },
               React.createElement("button", {

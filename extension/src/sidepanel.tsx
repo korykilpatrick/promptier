@@ -35,6 +35,7 @@ function SidePanel() {
             <Router>
               <Routes>
                 <Route path="/" element={<Sidebar />} />
+                <Route path="/templates/new" element={<TemplateDetails />} />
                 <Route path="/templates/:id" element={<TemplateDetails />} />
               </Routes>
             </Router>

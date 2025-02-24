@@ -95,23 +95,7 @@ function Sidebar() {
   const [currentResponse, setCurrentResponse] = useState("");
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-
-  useEffect(() => {
-    if (location.state?.editTemplate) {
-      const template = location.state.editTemplate;
-      console.log(`Found template to edit in location state: ${template.name} (ID: ${template.id})`);
-      setEditingTemplate(template);
-      setExpandedSections(prev => ({ ...prev, templates: true }));
-      
-      // Clear the edit state from location to prevent re-editing on refresh
-      window.history.replaceState(
-        { ...location.state, editTemplate: undefined }, 
-        document.title
-      );
-    }
-  }, [location.state]);
-
+  
   const handlePinTemplate = (templateId) => {
     console.log(`[Sidebar] Pinning template ID: ${templateId}`);
     favoriteTemplate(templateId);
@@ -131,9 +115,13 @@ function Sidebar() {
   };
   
   const handleEditTemplate = (template) => {
-    console.log(`[Sidebar] Editing template ID: ${template.id}`);
-    setEditingTemplate(template);
-    toggleSection("templates");
+    console.log(`[Sidebar] Navigating to edit template ID: ${template.id}`);
+    navigate(`/templates/${template.id}`, { 
+      state: { 
+        template,
+        editMode: true
+      } 
+    });
   };
   
   const handleDeleteTemplate = (templateId) => {
@@ -177,7 +165,6 @@ function Sidebar() {
             onSelectTemplate={handleSelectTemplate}
             onDeleteTemplate={handleDeleteTemplate}
             onEditTemplate={handleEditTemplate}
-            editingTemplate={editingTemplate}
             onUpdateTemplate={updateTemplate}
           />
           <ChainSection
