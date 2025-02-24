@@ -2,10 +2,17 @@
 description: general rules to keep in mind before doing ANYTHING, with the intention to avoid common pitfalls
 globs: 
 ---
-# Project Notes: Handling Clerk Authentication
+# Project Notes: Handling Clerk Authentication and Project Standards
 
 ## Background
 We integrated Clerk authentication into our Express backend and encountered issues with TypeScript errors when trying to access custom properties (e.g., `req.userId`). The Clerk docs recommend using helper functions rather than directly attaching properties to the Express Request object. Reference the Express quickstart guide found here https://clerk.com/docs/quickstarts/express#add-global-type-script-type-optional
+
+## Module System
+
+We use ES6 modules throughout the entire project. This means:
+- Always use `import` and `export` syntax (not `require` or `module.exports`)
+- Use named exports where appropriate for better tree-shaking
+- Import type definitions using `import type { Type } from 'path'`
 
 ## Key Learnings
 
@@ -14,7 +21,10 @@ We integrated Clerk authentication into our Express backend and encountered issu
    ```ts
    import { getAuth } from '@clerk/express';
    const { userId } = getAuth(req);
+   ```
 
-2. **Always ensure you are in the right starting directory before making changes. E.g. when changing stuff for the extension, make sure you are editing the files in the extension dir and not the root dir.
+2. **Always ensure you are in the right starting directory before making changes.** 
+   E.g. when changing stuff for the extension, make sure you are editing the files in the extension dir and not the root dir.
 
-3. Before creating any new files, ALWAYS check to ensure you are not making a file that already exists somewhere else. Before each change, understand the whole code base thoroughly and ensure you are making decisions that a world-class engineer would make.
+3. **Before creating any new files, ALWAYS check to ensure you are not making a file that already exists somewhere else.** 
+   Before each change, understand the whole code base thoroughly and ensure you are making decisions that a world-class engineer would make.

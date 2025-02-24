@@ -1,45 +1,75 @@
-import React, { useState } from "react";
-import type { Template } from "shared/types/templates";
-import { SectionHeader } from "./common/SectionHeader";
-import { LoadingSkeleton } from "./common/LoadingSkeleton";
-import { ErrorBoundary } from "../common/ErrorBoundary";
-import { TemplateList } from "./template/TemplateList";
-import { TemplateForm } from "./template/TemplateForm";
+const React = require("react");
+const { useState, useEffect } = React;
 
-interface TemplateSectionProps {
-  isExpanded: boolean;
-  onToggle: () => void;
-  templates?: Template[];
-  pinnedTemplates?: Template[];
-  isLoading?: boolean;
-  createTemplate: (data: Omit<Template, "id" | "createdAt" | "isFavorite">) => Promise<Template>;
-  onPinTemplate?: (templateId: number) => void;
-  onUnfavoriteTemplate?: (templateId: number) => void;
-  onSelectTemplate?: (template: Template) => void;
-  onEditTemplate?: (template: Template) => void;
-  onDeleteTemplate?: (templateId: number) => void;
+/** @typedef {import("shared/types/templates").Template} Template */
+
+const { SectionHeader } = require("./common/SectionHeader");
+const { LoadingSkeleton } = require("./common/LoadingSkeleton");
+const { ErrorBoundary } = require("../common/ErrorBoundary");
+const { TemplateList } = require("./template/TemplateList");
+const { TemplateForm } = require("./template/TemplateForm");
+
+/**
+ * @typedef {Object} TemplateSectionProps
+ * @property {boolean} expanded - Whether the section is expanded
+ * @property {Function} onToggle - Function to toggle section expansion
+ * @property {Function} [onFocus] - Function to focus the section
+ * @property {boolean} [isFocused] - Whether the section is focused
+ * @property {Template[]} [templates] - List of templates
+ * @property {Template[]} [favoriteTemplates] - List of favorite templates
+ * @property {boolean} [isLoading] - Whether templates are loading
+ * @property {Function} [onPinTemplate] - Function to pin a template
+ * @property {Function} [onUnpinTemplate] - Function to unpin a template
+ * @property {Function} [onSelectTemplate] - Function to select a template
+ * @property {Function} [onEditTemplate] - Function to edit a template
+ * @property {Function} [onDeleteTemplate] - Function to delete a template
+ * @property {Template|null} [editingTemplate] - Template being edited
+ * @property {Function} [onUpdateTemplate] - Function to update a template
+ */
+
+/**
+ * Template section component with error boundary
+ * @param {TemplateSectionProps} props - Component props
+ * @returns {JSX.Element} Component JSX
+ */
+function TemplateSection(props) {
+  return (
+    React.createElement(ErrorBoundary, null,
+      React.createElement(TemplateSectionContent, props)
+    )
+  );
 }
 
-export const TemplateSection: React.FC<TemplateSectionProps> = (props) => (
-  <ErrorBoundary>
-    <TemplateSectionContent {...props} />
-  </ErrorBoundary>
-);
-
-const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
-  isExpanded,
+/**
+ * Template section content component
+ * @param {TemplateSectionProps} props - Component props
+ * @returns {JSX.Element} Component JSX
+ */
+function TemplateSectionContent({
+  expanded,
   onToggle,
+  onFocus,
+  isFocused,
   templates = [],
-  pinnedTemplates = [],
+  favoriteTemplates = [],
   isLoading = false,
-  createTemplate,
   onPinTemplate,
-  onUnfavoriteTemplate,
+  onUnpinTemplate,
   onSelectTemplate,
   onEditTemplate,
   onDeleteTemplate,
-}) => {
+  editingTemplate,
+  onUpdateTemplate,
+}) {
   const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Watch for editingTemplate changes
+  useEffect(() => {
+    if (editingTemplate) {
+      setIsEditing(true);
+    }
+  }, [editingTemplate]);
 
   const handleCreateClick = () => {
     setIsCreating(true);
@@ -47,79 +77,100 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
 
   const handleCancel = () => {
     setIsCreating(false);
+    setIsEditing(false);
   };
 
-  const handleSubmit = async (data: Omit<Template, "id" | "createdAt" | "isFavorite">) => {
+  const handleSubmit = async (data) => {
     try {
-      await createTemplate(data);
+      console.log("Creating new template:", data);
       setIsCreating(false);
     } catch (error) {
       console.error("Failed to create template:", error);
       // Optionally show error message
     }
   };
+  
+  const handleUpdate = async (data) => {
+    if (!editingTemplate || !onUpdateTemplate) return;
+    
+    try {
+      await onUpdateTemplate({
+        id: editingTemplate.id,
+        ...data
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update template:", error);
+      // Optionally show error message
+    }
+  };
 
   return (
-    <section className="plasmo-p-4 plasmo-border-b plasmo-border-gray-200" aria-expanded={isExpanded}>
-      <SectionHeader title="Templates" isExpanded={isExpanded} onToggle={onToggle} id="templates-header" />
-      {isExpanded && (
-        <div className="plasmo-animate-slide-down">
-          {isCreating ? (
-            <TemplateForm onSubmit={handleSubmit} onCancel={handleCancel} />
+    React.createElement("section", { className: "plasmo-p-4 plasmo-border-b plasmo-border-gray-200", "aria-expanded": expanded },
+      React.createElement(SectionHeader, { title: "Templates", isExpanded: expanded, onToggle: onToggle, id: "templates-header" }),
+      expanded && (
+        React.createElement("div", { className: "plasmo-animate-slide-down" },
+          isCreating ? (
+            React.createElement(TemplateForm, { onSubmit: handleSubmit, onCancel: handleCancel })
+          ) : isEditing && editingTemplate ? (
+            React.createElement(TemplateForm, { 
+              template: editingTemplate, 
+              onSubmit: handleUpdate, 
+              onCancel: handleCancel })
           ) : (
-            <>
-              <div className="plasmo-mb-4">
-                <button
-                  className="plasmo-btn-primary plasmo-w-full"
-                  onClick={handleCreateClick}
-                  aria-label="Create new template"
-                >
-                  Create New Template
-                </button>
-              </div>
-              {/* Template List */}
-              {isLoading ? (
-                <LoadingSkeleton />
+            React.createElement("div", { className: "plasmo-mb-4" },
+              React.createElement("button", {
+                className: "plasmo-btn-primary plasmo-w-full",
+                onClick: handleCreateClick,
+                "aria-label": "Create new template"
+              }, "Create New Template"),
+              // Template List
+              isLoading ? (
+                React.createElement(LoadingSkeleton)
               ) : (
-                <div className="plasmo-space-y-2">
-                  {templates.length === 0 && pinnedTemplates.length === 0 ? (
-                    <div className="plasmo-text-sm plasmo-text-gray-600">No templates yet</div>
+                React.createElement("div", { className: "plasmo-space-y-2" },
+                  templates.length === 0 && favoriteTemplates.length === 0 ? (
+                    React.createElement("div", { className: "plasmo-text-sm plasmo-text-gray-600" }, "No templates yet")
                   ) : (
-                    <>
-                      {pinnedTemplates.length > 0 && (
-                        <div className="plasmo-mb-4">
-                          <h3 className="plasmo-text-sm plasmo-font-medium plasmo-mb-2">Pinned Templates</h3>
-                          <TemplateList
-                            templates={pinnedTemplates}
-                            onSelectTemplate={onSelectTemplate}
-                            onFavoriteTemplate={onPinTemplate}
-                            onUnfavoriteTemplate={onUnfavoriteTemplate}
-                            onEditTemplate={onEditTemplate}
-                            onDeleteTemplate={onDeleteTemplate}
-                          />
-                        </div>
-                      )}
-                      {templates.length > 0 && (
-                        <div>
-                          <h3 className="plasmo-text-sm plasmo-font-medium plasmo-mb-2">All Templates</h3>
-                          <TemplateList
-                            templates={templates}
-                            onSelectTemplate={onSelectTemplate}
-                            onFavoriteTemplate={onPinTemplate}
-                            onUnfavoriteTemplate={onUnfavoriteTemplate}
-                            onEditTemplate={onEditTemplate}
-                            onDeleteTemplate={onDeleteTemplate}
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </section>
+                    React.createElement("div", null,
+                      favoriteTemplates.length > 0 && (
+                        React.createElement("div", { className: "plasmo-mb-4" },
+                          React.createElement("h3", { className: "plasmo-text-sm plasmo-font-medium plasmo-mb-2" }, "Pinned Templates"),
+                          React.createElement(TemplateList, {
+                            templates: favoriteTemplates,
+                            onSelectTemplate: onSelectTemplate,
+                            onFavoriteTemplate: onPinTemplate,
+                            onUnfavoriteTemplate: onUnpinTemplate,
+                            onEditTemplate: onEditTemplate,
+                            onDeleteTemplate: onDeleteTemplate
+                          })
+                        )
+                      ),
+                      templates.length > 0 && (
+                        React.createElement("div", null,
+                          React.createElement("h3", { className: "plasmo-text-sm plasmo-font-medium plasmo-mb-2" }, "All Templates"),
+                          React.createElement(TemplateList, {
+                            templates: templates,
+                            onSelectTemplate: onSelectTemplate,
+                            onFavoriteTemplate: onPinTemplate,
+                            onUnfavoriteTemplate: onUnpinTemplate,
+                            onEditTemplate: onEditTemplate,
+                            onDeleteTemplate: onDeleteTemplate
+                          })
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
   );
+}
+
+module.exports = {
+  TemplateSection
 };

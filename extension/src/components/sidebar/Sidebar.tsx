@@ -1,29 +1,40 @@
-import React, { useState, useRef, useEffect, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
-import type { Template } from "shared/types/templates"
-import type { PromptChain } from "shared/types/chains"
-import { TemplateSection } from "./TemplateSection"
-import { ChainSection } from "./ChainSection"
-import { ResponseSection } from "./ResponseSection"
-import { ErrorBoundary } from "../common/ErrorBoundary"
-import { useFocusManagement } from "../../hooks/useFocusManagement"
-import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation"
-import { useTemplates } from "../../hooks/useTemplates"
-import { useToast } from "../../hooks/useToast"
+const React = require("react");
+const { useState, useRef, useEffect, useMemo } = React;
+const reactRouterDom = require("react-router-dom");
+const { useNavigate, useLocation } = reactRouterDom;
 
-export const Sidebar: React.FC = () => {
-  const toast = useToast()
-  const navigate = useNavigate()
-  const fetchTemplatesRef = useRef<(() => Promise<Template[]>) | null>(null)
+// Type imports
+/** @typedef {import("shared/types/templates").Template} Template */
+/** @typedef {import("shared/types/chains").PromptChain} PromptChain */
+
+// Component imports using CommonJS requires
+const { TemplateSection } = require("./TemplateSection");
+const { ChainSection } = require("./ChainSection");
+const { ResponseSection } = require("./ResponseSection");
+const { ErrorBoundary } = require("../common/ErrorBoundary");
+const { useFocusManagement } = require("../../hooks/useFocusManagement");
+const { useKeyboardNavigation } = require("../../hooks/useKeyboardNavigation");
+const { useTemplates } = require("../../hooks/useTemplates");
+const { useToast } = require("../../hooks/useToast");
+
+/**
+ * Sidebar component for the extension
+ * @returns {JSX.Element} Sidebar component
+ */
+function Sidebar() {
+  const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fetchTemplatesRef = useRef(null);
 
   const options = useMemo(() => ({
-    onError: (error: Error) => {
-      console.error("Template operation error:", error)
-      toast.error("An error occurred with templates")
+    onError: (error) => {
+      console.error("Template operation error:", error);
+      toast.error("An error occurred with templates");
     },
     maxRetries: 3,
     debounceDelay: 300
-  }), [toast])
+  }), [toast]);
 
   const {
     templates,
@@ -36,91 +47,112 @@ export const Sidebar: React.FC = () => {
     favoriteTemplate,
     unfavoriteTemplate,
     cleanup
-  } = useTemplates({ toast, options })
+  } = useTemplates({ toast, options });
 
   useEffect(() => {
     if (!fetchTemplatesRef.current) {
-      fetchTemplatesRef.current = fetchTemplates
+      fetchTemplatesRef.current = fetchTemplates;
     }
-  }, [fetchTemplates])
+  }, [fetchTemplates]);
 
   console.log("Sidebar render:", {
     templatesLength: templates?.length,
     pinnedTemplatesLength: favoriteTemplates?.length,
     isTemplatesLoading: operationStates["fetch"]?.isLoading,
     operationStates
-  })
+  });
 
   useEffect(() => {
-    console.log("Sidebar mounting, fetching templates")
+    console.log("Sidebar mounting, fetching templates");
     fetchTemplatesRef.current!().catch((error) => {
-      console.error("Failed to fetch templates:", error)
-    })
-    return cleanup
-  }, [cleanup])
+      console.error("Failed to fetch templates:", error);
+    });
+    return cleanup;
+  }, [cleanup]);
 
   const [expandedSections, setExpandedSections] = useState({
     templates: false,
     chains: false,
     response: false
-  })
+  });
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({ itemCount: 3 })
+  const containerRef = useRef(null);
+  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({ itemCount: 3 });
   useKeyboardNavigation({
     onArrowDown: focusNext,
     onArrowUp: focusPrevious,
     onEscape: () => {}
-  })
+  });
 
-  const toggleSection = (section: "templates" | "chains" | "response") => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
-  }
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
-  const isTemplatesLoading = operationStates?.fetch?.isLoading ?? false
-  const [chains, setChains] = useState<PromptChain[]>([])
-  const [activeChain, setActiveChain] = useState<PromptChain | undefined>()
-  const [isChainsLoading] = useState(false)
-  const [currentResponse, setCurrentResponse] = useState("")
-  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const isTemplatesLoading = operationStates?.fetch?.isLoading ?? false;
+  const [chains, setChains] = useState([]);
+  const [activeChain, setActiveChain] = useState();
+  const [isChainsLoading] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState("");
+  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
 
-  const handlePinTemplate = (templateId: number) => {
-    console.log(`[Sidebar] Pinning template ID: ${templateId}`)
-    favoriteTemplate(templateId)
-  }
+  useEffect(() => {
+    if (location.state?.editTemplate) {
+      const template = location.state.editTemplate;
+      console.log(`Found template to edit in location state: ${template.name} (ID: ${template.id})`);
+      setEditingTemplate(template);
+      setExpandedSections(prev => ({ ...prev, templates: true }));
+      
+      // Clear the edit state from location to prevent re-editing on refresh
+      window.history.replaceState(
+        { ...location.state, editTemplate: undefined }, 
+        document.title
+      );
+    }
+  }, [location.state]);
+
+  const handlePinTemplate = (templateId) => {
+    console.log(`[Sidebar] Pinning template ID: ${templateId}`);
+    favoriteTemplate(templateId);
+  };
   
-  const handleUnpinTemplate = (templateId: number) => {
-    console.log(`[Sidebar] Unpinning template ID: ${templateId}`)
-    unfavoriteTemplate(templateId)
-  }
+  const handleUnpinTemplate = (templateId) => {
+    console.log(`[Sidebar] Unpinning template ID: ${templateId}`);
+    unfavoriteTemplate(templateId);
+  };
   
-  const handleSelectTemplate = (template: Template) => {
-    navigate(`/templates/${template.id}`, { state: { template } })
-  }
+  const handleSelectTemplate = (template) => {
+    navigate(`/templates/${template.id}`, { 
+      state: { 
+        template
+      } 
+    });
+  };
   
-  const handleEditTemplate = (template: Template) => {
-    console.log(`[Sidebar] Editing template ID: ${template.id}`)
-    // Add editing logic if needed
-  }
+  const handleEditTemplate = (template) => {
+    console.log(`[Sidebar] Editing template ID: ${template.id}`);
+    setEditingTemplate(template);
+    toggleSection("templates");
+  };
   
-  const handleDeleteTemplate = (templateId: number) => {
-    console.log(`[Sidebar] Initiating delete for template ID: ${templateId}`)
+  const handleDeleteTemplate = (templateId) => {
+    console.log(`[Sidebar] Initiating delete for template ID: ${templateId}`);
     deleteTemplate(templateId).catch((error) => {
-      console.error(`[Sidebar] Failed to delete template ID: ${templateId}`, error)
-    })
-  }
+      console.error(`[Sidebar] Failed to delete template ID: ${templateId}`, error);
+    });
+  };
 
-  const handleCreateChain = () => {}
-  const handleSelectChain = (chain: PromptChain) => setActiveChain(chain)
-  const handleExecuteStep = (chainId: string, stepId: string) => {}
-  const handleResponseChange = (response: string) => setCurrentResponse(response)
-  const handleToggleAutoSave = () => setIsAutoSaveEnabled(!isAutoSaveEnabled)
+  const handleCreateChain = () => {};
+  const handleSelectChain = (chain) => setActiveChain(chain);
+  const handleExecuteStep = (chainId, stepId) => {};
+  const handleResponseChange = (response) => setCurrentResponse(response);
+  const handleToggleAutoSave = () => setIsAutoSaveEnabled(!isAutoSaveEnabled);
   const handleSaveResponse = async () => {
-    setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-  }
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsSaving(false);
+  };
 
   return (
     <div
@@ -133,17 +165,20 @@ export const Sidebar: React.FC = () => {
       <div className="plasmo-flex-1 plasmo-overflow-y-auto">
         <ErrorBoundary>
           <TemplateSection
-            isExpanded={expandedSections.templates}
+            expanded={expandedSections.templates}
             onToggle={() => toggleSection("templates")}
+            onFocus={() => setFocus(0)}
+            isFocused={currentFocus === 0}
             templates={templates}
-            pinnedTemplates={favoriteTemplates}
+            favoriteTemplates={favoriteTemplates}
             isLoading={isTemplatesLoading}
-            createTemplate={createTemplate}
             onPinTemplate={handlePinTemplate}
-            onUnfavoriteTemplate={handleUnpinTemplate}
+            onUnpinTemplate={handleUnpinTemplate}
             onSelectTemplate={handleSelectTemplate}
-            onEditTemplate={handleEditTemplate}
             onDeleteTemplate={handleDeleteTemplate}
+            onEditTemplate={handleEditTemplate}
+            editingTemplate={editingTemplate}
+            onUpdateTemplate={updateTemplate}
           />
           <ChainSection
             isExpanded={expandedSections.chains}
@@ -168,5 +203,9 @@ export const Sidebar: React.FC = () => {
         </ErrorBoundary>
       </div>
     </div>
-  )
+  );
 }
+
+module.exports = {
+  Sidebar
+};

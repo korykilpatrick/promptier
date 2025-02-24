@@ -1,12 +1,22 @@
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import type { Template } from "../../../../../shared/types/templates";
+// Import libraries as CommonJS modules
+const reactDom = require("react-router-dom");
+const useLocation = reactDom.useLocation;
+const useNavigate = reactDom.useNavigate;
+const react = require("react");
 
-export const TemplateDetails: React.FC = () => {
+// Import type interface only
+/** @typedef {import("shared/types/templates").Template} Template */
+
+/**
+ * Template details component
+ * @returns {JSX.Element} Component JSX
+ */
+function TemplateDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   // Safely retrieve template from state, defaulting to undefined if missing
-  const template = location.state?.template as Template | undefined;
+  /** @type {Template|undefined} */
+  const template = location.state?.template;
 
   const handleCopy = async () => {
     if (!template) return;
@@ -17,13 +27,26 @@ export const TemplateDetails: React.FC = () => {
     }
   };
 
+  // Simplified edit handler - simply pass the template back to be edited
+  const handleEdit = () => {
+    if (!template) return;
+    
+    console.log(`Edit requested for template: ${template.name} (ID: ${template.id})`);
+    navigate("/", { 
+      state: { 
+        editTemplate: template,
+        source: 'template_details'
+      }
+    });
+  };
+
   // Handle missing template (e.g., direct navigation or state loss)
   if (!template) {
     return (
       <div className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-h-full plasmo-p-8">
         <p className="plasmo-text-gray-500 plasmo-text-lg plasmo-mb-4">Template not found</p>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/")}
           className="plasmo-group plasmo-flex plasmo-items-center plasmo-px-4 plasmo-py-2 plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-transition-colors"
           aria-label="Back to Templates"
         >
@@ -41,7 +64,7 @@ export const TemplateDetails: React.FC = () => {
         <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
           <div>
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/")}
               className="plasmo-group plasmo-flex plasmo-items-center plasmo-text-sm plasmo-text-gray-600 hover:plasmo-text-gray-900 plasmo-mb-3 plasmo-transition-colors"
               aria-label="Back to Templates"
             >
@@ -84,7 +107,10 @@ export const TemplateDetails: React.FC = () => {
         <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-text-sm plasmo-text-gray-500">
           <span>Created {new Date(template.createdAt).toLocaleDateString()}</span>
           <div className="plasmo-flex plasmo-space-x-4">
-            <button className="plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-transition-colors">
+            <button 
+              className="plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-transition-colors"
+              onClick={handleEdit}
+            >
               Edit
             </button>
             <button className="plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-transition-colors">
@@ -95,4 +121,8 @@ export const TemplateDetails: React.FC = () => {
       </div>
     </div>
   );
+}
+
+module.exports = {
+  TemplateDetails
 }; 
