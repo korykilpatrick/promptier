@@ -1,6 +1,8 @@
 import React from "react"
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton } from "@clerk/chrome-extension"
+import { MemoryRouter as Router, Routes, Route } from "react-router-dom"
 import { Sidebar } from "~components/sidebar/Sidebar"
+import { TemplateDetails } from "~components/sidebar/template/TemplateDetails"
 import { ToastContainer } from "~components/common/Toast"
 import { useToast } from "~hooks/useToast"
 import "./style.css"
@@ -30,7 +32,12 @@ function SidePanel() {
         </header>
         <main className="plasmo-flex-1 plasmo-overflow-y-auto">
           <SignedIn>
-            <Sidebar />
+            <Router>
+              <Routes>
+                <Route path="/" element={<Sidebar />} />
+                <Route path="/templates/:id" element={<TemplateDetails />} />
+              </Routes>
+            </Router>
           </SignedIn>
           <SignedOut>
             <div className="plasmo-p-6">

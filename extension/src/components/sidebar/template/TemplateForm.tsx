@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import type { Template } from "../../../types/sidebar"
+import type { Template } from "../../../../shared/types/templates"
 import { useTemplateVariables } from "../../../hooks/useTemplateVariables"
 import { VariableMapping } from "./VariableMapping"
 
@@ -14,9 +14,12 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
   onSubmit,
   onCancel
 }) => {
-  const [name, setName] = useState(template?.name ?? "")
-  const [content, setContent] = useState(template?.content ?? "")
-  const [category, setCategory] = useState(template?.category ?? "")
+  const [formData, setFormData] = useState({
+    name: template?.name ?? "",
+    category: template?.category ?? "",
+    content: template?.content ?? "",
+    isFavorite: template?.isFavorite ?? false,
+  });
 
   // Add template variables management
   const {
@@ -26,17 +29,17 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
     resetValues,
     hasAllRequiredValues
   } = useTemplateVariables({
-    template: content,
+    template: formData.content,
     initialValues: template?.variables
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit({
-      name,
-      content,
-      category,
-      isPinned: template?.isPinned ?? false,
+      name: formData.name,
+      content: formData.content,
+      category: formData.category,
+      isFavorite: formData.isFavorite,
       variables: values // Include variable values in the submission
     })
   }
@@ -50,8 +53,8 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
         <input
           type="text"
           id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           required
         />
@@ -64,8 +67,8 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
         <input
           type="text"
           id="category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
       </div>
@@ -76,8 +79,8 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
         </label>
         <textarea
           id="content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+          value={formData.content}
+          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
           rows={5}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           required

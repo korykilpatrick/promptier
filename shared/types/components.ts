@@ -12,39 +12,39 @@ export interface BaseSection {
 }
 
 export interface TemplateSectionProps extends BaseSection {
-  templates: Template[];
-  favoriteTemplates: Template[];
+  templates?: Template[];
+  favoriteTemplates?: Template[];
   isLoading?: boolean;
-  onCreateTemplate: () => void;
-  onFavoriteTemplate: (templateId: number) => void;
-  onUnfavoriteTemplate: (templateId: number) => void;
-  onSelectTemplate: (template: Template) => void;
+  onCreateTemplate?: () => void;
+  onFavoriteTemplate?: (templateId: number) => void;
+  onUnfavoriteTemplate?: (templateId: number) => void;
+  onSelectTemplate?: (template: Template) => void;
+  onEditTemplate?: (template: Template) => void;
+  onDeleteTemplate?: (templateId: number) => void;
 }
 
 export interface ChainSectionProps extends BaseSection {
   chains: PromptChain[];
   activeChain?: PromptChain;
   isLoading?: boolean;
-  onCreateChain: () => void;
-  onSelectChain: (chain: PromptChain) => void;
-  onExecuteStep: (chainId: number, stepId: number) => void;
+  onCreateChain?: () => void;
+  onSelectChain?: (chain: PromptChain) => void;
+  onExecuteStep?: (chainId: string, stepId: string) => void;
 }
 
 export interface ResponseSectionProps extends BaseSection {
   currentResponse: string;
   isAutoSaveEnabled: boolean;
-  isSaving?: boolean;
+  isSaving: boolean;
   onResponseChange: (response: string) => void;
   onToggleAutoSave: () => void;
   onSaveResponse: () => void;
 }
 
 // Common component props
-export interface SectionHeaderProps {
+export interface SectionHeaderProps extends BaseSection {
   title: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-  id?: string;
+  id: string;
 }
 
 export interface LoadingProps {

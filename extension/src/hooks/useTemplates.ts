@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
-import type { Template, TemplateRequest, TemplateResponse } from "shared/types/templates";
-import { toFrontendTemplate, toBackendTemplate } from "shared/types/templates";
-import type { Toast } from "../components/common/Toast";
-import { useToast } from "../hooks/useToast";
-import { makeApiRequest } from "../utils/api";
+import type { Template, TemplateRequest, TemplateResponse } from "../../../shared/types/templates";
+import { toFrontendTemplate, toBackendTemplate } from "../../../shared/types/templates";
+import type { Toast } from "~components/common/Toast";
+import { useToast } from "~hooks/useToast";
+import { makeApiRequest } from "~utils/api";
 
 interface UseTemplatesOptions {
   onError?: (error: Error) => void;
@@ -22,7 +22,20 @@ interface OperationState {
   retryCount: number;
 }
 
-export function useTemplates({ toast, options = {} }: UseTemplatesProps) {
+interface UseTemplatesReturn {
+  templates: Template[];
+  favoriteTemplates: Template[];
+  operationStates: Record<string, OperationState>;
+  fetchTemplates: () => Promise<Template[]>;
+  createTemplate: (data: Omit<Template, "id" | "createdAt" | "isFavorite">) => Promise<Template>;
+  updateTemplate: (data: Partial<Template> & { id: number }) => Promise<Template>;
+  deleteTemplate: (id: number) => Promise<void>;
+  favoriteTemplate: (id: number) => Promise<void>;
+  unfavoriteTemplate: (id: number) => Promise<void>;
+  cleanup: () => void;
+}
+
+export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTemplatesReturn {
   const { maxRetries = 3, debounceDelay = 300 } = options;
   const [templates, setTemplates] = useState<Template[]>([]);
   const [favoriteTemplates, setFavoriteTemplates] = useState<Template[]>([]);

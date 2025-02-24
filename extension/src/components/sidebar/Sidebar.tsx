@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react"
-import type { Template, PromptChain } from "../../types/sidebar"
+import { useNavigate } from "react-router-dom"
+import type { Template } from "../../../../shared/types/templates"
+import type { PromptChain } from "../../../../shared/types/components"
 import { TemplateSection } from "./TemplateSection"
 import { ChainSection } from "./ChainSection"
 import { ResponseSection } from "./ResponseSection"
@@ -11,6 +13,7 @@ import { useToast } from "../../hooks/useToast"
 
 export const Sidebar: React.FC = () => {
   const toast = useToast()
+  const navigate = useNavigate()
   const fetchTemplatesRef = useRef<(() => Promise<Template[]>) | null>(null)
 
   const options = useMemo(() => ({
@@ -22,7 +25,7 @@ export const Sidebar: React.FC = () => {
     debounceDelay: 300
   }), [toast])
 
-  const { templates, pinnedTemplates, operationStates, fetchTemplates, cleanup } = useTemplates({ toast, options })
+  const { templates, favoriteTemplates, operationStates, fetchTemplates, cleanup } = useTemplates({ toast, options })
 
   useEffect(() => {
     if (!fetchTemplatesRef.current) {
@@ -32,7 +35,7 @@ export const Sidebar: React.FC = () => {
 
   console.log("Sidebar render:", {
     templatesLength: templates?.length,
-    pinnedTemplatesLength: pinnedTemplates?.length,
+    pinnedTemplatesLength: favoriteTemplates?.length,
     isTemplatesLoading: operationStates["fetch"]?.isLoading,
     operationStates
   })
@@ -72,9 +75,11 @@ export const Sidebar: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false)
 
   const handleCreateTemplate = () => {}
-  const handlePinTemplate = (templateId: string) => {}
-  const handleUnpinTemplate = (templateId: string) => {}
-  const handleSelectTemplate = (template: Template) => {}
+  const handlePinTemplate = (templateId: number) => {}
+  const handleUnpinTemplate = (templateId: number) => {}
+  const handleSelectTemplate = (template: Template) => {
+    navigate(`/templates/${template.id}`, { state: { template } })
+  }
   const handleCreateChain = () => {}
   const handleSelectChain = (chain: PromptChain) => setActiveChain(chain)
   const handleExecuteStep = (chainId: string, stepId: string) => {}
@@ -100,7 +105,7 @@ export const Sidebar: React.FC = () => {
             isExpanded={expandedSections.templates}
             onToggle={() => toggleSection("templates")}
             templates={templates}
-            pinnedTemplates={pinnedTemplates}
+            pinnedTemplates={favoriteTemplates}
             isLoading={isTemplatesLoading}
             onCreateTemplate={handleCreateTemplate}
             onPinTemplate={handlePinTemplate}

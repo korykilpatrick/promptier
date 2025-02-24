@@ -8,7 +8,8 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "shared/*": ["shared/*"]
+      "shared/*": ["shared/*"],
+      "~/*": ["extension/src/*"]
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -16,7 +17,9 @@
   },
   "include": [
     "shared/**/*.ts",
-    "shared/**/*.tsx"
+    "shared/**/*.tsx",
+    "extension/src/**/*.ts",
+    "extension/src/**/*.tsx"
   ],
-  "exclude": ["node_modules", "dist", "server", "extension"]
+  "exclude": ["node_modules", "dist", "server"]
 } 

@@ -9,11 +9,11 @@ interface TemplateSectionProps {
   isExpanded: boolean;
   onToggle: () => void;
   templates?: Template[];
-  pinnedTemplates?: Template[];
+  favoriteTemplates?: Template[];
   isLoading?: boolean;
   onCreateTemplate?: () => void;
-  onPinTemplate?: (templateId: number) => void;
-  onUnpinTemplate?: (templateId: number) => void;
+  onFavoriteTemplate?: (templateId: number) => void;
+  onUnfavoriteTemplate?: (templateId: number) => void;
   onSelectTemplate?: (template: Template) => void;
   onEditTemplate?: (template: Template) => void;
   onDeleteTemplate?: (templateId: number) => void;
@@ -29,11 +29,11 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   isExpanded,
   onToggle,
   templates = [],
-  pinnedTemplates = [],
+  favoriteTemplates = [],
   isLoading = false,
   onCreateTemplate,
-  onPinTemplate,
-  onUnpinTemplate,
+  onFavoriteTemplate,
+  onUnfavoriteTemplate,
   onSelectTemplate,
   onEditTemplate,
   onDeleteTemplate,
@@ -44,7 +44,7 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   console.log('TemplateSection render:', {
     isExpanded,
     templatesLength: templates?.length,
-    pinnedTemplatesLength: pinnedTemplates?.length,
+    favoriteTemplatesLength: favoriteTemplates?.length,
     isLoading
   });
 
@@ -69,18 +69,18 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
             <LoadingSkeleton />
           ) : (
             <div className="plasmo-space-y-2">
-              {templates.length === 0 && pinnedTemplates.length === 0 ? (
+              {templates.length === 0 && favoriteTemplates.length === 0 ? (
                 <div className="plasmo-text-sm plasmo-text-gray-600">No templates yet</div>
               ) : (
                 <>
-                  {pinnedTemplates.length > 0 && (
+                  {favoriteTemplates.length > 0 && (
                     <div className="plasmo-mb-4">
-                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-mb-2">Pinned Templates</h3>
+                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-mb-2">Favorite Templates</h3>
                       <TemplateList
-                        templates={pinnedTemplates}
+                        templates={favoriteTemplates}
                         onSelectTemplate={onSelectTemplate}
-                        onFavoriteTemplate={onPinTemplate}
-                        onUnfavoriteTemplate={onUnpinTemplate}
+                        onFavoriteTemplate={onFavoriteTemplate}
+                        onUnfavoriteTemplate={onUnfavoriteTemplate}
                         onEditTemplate={onEditTemplate}
                         onDeleteTemplate={onDeleteTemplate}
                         isCreating={isCreating}
@@ -94,8 +94,8 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
                       <TemplateList
                         templates={templates}
                         onSelectTemplate={onSelectTemplate}
-                        onFavoriteTemplate={onPinTemplate}
-                        onUnfavoriteTemplate={onUnpinTemplate}
+                        onFavoriteTemplate={onFavoriteTemplate}
+                        onUnfavoriteTemplate={onUnfavoriteTemplate}
                         onEditTemplate={onEditTemplate}
                         onDeleteTemplate={onDeleteTemplate}
                         isCreating={isCreating}
