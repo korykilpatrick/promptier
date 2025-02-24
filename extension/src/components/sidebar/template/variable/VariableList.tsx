@@ -1,31 +1,38 @@
-import React from 'react';
-import type {
-  TemplateVariable,
-  TemplateVariableValues,
-  VariableValidationOptions
-} from '../../../../types/template-variables';
-import { VariableInput } from './VariableInput';
+const React = require('react');
+const { VariableInput } = require('./VariableInput');
 
-interface VariableListProps {
-  variables: TemplateVariable[];
-  values: TemplateVariableValues;
-  onVariableChange: (name: string, value: string) => void;
-  validationOptions?: Record<string, VariableValidationOptions>;
-  multilineVariables?: string[];
-  className?: string;
-}
+/**
+ * @typedef {import('../../../../types/template-variables').TemplateVariable} TemplateVariable
+ * @typedef {import('../../../../types/template-variables').TemplateVariableValues} TemplateVariableValues
+ * @typedef {import('../../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
+ */
 
-export function VariableList({
+/**
+ * @typedef {Object} VariableListProps
+ * @property {TemplateVariable[]} variables - Template variables
+ * @property {TemplateVariableValues} values - Variable values
+ * @property {function(string, string): void} onVariableChange - Variable change handler
+ * @property {Record<string, VariableValidationOptions>} [validationOptions] - Validation options
+ * @property {string[]} [multilineVariables] - List of variables that should use multiline inputs
+ * @property {string} [className] - Additional CSS class
+ */
+
+/**
+ * Component for displaying a list of variable inputs
+ * @param {VariableListProps} props - Component props
+ * @returns {JSX.Element} Rendered component
+ */
+function VariableList({
   variables,
   values,
   onVariableChange,
   validationOptions = {},
   multilineVariables = [],
   className = ''
-}: VariableListProps) {
+}) {
   if (variables.length === 0) {
     return (
-      <div className="text-sm text-gray-500 italic">
+      <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">
         No variables defined in this template
       </div>
     );
@@ -36,7 +43,7 @@ export function VariableList({
   const optionalVars = variables.filter(v => !v.isRequired);
 
   // Helper function to render variable input
-  const renderVariableInput = (variable: TemplateVariable) => (
+  const renderVariableInput = (variable) => (
     <VariableInput
       key={variable.name}
       variable={variable}
@@ -53,15 +60,19 @@ export function VariableList({
   );
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`${className}`}>
       {/* Required Variables Section */}
       {requiredVars.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900 flex items-center">
-            Required Variables
-            <span className="ml-2 text-xs text-red-500">*required</span>
-          </h4>
-          <div className="space-y-4">
+        <div className="plasmo-mb-5">
+          <div className="plasmo-flex plasmo-items-center plasmo-mb-2">
+            <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
+              Required Variables
+            </h4>
+            <span className="plasmo-ml-2 plasmo-px-1.5 plasmo-py-0.5 plasmo-bg-red-100 plasmo-text-red-700 plasmo-text-xs plasmo-rounded-md plasmo-font-medium">
+              Required
+            </span>
+          </div>
+          <div className="plasmo-space-y-4 plasmo-bg-white plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
             {requiredVars.map(renderVariableInput)}
           </div>
         </div>
@@ -69,16 +80,22 @@ export function VariableList({
 
       {/* Optional Variables Section */}
       {optionalVars.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900 flex items-center">
-            Optional Variables
-            <span className="ml-2 text-xs text-gray-500">(defaults provided)</span>
-          </h4>
-          <div className="space-y-4">
+        <div>
+          <div className="plasmo-flex plasmo-items-center plasmo-mb-2">
+            <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
+              Optional Variables
+            </h4>
+            <span className="plasmo-ml-2 plasmo-px-1.5 plasmo-py-0.5 plasmo-bg-gray-100 plasmo-text-gray-700 plasmo-text-xs plasmo-rounded-md plasmo-font-medium">
+              With defaults
+            </span>
+          </div>
+          <div className="plasmo-space-y-4 plasmo-bg-white plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
             {optionalVars.map(renderVariableInput)}
           </div>
         </div>
       )}
     </div>
   );
-} 
+}
+
+module.exports = { VariableList }; 

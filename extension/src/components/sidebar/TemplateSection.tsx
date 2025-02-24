@@ -76,7 +76,11 @@ function TemplateSectionContent({
 
   const handleCreateClick = () => {
     // Navigate to the template details view in create mode
-    navigate("/templates/new");
+    navigate("/templates/new", { 
+      state: { 
+        createTemplate: true
+      } 
+    });
   };
 
   const handleCancel = () => {

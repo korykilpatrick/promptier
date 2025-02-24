@@ -1,30 +1,38 @@
-import React, { useState, useCallback } from 'react';
-import type {
-  TemplateVariable,
-  TemplateVariableState,
-  VariableValidationOptions
-} from '../../../../types/template-variables';
-import { useDebounceValue } from '../../../../hooks/useDebounce';
+const React = require('react');
+const { useState, useCallback, useEffect } = React;
+const { useDebounceValue } = require('../../../../hooks/useDebounce');
 
-interface VariableInputProps {
-  variable: TemplateVariable;
-  state: TemplateVariableState;
-  onChange: (value: string) => void;
-  validationOptions?: VariableValidationOptions;
-  className?: string;
-  multiline?: boolean;
-}
+/**
+ * @typedef {import('../../../../types/template-variables').TemplateVariable} TemplateVariable
+ * @typedef {import('../../../../types/template-variables').TemplateVariableState} TemplateVariableState
+ * @typedef {import('../../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
+ */
 
-export function VariableInput({
+/**
+ * @typedef {Object} VariableInputProps
+ * @property {TemplateVariable} variable - The template variable
+ * @property {TemplateVariableState} state - Current state of the variable
+ * @property {function(string): void} onChange - Change handler
+ * @property {VariableValidationOptions} [validationOptions] - Validation options
+ * @property {boolean} [multiline=false] - Whether to use multiline input
+ * @property {string} [className] - Additional CSS class
+ */
+
+/**
+ * Component for rendering a variable input field
+ * @param {VariableInputProps} props - Component props
+ * @returns {JSX.Element} Rendered component
+ */
+function VariableInput({
   variable,
   state,
   onChange,
   validationOptions,
   className = '',
   multiline = false
-}: VariableInputProps) {
+}) {
   const inputId = `var-${variable.name}`;
-  const hasErrors = state.errors.length > 0;
+  const hasErrors = state.errors && state.errors.length > 0;
   const errorId = hasErrors ? `error-${variable.name}` : undefined;
 
   // Local state for immediate feedback
@@ -41,16 +49,14 @@ export function VariableInput({
   });
 
   // Update parent when debounced value changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (debouncedValue !== state.value) {
       onChange(debouncedValue);
     }
   }, [debouncedValue, onChange, state.value]);
 
   // Handle input changes
-  const handleChange = useCallback((
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = useCallback((e) => {
     setLocalValue(e.target.value);
   }, []);
 
@@ -69,6 +75,20 @@ export function VariableInput({
     return '';
   };
 
+  // Get appropriate border color based on state
+  const getBorderColorClass = () => {
+    if (!state.isValid) return 'plasmo-border-red-300 plasmo-focus:border-red-500 plasmo-focus:ring-red-500 plasmo-focus:ring-opacity-30';
+    if (isFocused) return 'plasmo-border-blue-400 plasmo-ring-2 plasmo-ring-blue-500 plasmo-ring-opacity-20';
+    return 'plasmo-border-gray-300 plasmo-focus:border-blue-500 plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20';
+  };
+
+  // Get background color based on state
+  const getBackgroundColorClass = () => {
+    if (!state.isValid) return 'plasmo-bg-red-50';
+    if (state.isDirty) return 'plasmo-bg-white';
+    return 'plasmo-bg-gray-50';
+  };
+
   // Common input props
   const inputProps = {
     id: inputId,
@@ -79,15 +99,12 @@ export function VariableInput({
     placeholder: variable.defaultValue || '',
     maxLength: validationOptions?.maxLength,
     className: `
-      block w-full rounded-md shadow-sm sm:text-sm transition-all duration-200
-      ${state.isValid
-        ? 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-        : 'border-red-300 focus:border-red-500 focus:ring-red-500'
-      }
-      ${state.isDirty ? 'bg-white' : 'bg-gray-50'}
-      ${hasErrors ? 'pr-8' : ''}
-      ${isPending ? 'italic' : ''}
-      ${isFocused ? 'ring-2' : ''}
+      plasmo-block plasmo-w-full plasmo-rounded-md plasmo-shadow-sm plasmo-text-sm plasmo-transition-colors plasmo-duration-200
+      ${getBorderColorClass()}
+      ${getBackgroundColorClass()}
+      ${isPending ? 'plasmo-italic' : ''}
+      ${hasErrors && !multiline ? 'plasmo-pr-8' : ''}
+      ${multiline ? 'plasmo-py-2' : 'plasmo-py-1.5'} plasmo-px-3
     `,
     'aria-invalid': !state.isValid,
     'aria-describedby': [
@@ -97,49 +114,81 @@ export function VariableInput({
   };
 
   return (
-    <div className={`space-y-1 ${className}`}>
-      <div className="flex items-center justify-between">
-        <label
-          htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700"
-        >
-          {variable.name}
-          {variable.isRequired && (
-            <span className="text-red-500 ml-1" aria-label="required">*</span>
+    <div className={`plasmo-rounded-md ${className}`}>
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-mb-1.5">
+        <div className="plasmo-flex plasmo-items-center">
+          <label
+            htmlFor={inputId}
+            className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-flex plasmo-items-center"
+          >
+            {variable.name}
+            {variable.isRequired && (
+              <span className="plasmo-text-red-500 plasmo-ml-1 plasmo-font-bold" aria-label="required">*</span>
+            )}
+          </label>
+          
+          {/* Status badges */}
+          {state.isDirty && (
+            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
+              Modified
+            </span>
           )}
-        </label>
-        <div className="flex items-center space-x-2">
+        </div>
+        
+        <div className="plasmo-flex plasmo-items-center plasmo-space-x-2">
           {validationOptions?.maxLength && (
             <span 
-              className={`text-xs transition-colors duration-200 ${
+              className={`plasmo-text-xs plasmo-transition-colors plasmo-duration-200 ${
                 localValue.length > (validationOptions.maxLength * 0.9)
-                  ? 'text-amber-500'
-                  : 'text-gray-500'
+                  ? localValue.length >= validationOptions.maxLength 
+                    ? 'plasmo-text-red-500 plasmo-font-medium' 
+                    : 'plasmo-text-amber-500'
+                  : 'plasmo-text-gray-500'
               }`}
             >
               {localValue.length}/{validationOptions.maxLength}
             </span>
           )}
-          {(state.isDirty || isPending) && (
-            <span className="text-xs text-gray-500">
-              {getStatusMessage()}
+          {isPending && (
+            <span className="plasmo-text-xs plasmo-text-gray-500 plasmo-flex plasmo-items-center">
+              <svg
+                className="plasmo-animate-spin plasmo-h-3 plasmo-w-3 plasmo-text-gray-400 plasmo-mr-1"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="plasmo-opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="plasmo-opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Typing...
             </span>
           )}
         </div>
       </div>
 
       {variable.description && (
-        <p className="text-xs text-gray-500" id={`desc-${variable.name}`}>
+        <p className="plasmo-text-xs plasmo-text-gray-500 plasmo-mb-1.5" id={`desc-${variable.name}`}>
           {variable.description}
         </p>
       )}
 
-      <div className="relative group">
+      <div className="plasmo-relative plasmo-group">
         {multiline ? (
           <textarea
             {...inputProps}
             rows={3}
-            className={`${inputProps.className} resize-y`}
+            className={`${inputProps.className} plasmo-resize-y`}
           />
         ) : (
           <input
@@ -149,10 +198,10 @@ export function VariableInput({
         )}
 
         {/* Error icon */}
-        {hasErrors && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+        {hasErrors && !multiline && (
+          <div className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-3 plasmo-flex plasmo-items-center plasmo-pointer-events-none">
             <svg
-              className="h-5 w-5 text-red-500"
+              className="plasmo-h-5 plasmo-w-5 plasmo-text-red-500"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -165,46 +214,22 @@ export function VariableInput({
             </svg>
           </div>
         )}
-
-        {/* Loading spinner */}
-        {isPending && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <svg
-              className="animate-spin h-4 w-4 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          </div>
-        )}
       </div>
 
       {/* Error messages */}
       {hasErrors && (
         <ul
           id={errorId}
-          className="mt-1 text-sm text-red-600 list-disc list-inside"
+          className="plasmo-mt-1.5 plasmo-text-xs plasmo-text-red-600 plasmo-list-disc plasmo-list-inside"
           role="alert"
         >
           {state.errors.map((error, index) => (
-            <li key={index}>{error.message}</li>
+            <li key={index} className="plasmo-mb-0.5">{error.message}</li>
           ))}
         </ul>
       )}
     </div>
   );
-} 
+}
+
+module.exports = { VariableInput }; 
