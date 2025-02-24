@@ -73,24 +73,33 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   // Memoize the render function for template items
   const renderTemplateItem = useCallback((template: Template, index: number) => {
+    const isFirst = index === 0
+    const isLast = index === templates.length - 1
+
     return (
-      <TemplateItem
-        key={template.id}
-        template={template}
-        isFavorite={template.isFavorite}
-        isSelected={template.id === selectedTemplateId}
-        onSelect={(template) => {
-          setSelectedTemplateId(template.id)
-          onSelectTemplate(template)
-        }}
-        onFavorite={onFavoriteTemplate}
-        onUnfavorite={onUnfavoriteTemplate}
-        onEdit={(template) => {
-          setIsEditing(true)
-          onEditTemplate(template)
-        }}
-        onDelete={onDeleteTemplate}
-      />
+      <div 
+        className={`
+          plasmo-border-gray-200
+          ${!isFirst ? "plasmo-border-t" : ""}
+          ${isLast ? "plasmo-rounded-b-lg" : ""}
+          ${isFirst ? "plasmo-rounded-t-lg" : ""}
+        `}
+      >
+        <TemplateItem
+          key={template.id}
+          template={template}
+          isFavorite={template.isFavorite}
+          isSelected={template.id === selectedTemplateId}
+          onSelect={(template) => {
+            setSelectedTemplateId(template.id)
+            onSelectTemplate(template)
+          }}
+          onFavorite={onFavoriteTemplate}
+          onUnfavorite={onUnfavoriteTemplate}
+          onEdit={onEditTemplate}
+          onDelete={onDeleteTemplate}
+        />
+      </div>
     )
   }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, onDeleteTemplate])
 
@@ -119,10 +128,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const renderAllTemplatesSection = () => {
     return (
       <div>
-        <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-3">
-          <h2 className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider">
-            All Templates
-          </h2>
+        <div className="plasmo-flex plasmo-justify-end plasmo-items-center plasmo-mb-3">
           <KeyboardShortcutsHelp shortcuts={shortcuts} />
         </div>
         {!templates?.length ? (

@@ -49,14 +49,14 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
   });
 
   return (
-    <section className="plasmo-p-4 plasmo-border-b plasmo-border-gray-200" aria-expanded={isExpanded}>
+    <section className="plasmo-border-b plasmo-border-gray-200" aria-expanded={isExpanded}>
       <SectionHeader title="Templates" isExpanded={isExpanded} onToggle={onToggle} id="templates-header" />
       {isExpanded && (
         <div className="plasmo-animate-slide-down">
           {/* Template Creation Button */}
-          <div className="plasmo-mb-4">
+          <div className="plasmo-px-4 plasmo-py-3 plasmo-bg-gray-50">
             <button 
-              className="plasmo-btn-primary plasmo-w-full" 
+              className="plasmo-w-full plasmo-bg-blue-600 plasmo-text-white plasmo-px-4 plasmo-py-2 plasmo-rounded-md hover:plasmo-bg-blue-700 plasmo-transition-colors plasmo-shadow-sm plasmo-text-sm plasmo-font-medium focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500 focus:plasmo-ring-offset-2" 
               onClick={() => onCreateTemplate?.()}
               aria-label="Create new template"
             >
@@ -64,49 +64,59 @@ const TemplateSectionContent: React.FC<TemplateSectionProps> = ({
             </button>
           </div>
 
-          {/* Template List */}
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : (
-            <div className="plasmo-space-y-2">
-              {templates.length === 0 && favoriteTemplates.length === 0 ? (
-                <div className="plasmo-text-sm plasmo-text-gray-600">No templates yet</div>
-              ) : (
-                <>
-                  {favoriteTemplates.length > 0 && (
-                    <div className="plasmo-mb-4">
-                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-mb-2">Favorite Templates</h3>
-                      <TemplateList
-                        templates={favoriteTemplates}
-                        onSelectTemplate={onSelectTemplate}
-                        onFavoriteTemplate={onFavoriteTemplate}
-                        onUnfavoriteTemplate={onUnfavoriteTemplate}
-                        onEditTemplate={onEditTemplate}
-                        onDeleteTemplate={onDeleteTemplate}
-                        isCreating={isCreating}
-                        onCreateTemplate={onCreateTemplate}
-                      />
-                    </div>
-                  )}
-                  {templates.length > 0 && (
-                    <div>
-                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-mb-2">All Templates</h3>
-                      <TemplateList
-                        templates={templates}
-                        onSelectTemplate={onSelectTemplate}
-                        onFavoriteTemplate={onFavoriteTemplate}
-                        onUnfavoriteTemplate={onUnfavoriteTemplate}
-                        onEditTemplate={onEditTemplate}
-                        onDeleteTemplate={onDeleteTemplate}
-                        isCreating={isCreating}
-                        onCreateTemplate={onCreateTemplate}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+          {/* Template Lists */}
+          <div className="plasmo-px-2 plasmo-py-3">
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : (
+              <div className="plasmo-space-y-4">
+                {templates.length === 0 && favoriteTemplates.length === 0 ? (
+                  <div className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-py-8 plasmo-px-4 plasmo-text-center">
+                    <p className="plasmo-text-gray-500 plasmo-text-sm">No templates yet</p>
+                    <p className="plasmo-text-gray-400 plasmo-text-xs plasmo-mt-1">Create your first template to get started</p>
+                  </div>
+                ) : (
+                  <>
+                    {favoriteTemplates.length > 0 && (
+                      <div className="plasmo-mb-6">
+                        <h3 className="plasmo-px-3 plasmo-mb-2 plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider">
+                          Favorite Templates
+                        </h3>
+                        <div className="plasmo-bg-white plasmo-rounded-lg plasmo-shadow-sm">
+                          <TemplateList
+                            templates={favoriteTemplates}
+                            onSelectTemplate={onSelectTemplate}
+                            onFavoriteTemplate={onFavoriteTemplate}
+                            onUnfavoriteTemplate={onUnfavoriteTemplate}
+                            onEditTemplate={onEditTemplate}
+                            onDeleteTemplate={onDeleteTemplate}
+                            isCreating={isCreating}
+                            onCreateTemplate={onCreateTemplate}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {templates.length > 0 && (
+                      <div>
+                        <div className="plasmo-bg-white plasmo-rounded-lg plasmo-shadow-sm">
+                          <TemplateList
+                            templates={templates}
+                            onSelectTemplate={onSelectTemplate}
+                            onFavoriteTemplate={onFavoriteTemplate}
+                            onUnfavoriteTemplate={onUnfavoriteTemplate}
+                            onEditTemplate={onEditTemplate}
+                            onDeleteTemplate={onDeleteTemplate}
+                            isCreating={isCreating}
+                            onCreateTemplate={onCreateTemplate}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>
