@@ -28,3 +28,22 @@ We use ES6 modules throughout the entire project. This means:
 
 3. **Before creating any new files, ALWAYS check to ensure you are not making a file that already exists somewhere else.** 
    Before each change, understand the whole code base thoroughly and ensure you are making decisions that a world-class engineer would make.
+
+4. **Module System Consistency Across Components**
+   - When converting files between module systems (for compatibility reasons), use a consistent approach across related components.
+   - If using CommonJS pattern temporarily, prefix imported variables with underscores to avoid redeclaration conflicts:
+     ```js
+     // Use this pattern to avoid redeclaration errors
+     const _React = require("react");
+     const { useState } = _React;
+     ```
+   - Always use try/catch blocks in CommonJS components to provide graceful degradation and meaningful error messages.
+
+5. **Navigation State Management in React Router**
+   - When navigating between pages, always include necessary state flags for different modes:
+     ```js
+     navigate("/templates/new", { state: { createTemplate: true } });
+     navigate(`/templates/${id}`, { state: { template, editMode: true } });
+     ```
+   - Check for these state flags explicitly in useEffect hooks when determining component behavior.
+   - Don't rely solely on URL patterns for determining component mode (create/edit/view).
