@@ -94,36 +94,52 @@ router.get('/', async (req: Request, res: Response) => {
  * @throws 500 if a database error occurs.
  */
 router.post('/', async (req: Request<{}, {}, TemplateRequest>, res: Response) => {
-  const { name, category, template_text } = req.body;
-  if (!name || !template_text) {
-    return res.status(400).json({ error: 'Name and template_text are required' });
-  }
-  
-  try {
-    const { userId } = getAuth(req);
-    if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
-
-    const internalUserId = await getUserIdFromClerk(userId);
-
-    // Create template
-    const result = await pool.query(
-      'INSERT INTO templates (created_by, name, category, template_text) VALUES ($1, $2, $3, $4) RETURNING *',
-      [internalUserId, name, category || null, template_text]
-    );
-
-    const template = result.rows[0];
+    const { name, category, template_text } = req.body;
+    if (!name || !template_text) {
+      return res.status(400).json({ error: 'Name and template_text are required' });
+    }
     
-    // Return with is_favorite as false since it's a new template
-    res.status(201).json({ 
-      data: {
-        ...template,
-        is_favorite: false
+    try {
+      const { userId } = getAuth(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthenticated' });
+  
+      const internalUserId = await getUserIdFromClerk(userId);
+  
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+  
+        // Create template
+        const templateResult = await client.query(
+          'INSERT INTO templates (created_by, name, category, template_text) VALUES ($1, $2, $3, $4) RETURNING *',
+          [internalUserId, name, category || null, template_text]
+        );
+        const template = templateResult.rows[0];
+  
+        // Create user_template entry with is_favorite = false
+        await client.query(
+          'INSERT INTO user_templates (user_id, template_id, is_favorite) VALUES ($1, $2, $3)',
+          [internalUserId, template.id, false]
+        );
+  
+        await client.query('COMMIT');
+  
+        res.status(201).json({ 
+          data: {
+            ...template,
+            is_favorite: false
+          }
+        });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
       }
-    });
-  } catch (error) {
-    console.error('Error creating template:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    } catch (error) {
+      console.error('Error creating template:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 /**

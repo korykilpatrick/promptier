@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import type { Template } from "../../../../shared/types/templates"
-import type { PromptChain } from "../../../../shared/types/components"
+import type { Template } from "shared/types/templates"
+import type { PromptChain } from "shared/types/chains"
 import { TemplateSection } from "./TemplateSection"
 import { ChainSection } from "./ChainSection"
 import { ResponseSection } from "./ResponseSection"
@@ -25,7 +25,7 @@ export const Sidebar: React.FC = () => {
     debounceDelay: 300
   }), [toast])
 
-  const { templates, favoriteTemplates, operationStates, fetchTemplates, cleanup } = useTemplates({ toast, options })
+  const { templates, favoriteTemplates, operationStates, fetchTemplates, createTemplate, updateTemplate, deleteTemplate, favoriteTemplate, unfavoriteTemplate, cleanup } = useTemplates({ toast, options })
 
   useEffect(() => {
     if (!fetchTemplatesRef.current) {
@@ -74,12 +74,13 @@ export const Sidebar: React.FC = () => {
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const handleCreateTemplate = () => {}
   const handlePinTemplate = (templateId: number) => {}
   const handleUnpinTemplate = (templateId: number) => {}
   const handleSelectTemplate = (template: Template) => {
     navigate(`/templates/${template.id}`, { state: { template } })
   }
+  const handleEditTemplate = (template: Template) => {}
+  const handleDeleteTemplate = (templateId: number) => {}
   const handleCreateChain = () => {}
   const handleSelectChain = (chain: PromptChain) => setActiveChain(chain)
   const handleExecuteStep = (chainId: string, stepId: string) => {}
@@ -107,10 +108,12 @@ export const Sidebar: React.FC = () => {
             templates={templates}
             pinnedTemplates={favoriteTemplates}
             isLoading={isTemplatesLoading}
-            onCreateTemplate={handleCreateTemplate}
+            createTemplate={createTemplate}
             onPinTemplate={handlePinTemplate}
-            onUnpinTemplate={handleUnpinTemplate}
+            onUnfavoriteTemplate={handleUnpinTemplate}
             onSelectTemplate={handleSelectTemplate}
+            onEditTemplate={handleEditTemplate}
+            onDeleteTemplate={handleDeleteTemplate}
           />
           <ChainSection
             isExpanded={expandedSections.chains}
