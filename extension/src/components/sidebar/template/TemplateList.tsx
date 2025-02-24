@@ -58,13 +58,19 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     onEditTemplate(template)
   }, [onEditTemplate])
 
+  // Handle template deletion
+  const handleDeleteTemplate = useCallback((templateId: number) => {
+    console.log(`[TemplateList] Deleting template ID: ${templateId}`)
+    onDeleteTemplate(templateId)
+  }, [onDeleteTemplate])
+
   // Setup keyboard shortcuts
   const { shortcuts } = useTemplateKeyboardShortcuts({
     onCreateTemplate,
     onEditTemplate: handleEditTemplate,
     onFavoriteTemplate,
     onUnfavoriteTemplate,
-    onDeleteTemplate,
+    onDeleteTemplate: handleDeleteTemplate,
     onSelectTemplate,
     selectedTemplate,
     isEditing,
@@ -97,11 +103,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           onFavorite={onFavoriteTemplate}
           onUnfavorite={onUnfavoriteTemplate}
           onEdit={onEditTemplate}
-          onDelete={onDeleteTemplate}
+          onDelete={handleDeleteTemplate}
         />
       </div>
     )
-  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, onDeleteTemplate])
+  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
   // Render favorite templates section if there are any
   const renderFavoriteSection = () => {

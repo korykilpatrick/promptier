@@ -1,28 +1,3 @@
-/**
- * @description
- * This module defines the API routes for managing prompt templates.
- * It provides CRUD operations for templates, ensuring that only authenticated
- * users can access and modify their own templates. The routes handle the creation,
- * retrieval, updating, and deletion of templates stored in the database.
- * 
- * Key features:
- * - Authentication: All routes are protected and require a valid Clerk authentication token.
- * - Data Validation: Basic validation for required fields in requests.
- * - Database Interactions: Uses PostgreSQL with utility functions from `db.ts`.
- * - Type Safety: Uses interfaces from shared types.
- * 
- * @dependencies
- * - express: Web framework for Node.js, used to define routes and handle HTTP requests.
- * - pg: PostgreSQL client for Node.js, used via the `pool` instance from `db.ts`.
- * - @clerk/express: Provides `getAuth` for retrieving authenticated user details.
- * - ../utils/db: Utility function for mapping Clerk user IDs to internal IDs.
- * - shared/types/templates: Type definitions for API data structures.
- * 
- * @notes
- * - Uses `created_by` to match the `templates` table schema in `001_create_tables.sql`.
- * - Responses are typed to ensure consistency with client expectations.
- */
-
 import express, { Request, Response } from 'express';
 import pool from '../config/db';
 import { getAuth } from '@clerk/express';
@@ -36,14 +11,7 @@ import {
 
 const router = express.Router();
 
-/**
- * GET /templates
- * Fetches all templates belonging to the authenticated user.
- * 
- * @returns {SuccessResponse<TemplateResponse[]>} Array of template objects.
- * @throws 401 if user is not authenticated.
- * @throws 500 if a database error occurs.
- */
+// GET /templates
 router.get('/', async (req: Request, res: Response) => {
   try {
     console.log('Request to /templates:', req.method, req.url, req.headers);
@@ -83,16 +51,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /templates
- * Creates a new template for the authenticated user.
- * 
- * @body {TemplateRequest} - The template data.
- * @returns {SuccessResponse<TemplateResponse>} The created template.
- * @throws 400 if required fields are missing.
- * @throws 401 if user is not authenticated.
- * @throws 500 if a database error occurs.
- */
+// POST /templates
 router.post('/', async (req: Request<{}, {}, TemplateRequest>, res: Response) => {
     const { name, category, template_text } = req.body;
     if (!name || !template_text) {
@@ -142,18 +101,7 @@ router.post('/', async (req: Request<{}, {}, TemplateRequest>, res: Response) =>
     }
 });
 
-/**
- * PUT /templates/:id
- * Updates an existing template, if it belongs to the authenticated user.
- * 
- * @param {string} id - The template ID from the URL parameter.
- * @body {TemplateRequest} - The updated template data.
- * @returns {SuccessResponse<TemplateResponse>} The updated template.
- * @throws 400 if required fields are missing.
- * @throws 401 if user is not authenticated.
- * @throws 404 if the template is not found or doesn't belong to the user.
- * @throws 500 if a database error occurs.
- */
+// PUT /templates/:id
 router.put('/:id', async (req: Request<{ id: string }, {}, TemplateRequest & { isFavorite?: boolean }>, res: Response) => {
   const { name, category, template_text, isFavorite } = req.body;
   if (!name || !template_text) {
@@ -236,16 +184,7 @@ router.put('/:id', async (req: Request<{ id: string }, {}, TemplateRequest & { i
   }
 });
 
-/**
- * DELETE /templates/:id
- * Deletes a template, if it belongs to the authenticated user.
- * 
- * @param {string} id - The template ID from the URL parameter.
- * @returns {SuccessResponse<never>} Success message.
- * @throws 401 if user is not authenticated.
- * @throws 404 if the template is not found or doesn't belong to the user.
- * @throws 500 if a database error occurs.
- */
+// DELETE /templates/:id
 router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
   const templateId = parseInt(req.params.id);
   if (isNaN(templateId)) {
@@ -263,31 +202,40 @@ router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
     try {
       await client.query('BEGIN');
 
-      // Check if template exists and belongs to user
+      // Check if the user is associated with the template
       const checkResult = await client.query(
-        'SELECT id FROM templates WHERE id = $1 AND created_by = $2',
-        [templateId, internalUserId]
+        'SELECT 1 FROM user_templates WHERE user_id = $1 AND template_id = $2',
+        [internalUserId, templateId]
       );
       
       if (checkResult.rows.length === 0) {
         await client.query('ROLLBACK');
-        return res.status(404).json({ error: 'Template not found' });
+        return res.status(404).json({ error: 'Template not found in your list' });
       }
 
-      // Delete user_templates entries first (cascade will handle this, but being explicit)
+      // Delete the user's association with the template
       await client.query(
-        'DELETE FROM user_templates WHERE template_id = $1',
+        'DELETE FROM user_templates WHERE user_id = $1 AND template_id = $2',
+        [internalUserId, templateId]
+      );
+
+      // Check if there are any remaining associations for this template
+      const countResult = await client.query(
+        'SELECT COUNT(*) FROM user_templates WHERE template_id = $1',
         [templateId]
       );
+      const remainingCount = parseInt(countResult.rows[0].count);
 
-      // Delete template
-      await client.query(
-        'DELETE FROM templates WHERE id = $1 AND created_by = $2',
-        [templateId, internalUserId]
-      );
+      if (remainingCount === 0) {
+        // Delete the template since no users are associated with it
+        await client.query(
+          'DELETE FROM templates WHERE id = $1',
+          [templateId]
+        );
+      }
 
       await client.query('COMMIT');
-      res.json({ message: 'Template deleted' });
+      res.json({ message: 'Template removed from your list' });
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -295,7 +243,7 @@ router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
       client.release();
     }
   } catch (error) {
-    console.error('Error deleting template:', error);
+    console.error('Error removing template:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

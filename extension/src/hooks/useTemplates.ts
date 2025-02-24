@@ -66,7 +66,7 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
 
   const fetchTemplates = useCallback(async () => {
     try {
-      console.log('Fetching templates...');
+      console.log('[useTemplates] Fetching templates...');
       setOperationState("fetch", { isLoading: true, error: null });
       
       const response = await makeApiRequest<TemplateResponse[]>({
@@ -74,7 +74,7 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
         method: "GET"
       });
 
-      console.log('Templates response:', response);
+      console.log('[useTemplates] Templates response:', response);
 
       if (response.error) {
         throw new Error(response.error);
@@ -85,14 +85,14 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
       }
 
       const allTemplates = response.data.map(toFrontendTemplate);
-      console.log('Transformed templates:', allTemplates);
+      console.log('[useTemplates] Transformed templates:', allTemplates);
       
       setTemplates(allTemplates.filter((t) => !t.isFavorite));
       setFavoriteTemplates(allTemplates.filter((t) => t.isFavorite));
       setOperationState("fetch", { isLoading: false, error: null });
       return allTemplates;
     } catch (err) {
-      console.error('Error in fetchTemplates:', err);
+      console.error('[useTemplates] Error in fetchTemplates:', err);
       const error = err instanceof Error ? err : new Error("Failed to load templates");
       setOperationState("fetch", { isLoading: false, error });
       setTemplates([]);
@@ -183,24 +183,30 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
   }, [setOperationState, options, toast]);
 
   const deleteTemplate = useCallback(async (id: number) => {
+    console.log(`[useTemplates] Starting deleteTemplate for ID: ${id}`);
     try {
       setOperationState("delete", { isLoading: true, error: null });
       
+      console.log(`[useTemplates] Sending DELETE request to /templates/${id}`);
       const response = await makeApiRequest({
         url: `/templates/${id}`,
         method: "DELETE"
       });
 
+      console.log(`[useTemplates] DELETE response for ID ${id}:`, response);
+
       if (response.error) {
         throw new Error(response.error);
       }
 
+      console.log(`[useTemplates] Successfully deleted template ID: ${id}, updating state`);
       setTemplates((prev) => prev.filter((t) => t.id !== id));
       setFavoriteTemplates((prev) => prev.filter((t) => t.id !== id));
       setOperationState("delete", { isLoading: false, error: null });
       toast.success("Template deleted successfully");
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to delete template");
+      console.error(`[useTemplates] Error deleting template ID: ${id}`, error);
       setOperationState("delete", { isLoading: false, error });
       options.onError?.(error);
       toast.error("Failed to delete template");

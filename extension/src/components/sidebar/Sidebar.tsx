@@ -25,7 +25,18 @@ export const Sidebar: React.FC = () => {
     debounceDelay: 300
   }), [toast])
 
-  const { templates, favoriteTemplates, operationStates, fetchTemplates, createTemplate, updateTemplate, deleteTemplate, favoriteTemplate, unfavoriteTemplate, cleanup } = useTemplates({ toast, options })
+  const {
+    templates,
+    favoriteTemplates,
+    operationStates,
+    fetchTemplates,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    favoriteTemplate,
+    unfavoriteTemplate,
+    cleanup
+  } = useTemplates({ toast, options })
 
   useEffect(() => {
     if (!fetchTemplatesRef.current) {
@@ -49,9 +60,9 @@ export const Sidebar: React.FC = () => {
   }, [cleanup])
 
   const [expandedSections, setExpandedSections] = useState({
-    templates: true,
-    chains: true,
-    response: true
+    templates: false,
+    chains: false,
+    response: false
   })
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -74,13 +85,32 @@ export const Sidebar: React.FC = () => {
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const handlePinTemplate = (templateId: number) => {}
-  const handleUnpinTemplate = (templateId: number) => {}
+  const handlePinTemplate = (templateId: number) => {
+    console.log(`[Sidebar] Pinning template ID: ${templateId}`)
+    favoriteTemplate(templateId)
+  }
+  
+  const handleUnpinTemplate = (templateId: number) => {
+    console.log(`[Sidebar] Unpinning template ID: ${templateId}`)
+    unfavoriteTemplate(templateId)
+  }
+  
   const handleSelectTemplate = (template: Template) => {
     navigate(`/templates/${template.id}`, { state: { template } })
   }
-  const handleEditTemplate = (template: Template) => {}
-  const handleDeleteTemplate = (templateId: number) => {}
+  
+  const handleEditTemplate = (template: Template) => {
+    console.log(`[Sidebar] Editing template ID: ${template.id}`)
+    // Add editing logic if needed
+  }
+  
+  const handleDeleteTemplate = (templateId: number) => {
+    console.log(`[Sidebar] Initiating delete for template ID: ${templateId}`)
+    deleteTemplate(templateId).catch((error) => {
+      console.error(`[Sidebar] Failed to delete template ID: ${templateId}`, error)
+    })
+  }
+
   const handleCreateChain = () => {}
   const handleSelectChain = (chain: PromptChain) => setActiveChain(chain)
   const handleExecuteStep = (chainId: string, stepId: string) => {}
