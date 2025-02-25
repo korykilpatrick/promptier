@@ -16,6 +16,8 @@ try {
   // Import API utilities for variables
   const _apiUtils = require("../../../utils/api")
   const _templateParser = require("../../../utils/template-parser")
+  const { TemplateVariable } = require("shared/types/template-variables")
+  const { Template } = require("shared/types/templates")
   
   // Try to import potentially missing hooks with fallbacks
   let useGlobalVariables;
@@ -83,11 +85,21 @@ try {
   /**
    * Template details component for viewing, editing, and creating templates
    * @param {Object} props - Component props
-   * @param {Object} [props.template] - Template data, undefined for create mode
+   * @param {Template} [props.template] - Template data, undefined for create mode
    * @param {Function} props.onBack - Callback when navigating back
    * @param {Function} [props.onTemplateChange] - Callback when template is modified
    */
-  function TemplateDetails(props) {
+  function TemplateDetails(props: {
+    template?: {
+      id: number;
+      name: string;
+      content: string;
+      category?: string;
+      variables?: Record<string, string>;
+    };
+    onBack: () => void;
+    onTemplateChange?: () => void;
+  }): JSX.Element {
     console.log("TemplateDetails: Rendering with props:", JSON.stringify(props, null, 2));
     const { template, onBack, onTemplateChange } = props
     const { addToast } = useToast()
@@ -310,116 +322,60 @@ try {
     const hasModifiedValues = Object.values(values).some(state => state && typeof state === 'object' && 'isDirty' in state && state.isDirty)
 
     return (
-      <div className="plasmo-flex plasmo-flex-col plasmo-gap-4 plasmo-p-2">
-        {/* Header with back button */}
-        <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-          <button
-            className="plasmo-h-8 plasmo-w-8 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-border plasmo-border-gray-300 plasmo-rounded hover:plasmo-bg-gray-100"
-            onClick={onBack}
-          >
-            ←
-          </button>
-          <h3 className="plasmo-text-sm plasmo-font-medium">
-            {isCreate ? "Create Template" : "Template Details"}
-          </h3>
-          <div className="plasmo-w-8" />
-        </div>
-
-        {/* Template name */}
-        <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
-          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-            <label className="plasmo-text-xs plasmo-text-gray-500">Template Name</label>
-            {!isEditingName && !isCreate && (
-              <button
-                className="plasmo-h-6 plasmo-w-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-gray-500 hover:plasmo-text-gray-700"
-                onClick={() => handleEdit("name")}
-              >
-                ✎
-              </button>
-            )}
-          </div>
-          {isEditingName || isCreate ? (
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter template name"
-              className="plasmo-h-8 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
-            />
-          ) : (
-            <div className="plasmo-text-sm">{name}</div>
-          )}
-        </div>
-
-        {/* Category field */}
-        {(isEditingContent || isCreate) && (
-          <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
-            <label className="plasmo-text-xs plasmo-text-gray-500">Category (optional)</label>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Enter category"
-              className="plasmo-h-8 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
-            />
-          </div>
-        )}
-
-        {/* Template content */}
-        <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
-          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-            <label className="plasmo-text-xs plasmo-text-gray-500">Template Content</label>
-            {!isEditingContent && !isCreate && (
-              <div className="plasmo-flex plasmo-items-center plasmo-gap-1">
-                <button
-                  className="plasmo-h-6 plasmo-w-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-gray-500 hover:plasmo-text-gray-700"
-                  onClick={() => handleEdit("content")}
-                >
-                  ✎
-                </button>
-                <button
-                  className="plasmo-h-6 plasmo-w-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-gray-500 hover:plasmo-text-gray-700"
-                  onClick={handleCopy}
-                  disabled={isCopying}
-                >
-                  {isCopying ? 
-                    <span className="plasmo-animate-spin">↻</span> : 
-                    <span>📋</span>
-                  }
-                </button>
-              </div>
-            )}
-          </div>
-          {isEditingContent || isCreate ? (
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Enter template content"
-              className="plasmo-min-h-[100px] plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
-            />
-          ) : (
-            <div className="plasmo-whitespace-pre-wrap plasmo-rounded plasmo-border plasmo-border-gray-200 plasmo-bg-gray-50 plasmo-p-2 plasmo-text-sm">
-              {content}
-            </div>
-          )}
-        </div>
-
-        {/* Variables Section */}
+      <div className="plasmo-flex plasmo-flex-col plasmo-gap-4 plasmo-p-4">
+        {/* Template Name Section */}
         <div className="plasmo-flex plasmo-flex-col plasmo-gap-2">
           <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
             <div className="plasmo-flex plasmo-items-center">
-              <label className="plasmo-text-xs plasmo-text-gray-500 plasmo-mr-2">Template Variables</label>
+              <button
+                onClick={onBack}
+                className="plasmo-mr-2 plasmo-text-gray-500 hover:plasmo-text-gray-700"
+              >
+                <svg className="plasmo-h-5 plasmo-w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              {isEditingName || isCreate ? (
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter template name"
+                  className="plasmo-text-lg plasmo-font-medium plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+                />
+              ) : (
+                <h2 className="plasmo-text-lg plasmo-font-medium">{name}</h2>
+              )}
+            </div>
+            {!isCreate && !isEditingName && (
+              <button
+                onClick={() => handleEdit("name")}
+                className="plasmo-text-gray-500 hover:plasmo-text-gray-700"
+              >
+                <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Variables Section - Now above the template content */}
+        <div className="plasmo-flex plasmo-flex-col plasmo-gap-3">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+            <div className="plasmo-flex plasmo-items-center">
+              <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">Template Variables</label>
               
               {/* Show count of variables */}
               {variables.length > 0 && (
-                <span className="plasmo-text-xs plasmo-bg-gray-100 plasmo-text-gray-700 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full">
-                  {variables.length}
+                <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-gray-100 plasmo-text-gray-700 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-full">
+                  {variables.length} {variables.length === 1 ? 'variable' : 'variables'}
                 </span>
               )}
               
               {/* Show indicator if using global values */}
               {hasGlobalValues && (
-                <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-green-100 plasmo-text-green-700 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full plasmo-flex plasmo-items-center">
+                <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-green-100 plasmo-text-green-700 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-full plasmo-flex plasmo-items-center">
                   <span className="plasmo-h-1.5 plasmo-w-1.5 plasmo-rounded-full plasmo-bg-green-500 plasmo-mr-1"></span>
                   Using global values
                 </span>
@@ -427,26 +383,12 @@ try {
             </div>
 
             {/* Variable actions */}
-            {!isEditingContent && !isCreate && variables.length > 0 && (
-              <div className="plasmo-flex plasmo-items-center plasmo-space-x-2">
-                {/* Reset button */}
+            {variables.length > 0 && (
+              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
                 {hasModifiedValues && (
                   <button
-                    onClick={resetValues}
-                    className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
-                  >
-                    <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Reset
-                  </button>
-                )}
-                
-                {/* Save to Global button */}
-                {hasModifiedValues && (
-                  <button
-                    onClick={() => handleSaveToGlobal()}
-                    className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
+                    onClick={() => handleSaveToGlobal(Object.keys(values).filter(name => values[name].isDirty))}
+                    className="plasmo-text-xs plasmo-text-green-600 hover:plasmo-text-green-800 plasmo-flex plasmo-items-center"
                   >
                     <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -455,7 +397,6 @@ try {
                   </button>
                 )}
                 
-                {/* Manage variables button */}
                 <button
                   onClick={() => navigate("/variables")}
                   className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
@@ -481,10 +422,10 @@ try {
           
           {/* Variable Inputs */}
           {variables.length > 0 ? (
-            <div className="plasmo-rounded plasmo-border plasmo-border-gray-200 plasmo-p-3 plasmo-bg-white">
+            <div className="plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-bg-white plasmo-shadow-sm">
               {/* Info about global variables */}
               {globalVariables.length > 0 && (
-                <div className="plasmo-mb-3 plasmo-p-2 plasmo-bg-gray-50 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
+                <div className="plasmo-p-3 plasmo-bg-gray-50 plasmo-rounded-t-lg plasmo-border-b plasmo-border-gray-200">
                   <div className="plasmo-flex plasmo-items-center plasmo-text-xs plasmo-text-gray-600">
                     <svg className="plasmo-h-4 plasmo-w-4 plasmo-mr-1.5 plasmo-text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -494,15 +435,14 @@ try {
                 </div>
               )}
               
-              <div className="plasmo-space-y-4">
-                {variables.map((variable, index) => {
-                  // Check if this variable has a matching global variable
+              <div className="plasmo-p-4 plasmo-space-y-4">
+                {variables.map((variable: typeof TemplateVariable, index: number) => {
                   const globalVariable = Array.isArray(globalVariables) && globalVariables.find(g => g && typeof g === 'object' && 'name' in g && g.name === variable.name);
                   const state = values[variable.name] || { value: '', isDirty: false, isValid: true, errors: [] };
                   const isGlobalValue = !!globalVariable;
                   
                   return (
-                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-2">
                       <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
                         <div className="plasmo-flex plasmo-items-center">
                           <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
@@ -523,29 +463,8 @@ try {
                             </span>
                           )}
                         </div>
-                        
-                        {/* Individual save button */}
-                        {state.isDirty && state.isValid && (
-                          <button
-                            onClick={() => handleSaveToGlobal([variable.name])}
-                            className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-green-600 plasmo-focus:outline-none"
-                            title="Save to global variables"
-                          >
-                            <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                            </svg>
-                          </button>
-                        )}
                       </div>
-
-                      {/* Description if available */}
-                      {variable.description && (
-                        <p className="plasmo-text-xs plasmo-text-gray-500 plasmo-mb-1">
-                          {variable.description}
-                        </p>
-                      )}
                       
-                      {/* Input field */}
                       <div className="plasmo-relative plasmo-group">
                         <input
                           type="text"
@@ -553,9 +472,10 @@ try {
                           onChange={(e) => setVariableValue(variable.name, e.target.value)}
                           placeholder={variable.defaultValue || ''}
                           className={`
-                            plasmo-block plasmo-w-full plasmo-rounded-md plasmo-shadow-sm plasmo-px-3 plasmo-py-1.5 plasmo-text-sm
+                            plasmo-block plasmo-w-full plasmo-rounded-md plasmo-shadow-sm plasmo-px-3 plasmo-py-2 plasmo-text-sm
                             ${!state.isValid ? 'plasmo-border-red-300 plasmo-bg-red-50' : isGlobalValue ? 'plasmo-border-green-300 plasmo-bg-green-50' : state.isDirty ? 'plasmo-border-blue-300 plasmo-bg-white' : 'plasmo-border-gray-300 plasmo-bg-gray-50'}
                             plasmo-focus:outline-none plasmo-focus:ring-2 ${!state.isValid ? 'plasmo-focus:ring-red-500 plasmo-focus:ring-opacity-30' : 'plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-30'}
+                            plasmo-transition-colors plasmo-duration-150
                           `}
                         />
                       </div>
@@ -563,7 +483,7 @@ try {
                       {/* Error messages */}
                       {state.errors && state.errors.length > 0 && (
                         <ul className="plasmo-mt-1 plasmo-text-xs plasmo-text-red-600 plasmo-list-disc plasmo-list-inside">
-                          {state.errors.map((error, i) => (
+                          {state.errors.map((error: { message: string }, i: number) => (
                             <li key={i}>{error.message}</li>
                           ))}
                         </ul>
@@ -574,43 +494,70 @@ try {
               </div>
             </div>
           ) : (
-            <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-p-3 plasmo-bg-gray-50 plasmo-rounded plasmo-border plasmo-border-gray-200">
+            <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-p-4 plasmo-bg-gray-50 plasmo-rounded-lg plasmo-border plasmo-border-gray-200">
               No variables defined in this template
             </div>
           )}
         </div>
 
+        {/* Template Content Section - Now below variables */}
+        <div className="plasmo-flex plasmo-flex-col plasmo-gap-2">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+            <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">Template Content</label>
+            {!isCreate && !isEditingContent && (
+              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+                <button
+                  onClick={() => handleEdit("content")}
+                  className="plasmo-text-gray-500 hover:plasmo-text-gray-700"
+                >
+                  <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleCopy}
+                  disabled={isCopying}
+                  className={`plasmo-text-gray-500 hover:plasmo-text-gray-700 ${isCopying ? 'plasmo-opacity-50 plasmo-cursor-not-allowed' : ''}`}
+                >
+                  <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {isEditingContent || isCreate ? (
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Enter template content"
+              className="plasmo-min-h-[200px] plasmo-text-sm plasmo-px-3 plasmo-py-2 plasmo-border plasmo-border-gray-300 plasmo-rounded-lg plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-30 plasmo-focus:border-blue-500 plasmo-bg-white plasmo-shadow-sm plasmo-transition-colors plasmo-duration-150"
+            />
+          ) : (
+            <div className="plasmo-whitespace-pre-wrap plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-bg-gray-50 plasmo-p-4 plasmo-text-sm plasmo-shadow-sm">
+              {content}
+            </div>
+          )}
+        </div>
+
         {/* Action buttons */}
-        <div className="plasmo-flex plasmo-justify-end plasmo-gap-2 plasmo-mt-2">
+        <div className="plasmo-flex plasmo-justify-end plasmo-gap-2 plasmo-mt-4">
           {!isCreate && (
             <button
-              className={cn(
-                "plasmo-h-8 plasmo-px-3 plasmo-py-1 plasmo-text-xs plasmo-text-white plasmo-bg-red-500 plasmo-rounded hover:plasmo-bg-red-600 plasmo-flex plasmo-items-center plasmo-gap-1",
-                isDeleting && "plasmo-opacity-70 plasmo-cursor-not-allowed"
-              )}
-              disabled={isDeleting}
               onClick={handleDelete}
+              disabled={isDeleting}
+              className="plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-text-red-600 hover:plasmo-text-red-700 plasmo-bg-red-50 hover:plasmo-bg-red-100 plasmo-rounded-md plasmo-transition-colors plasmo-duration-150"
             >
-              {isDeleting ? 
-                <span className="plasmo-animate-spin">↻</span> : 
-                <span>🗑</span>
-              }
-              Delete
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </button>
           )}
           <button
-            className={cn(
-              "plasmo-h-8 plasmo-px-3 plasmo-py-1 plasmo-text-xs plasmo-text-white plasmo-bg-blue-500 plasmo-rounded hover:plasmo-bg-blue-600 plasmo-flex plasmo-items-center plasmo-gap-1",
-              isSaving && "plasmo-opacity-70 plasmo-cursor-not-allowed"
-            )}
-            disabled={isSaving}
             onClick={handleSave}
+            disabled={isSaving}
+            className="plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-text-white plasmo-bg-blue-600 hover:plasmo-bg-blue-700 plasmo-rounded-md plasmo-transition-colors plasmo-duration-150"
           >
-            {isSaving ? 
-              <span className="plasmo-animate-spin">↻</span> : 
-              <span>+</span>
-            }
-            {isCreate ? "Create" : "Save"}
+            {isSaving ? 'Saving...' : isCreate ? 'Create' : 'Save'}
           </button>
         </div>
       </div>
