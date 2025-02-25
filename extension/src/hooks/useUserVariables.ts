@@ -41,7 +41,10 @@ function useUserVariables(options = {}) {
       setIsLoading(true);
       setIsError(false);
       
-      const response = await makeApiRequest('GET', '/variables');
+      const response = await makeApiRequest({
+        url: '/variables',
+        method: 'GET'
+      });
       
       if (response?.data) {
         const frontendVariables = response.data.map(item => toFrontendVariable(item));
@@ -68,7 +71,14 @@ function useUserVariables(options = {}) {
   // Create a new variable
   const createVariable = useCallback(async (data) => {
     try {
-      const response = await makeApiRequest('POST', '/variables', data);
+      console.log('Creating variable with data:', data);
+      const response = await makeApiRequest({
+        url: '/variables',
+        method: 'POST',
+        body: data
+      });
+      
+      console.log('Create variable response:', response);
       
       if (response?.data) {
         const newVariable = toFrontendVariable(response.data);
@@ -105,7 +115,11 @@ function useUserVariables(options = {}) {
   // Update an existing variable
   const updateVariable = useCallback(async (id, data) => {
     try {
-      const response = await makeApiRequest('PUT', `/variables/${id}`, data);
+      const response = await makeApiRequest({
+        url: `/variables/${id}`,
+        method: 'PUT',
+        body: data
+      });
       
       if (response?.data) {
         const updatedVariable = toFrontendVariable(response.data);
@@ -129,7 +143,10 @@ function useUserVariables(options = {}) {
   // Delete a variable
   const deleteVariable = useCallback(async (id) => {
     try {
-      await makeApiRequest('DELETE', `/variables/${id}`);
+      await makeApiRequest({
+        url: `/variables/${id}`,
+        method: 'DELETE'
+      });
       
       setVariables(prev => prev.filter(v => v.id !== id));
       return true;
