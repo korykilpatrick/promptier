@@ -2,10 +2,12 @@ const React = require("react");
 const { useState, useCallback, useEffect } = React;
 const { useUserVariables } = require("../../../hooks/useUserVariables");
 const { useToast } = require("../../../hooks/useToast");
+const { createTextEntry, getTextEntries } = require("shared/types/variables");
 
 /**
  * Component for managing global user variables
- * @typedef {import("../../../../shared/types/variables").UserVariable} UserVariable
+ * @typedef {import("shared/types/variables").UserVariable} UserVariable
+ * @typedef {import("shared/types/variables").VariableEntry} VariableEntry
  */
 function VariablesPage() {
   const { addToast } = useToast();
@@ -25,11 +27,16 @@ function VariablesPage() {
   // Start editing a variable
   const handleEdit = useCallback((/** @type {UserVariable} */ variable) => {
     setEditingId(variable.id);
+    
+    // Extract text values from variable entries
+    const textEntries = getTextEntries(variable);
+    const textValue = textEntries.length > 0 
+      ? textEntries.map(/** @param {VariableEntry} entry */ entry => entry.value).join('\n') 
+      : '';
+    
     setEditForm({
       name: variable.name,
-      value: Array.isArray(variable.value) && variable.value.length > 0 
-        ? variable.value.map(entry => entry.value).join('\n') 
-        : ''
+      value: textValue
     });
   }, []);
 
@@ -53,7 +60,7 @@ function VariablesPage() {
     try {
       // Convert the value string to an array of text entries
       const valueArray = editForm.value.trim()
-        ? [{ type: 'text', value: editForm.value }]
+        ? editForm.value.split('\n').map(/** @param {string} value */ value => createTextEntry(value))
         : [];
         
       await updateVariable(editingId, {
@@ -116,7 +123,7 @@ function VariablesPage() {
     try {
       // Convert the value string to an array of text entries
       const valueArray = newVariable.value.trim()
-        ? [{ type: 'text', value: newVariable.value }]
+        ? newVariable.value.split('\n').map(/** @param {string} value */ value => createTextEntry(value))
         : [];
         
       await createVariable({
@@ -160,7 +167,7 @@ function VariablesPage() {
                 plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
                 plasmo-text-sm plasmo-py-1.5 plasmo-px-3"
               value={newVariable.name}
-              onChange={(e) => setNewVariable(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setNewVariable(/** @param {Object} prev */ prev => ({ ...prev, name: e.target.value }))}
               placeholder="Variable name"
               required
             />
@@ -176,7 +183,7 @@ function VariablesPage() {
                 plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
                 plasmo-text-sm plasmo-py-1.5 plasmo-px-3 plasmo-resize-y"
               value={newVariable.value}
-              onChange={(e) => setNewVariable(prev => ({ ...prev, value: e.target.value }))}
+              onChange={(e) => setNewVariable(/** @param {Object} prev */ prev => ({ ...prev, value: e.target.value }))}
               placeholder="Variable value"
               rows={3}
             />
@@ -216,7 +223,7 @@ function VariablesPage() {
         </div>
       ) : (
         <div className="plasmo-bg-white plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-divide-y plasmo-divide-gray-200">
-          {variables.map(variable => (
+          {variables.map(/** @param {UserVariable} variable */ variable => (
             <div key={variable.id} className="plasmo-p-4">
               {editingId === variable.id ? (
                 <div className="plasmo-space-y-3">
@@ -230,7 +237,7 @@ function VariablesPage() {
                         plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
                         plasmo-text-sm plasmo-py-1.5 plasmo-px-3"
                       value={editForm.name}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => setEditForm(/** @param {Object} prev */ prev => ({ ...prev, name: e.target.value }))}
                       placeholder="Variable name"
                       required
                     />
@@ -245,31 +252,28 @@ function VariablesPage() {
                         plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
                         plasmo-text-sm plasmo-py-1.5 plasmo-px-3 plasmo-resize-y"
                       value={editForm.value}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, value: e.target.value }))}
+                      onChange={(e) => setEditForm(/** @param {Object} prev */ prev => ({ ...prev, value: e.target.value }))}
                       placeholder="Variable value"
                       rows={3}
                     />
                   </div>
                   
-                  <div className="plasmo-flex plasmo-justify-end plasmo-space-x-2 plasmo-mt-3">
+                  <div className="plasmo-flex plasmo-justify-end plasmo-space-x-2">
                     <button
-                      type="button"
                       onClick={handleCancelEdit}
-                      className="plasmo-px-3 plasmo-py-1.5 plasmo-bg-white plasmo-text-gray-700 plasmo-text-sm plasmo-font-medium 
-                        plasmo-rounded-md plasmo-border plasmo-border-gray-300 plasmo-shadow-sm hover:plasmo-bg-gray-50 
-                        plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-offset-2 plasmo-focus:ring-blue-500 
-                        plasmo-transition-colors plasmo-duration-150"
+                      className="plasmo-px-4 plasmo-py-2 plasmo-bg-gray-200 plasmo-text-gray-800 plasmo-text-sm plasmo-font-medium plasmo-rounded-md
+                        plasmo-shadow-sm hover:plasmo-bg-gray-300 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-offset-2
+                        plasmo-focus:ring-gray-500 plasmo-transition-colors plasmo-duration-150"
                     >
                       Cancel
                     </button>
                     <button
-                      type="button"
                       onClick={handleSaveEdit}
-                      className="plasmo-px-3 plasmo-py-1.5 plasmo-bg-blue-600 plasmo-text-white plasmo-text-sm plasmo-font-medium 
-                        plasmo-rounded-md plasmo-shadow-sm hover:plasmo-bg-blue-700 plasmo-focus:outline-none plasmo-focus:ring-2 
-                        plasmo-focus:ring-offset-2 plasmo-focus:ring-blue-500 plasmo-transition-colors plasmo-duration-150"
+                      className="plasmo-px-4 plasmo-py-2 plasmo-bg-blue-600 plasmo-text-white plasmo-text-sm plasmo-font-medium plasmo-rounded-md
+                        plasmo-shadow-sm hover:plasmo-bg-blue-700 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-offset-2
+                        plasmo-focus:ring-blue-500 plasmo-transition-colors plasmo-duration-150"
                     >
-                      Save
+                      Save Changes
                     </button>
                   </div>
                 </div>
@@ -277,16 +281,19 @@ function VariablesPage() {
                 <div>
                   <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
                     <div>
-                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">{variable.name}</h3>
-                      <div className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
-                        Last updated: {new Date(variable.updatedAt).toLocaleString()}
+                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">
+                        {variable.name}
+                      </h3>
+                      <div className="plasmo-mt-1 plasmo-text-sm plasmo-text-gray-600 plasmo-whitespace-pre-wrap">
+                        {Array.isArray(variable.value) && variable.value.length > 0 
+                          ? getTextEntries(variable).map(/** @param {VariableEntry} entry */ entry => entry.value).join('\n') 
+                          : <em className="plasmo-text-gray-400">Empty value</em>}
                       </div>
                     </div>
-                    <div className="plasmo-flex plasmo-space-x-2">
+                    <div className="plasmo-flex plasmo-ml-4 plasmo-space-x-2">
                       <button
-                        type="button"
                         onClick={() => handleEdit(variable)}
-                        className="plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-text-sm plasmo-focus:outline-none"
+                        className="plasmo-text-gray-400 hover:plasmo-text-blue-600 plasmo-focus:outline-none"
                         title="Edit variable"
                       >
                         <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -294,9 +301,8 @@ function VariablesPage() {
                         </svg>
                       </button>
                       <button
-                        type="button"
                         onClick={() => handleDelete(variable.id, variable.name)}
-                        className="plasmo-text-red-600 hover:plasmo-text-red-800 plasmo-text-sm plasmo-focus:outline-none"
+                        className="plasmo-text-gray-400 hover:plasmo-text-red-600 plasmo-focus:outline-none"
                         title="Delete variable"
                       >
                         <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -305,20 +311,10 @@ function VariablesPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="plasmo-mt-2">
-                    <pre className="plasmo-whitespace-pre-wrap plasmo-break-all plasmo-text-sm plasmo-bg-gray-50 plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
-                      {Array.isArray(variable.value) 
-                        ? variable.value.map((entry: { type: string; value: string; name?: string }, index: number) => (
-                            <div key={index} className="plasmo-mb-2">
-                              {entry.name && <div className="plasmo-font-semibold plasmo-mb-1">{entry.name}</div>}
-                              <div className="plasmo-ml-2">
-                                <span className="plasmo-text-xs plasmo-text-gray-500 plasmo-mr-1">[{entry.type}]</span>
-                                {entry.value}
-                              </div>
-                            </div>
-                          ))
-                        : variable.value}
-                    </pre>
+                  <div className="plasmo-mt-2 plasmo-text-xs plasmo-text-gray-500">
+                    Created: {new Date(variable.createdAt).toLocaleString()}
+                    {variable.updatedAt !== variable.createdAt && 
+                      ` • Updated: ${new Date(variable.updatedAt).toLocaleString()}`}
                   </div>
                 </div>
               )}

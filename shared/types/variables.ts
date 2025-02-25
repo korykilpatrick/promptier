@@ -128,4 +128,58 @@ export function createDirectoryEntry(path: string, id?: string, name?: string): 
     name: name || path.split('/').pop(),
     value: path
   };
+}
+
+// Type checking utilities for entries
+export function isTextEntry(entry: VariableEntry): boolean {
+  return entry.type === VARIABLE_ENTRY_TYPES.TEXT;
+}
+
+export function isFileEntry(entry: VariableEntry): boolean {
+  return entry.type === VARIABLE_ENTRY_TYPES.FILE;
+}
+
+export function isDirectoryEntry(entry: VariableEntry): boolean {
+  return entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY;
+}
+
+// Format a file path for display
+export function formatFilePath(path: string): string {
+  // Extract filename from path
+  const filename = path.split('/').pop() || path;
+  
+  // If the path is too long, truncate the middle
+  if (path.length > 40) {
+    const start = path.substring(0, 15);
+    const end = path.substring(path.length - 20);
+    return `${start}...${end}`;
+  }
+  
+  return path;
+}
+
+// Get display name for an entry
+export function getEntryDisplayName(entry: VariableEntry): string {
+  if (entry.name) {
+    return entry.name;
+  }
+  
+  if (isFileEntry(entry) || isDirectoryEntry(entry)) {
+    return entry.value.split('/').pop() || entry.value;
+  }
+  
+  return 'Unnamed entry';
+}
+
+// Get icon type for entry (can be used for UI display)
+export function getEntryIconType(entry: VariableEntry): string {
+  switch (entry.type) {
+    case VARIABLE_ENTRY_TYPES.FILE:
+      return 'file';
+    case VARIABLE_ENTRY_TYPES.DIRECTORY:
+      return 'folder';
+    case VARIABLE_ENTRY_TYPES.TEXT:
+    default:
+      return 'text';
+  }
 } 

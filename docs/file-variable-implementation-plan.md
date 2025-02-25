@@ -38,7 +38,9 @@ Note: The original implementation plan called for adding a 'type' column to the 
 3. The JSONB structure uses an array of objects with 'type', 'id', 'name', and 'value' fields
 4. This approach better supports the advanced features we want to implement
 
-The steps below have been updated to reflect this new approach.
+**Update (Implementation Order Change)**: We've decided to prioritize frontend implementation before optimizing backend with caching, to provide user-facing functionality sooner and gather real usage data before optimization.
+
+The steps below have been updated to reflect this new approach and order.
 
 ## Implementation Steps
 
@@ -92,107 +94,108 @@ The steps below have been updated to reflect this new approach.
     - Implement size validation for files
     - Add configurable limits for file sizes
 
-- [ ] 12. **Content Caching**
-    - Create caching mechanism for file contents
-    - Add cache invalidation logic
-
 ### API Endpoint Updates
-- [x] 13. **GET Variable Endpoint**
+- [x] 12. **GET Variable Endpoint**
     - Update to include JSONB data in response
     - Ensure proper parsing of JSONB values
 
-- [x] 14. **Add Content Processing**
+- [x] 13. **Add Content Processing**
     - Add endpoint to process file/directory entries
     - Include file contents in response
 
-- [ ] 15. **API Documentation**
+- [x] 14. **API Documentation**
     - Update API documentation for all modified endpoints
     - Add examples for file variable usage
 
 ### Frontend Variable Model Updates
-- [ ] 16. **Update Interface/Type**
+- [x] 15. **Update Interface/Type**
     - Add new variable entry interfaces
     - Update related component props
 
-- [ ] 17. **Frontend Entry Constants**
+- [x] 16. **Frontend Entry Constants**
     - Create constants matching backend entry types
     - Add type checking helpers
 
-- [ ] 18. **Type Utility Functions**
+- [x] 17. **Type Utility Functions**
     - Add utility functions to work with entries
     - Create formatters for file paths
 
 ### File Picker Component - Initial
-- [ ] 19. **Basic Component Structure**
+- [ ] 18. **Basic Component Structure**
     - Create file picker component skeleton
     - Add container and styling
 
-- [ ] 20. **API Permission Request**
+- [ ] 19. **API Permission Request**
     - Implement File System Access API permission request
     - Add permission state management
 
-- [ ] 21. **Single File Selection**
+- [ ] 20. **Single File Selection**
     - Add single file selection functionality
     - Implement file handle management
 
-- [ ] 22. **File Metadata Extraction**
+- [ ] 21. **File Metadata Extraction**
     - Extract name, size, type from selected files
     - Create display format for metadata
 
 ### File Picker Component - Advanced
-- [ ] 23. **Multiple File Selection**
+- [ ] 22. **Multiple File Selection**
     - Implement multiple file selection support
     - Add file list management
 
-- [ ] 24. **Directory Selection**
+- [ ] 23. **Directory Selection**
     - Add directory selection functionality
     - Implement recursive path handling
 
-- [ ] 25. **File Size Validation**
+- [ ] 24. **File Size Validation**
     - Add client-side file size checking
     - Implement warning for large files
 
-- [ ] 26. **File Type Filtering**
+- [ ] 25. **File Type Filtering**
     - Add file type filter options
     - Implement extension filtering
 
-- [ ] 27. **Selected Files Display**
+- [ ] 26. **Selected Files Display**
     - Create list view for selected files
     - Add removal functionality
 
 ### Variable Creation UI Updates
-- [ ] 28. **Entry Creator Component**
+- [ ] 27. **Entry Creator Component**
     - Create component for adding variable entries
     - Support text, file, and directory entries
 
-- [ ] 29. **Conditional File Picker**
+- [ ] 28. **Conditional File Picker**
     - Show file picker only when file/directory type is selected
     - Add smooth transitions
 
-- [ ] 30. **Form Submission Update**
+- [ ] 29. **Form Submission Update**
     - Modify submission logic to handle entry arrays
     - Update validation for file variables
 
-- [ ] 31. **Size Warnings**
+- [ ] 30. **Size Warnings**
     - Add file size warnings in UI
     - Implement confirmation for large files
 
 ### Variable Editing UI Updates
-- [ ] 32. **Edit Modal Update**
+- [ ] 31. **Edit Modal Update**
     - Update edit variable modal to support entry arrays
     - Show current entries in editable format
 
-- [ ] 33. **Entry Replacement**
+- [ ] 32. **Entry Replacement**
     - Add functionality to replace selected entries
     - Preserve previous entries when needed
 
-- [ ] 34. **Clear Selection**
+- [ ] 33. **Clear Selection**
     - Create clear entries button
     - Add confirmation dialog
 
-- [ ] 35. **UI Indicators**
+- [ ] 34. **UI Indicators**
     - Add visual indicators for file/directory entries in list
     - Create entry-specific badges/icons
+
+### Backend Optimization
+- [ ] 35. **Content Caching**
+    - Create caching mechanism for file contents
+    - Add cache invalidation logic
 
 ### Prompt Template Integration - Basic
 - [ ] 36. **Variable Interpolation Update**
