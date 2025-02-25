@@ -54,29 +54,6 @@ function validateTemplateSyntax(template: string): TemplateVariableValidationErr
       { start: nestedMatch.index!, end: nestedMatch.index! + nestedMatch[0].length }
     ));
   }
-  
-  // // Check for unmatched braces
-  // const unmatchedOpen = Array.from(template.matchAll(PATTERNS.UNMATCHED_OPEN));
-  // const unmatchedClose = Array.from(template.matchAll(PATTERNS.UNMATCHED_CLOSE));
-  
-  // unmatchedOpen.forEach(match => {
-  //   errors.push(createError(
-  //     TemplateVariableError.MALFORMED_SYNTAX,
-  //     'Unmatched opening braces',
-  //     undefined,
-  //     { start: match.index!, end: match.index! + 2 }
-  //   ));
-  // });
-  
-  // unmatchedClose.forEach(match => {
-  //   errors.push(createError(
-  //     TemplateVariableError.MALFORMED_SYNTAX,
-  //     'Unmatched closing braces',
-  //     undefined,
-  //     { start: match.index!, end: match.index! + 2 }
-  //   ));
-  // });
-  
   return errors;
 }
 
