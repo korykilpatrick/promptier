@@ -18,7 +18,7 @@
  * - Assumes the database schema from `001_create_tables.sql` is applied.
  */
 
-import pool from '../config/db';
+import pool from '../config/db.js';
 
 // Cache for action IDs to avoid repeated queries (actions are static post-migration)
 const actionIdCache: Map<string, number> = new Map();
@@ -52,14 +52,14 @@ export async function getActionId(actionName: string): Promise<number> {
 }
 
 /**
- * Maps a Clerk user ID to an internal `users.id`, creating the user if they don’t exist.
+ * Maps a Clerk user ID to an internal `users.id`, creating the user if they don't exist.
  * 
  * @param {string} clerkId - The Clerk user ID from authentication.
  * @returns {Promise<number>} The internal user ID from the `users` table.
  * @throws {Error} If the database query fails unexpectedly.
  */
 export async function getUserIdFromClerk(clerkId: string): Promise<number> {
-  // Insert the user if they don’t exist, then retrieve their ID
+  // Insert the user if they don't exist, then retrieve their ID
   const insertResult = await pool.query(
     'INSERT INTO users (clerk_id) VALUES ($1) ON CONFLICT (clerk_id) DO NOTHING RETURNING id',
     [clerkId]

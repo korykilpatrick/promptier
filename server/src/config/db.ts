@@ -23,7 +23,10 @@
  *   when queries are executed (e.g., in Step 3 during schema creation).
  */
 
-import { Pool } from 'pg';
+// Import pg as a CommonJS module in an ES module environment
+import pkg from 'pg';
+const { Pool } = pkg;
+
 import dotenv from 'dotenv';
 
 // Load environment variables from .env file

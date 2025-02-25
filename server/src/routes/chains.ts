@@ -23,9 +23,11 @@
  * - Responses are typed to ensure consistency with client expectations.
  */
 
-import express, { Request, Response } from 'express';
+import expressModule from 'express';
+const express = expressModule;
+import type { Request, Response } from 'express';
 import { getAuth } from '@clerk/express';
-import { getUserIdFromClerk } from '../utils/db';
+import { getUserIdFromClerk } from '../utils/db.js';
 import { 
   getChains, 
   getChain, 

@@ -1,13 +1,15 @@
-import express, { Request, Response } from 'express';
-import pool from '../config/db';
+import expressModule from 'express';
+const express = expressModule;
+import type { Request, Response } from 'express';
+import pool from '../config/db.js';
 import { getAuth } from '@clerk/express';
-import { getUserIdFromClerk } from '../utils/db';
+import { getUserIdFromClerk } from '../utils/db.js';
 import { 
   TemplateRequest, 
   TemplateResponse,
   BaseTemplate,
   UserTemplate
-} from 'shared/types/templates';
+} from '../../../shared/types/templates.js';
 
 const router = express.Router();
 

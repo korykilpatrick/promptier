@@ -3,8 +3,9 @@
     "version": "1.0.0",
     "description": "Server for Promptier Chrome Extension",
     "main": "dist/server.js",
+    "type": "module",
     "scripts": {
-        "start": "ts-node src/server.ts",
+        "start": "node --loader ts-node/esm src/server.ts",
         "build": "tsc"
     },
     "dependencies": {
