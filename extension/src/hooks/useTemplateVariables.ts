@@ -28,11 +28,14 @@ const { useUserVariables } = require('./useUserVariables');
  */
 function useTemplateVariables({
   template,
-  initialValues = {}, // Default to empty object
+  initialValues = {},
   validationOptions = {},
   parserOptions = {},
   useGlobalVariables = true
 }) {
+  // Log the template before parsing
+  console.log('[useTemplateVariables] Parsing template:', template);
+  
   // Use optimized template parser
   const { parseResult, cacheStats } = useTemplateParser(template, parserOptions);
 
@@ -51,11 +54,9 @@ function useTemplateVariables({
     const state = {};
     
     safeVariables.forEach(v => {
-      // Try to get the value from initialValues, then global variables, then default value
       let initialValue = initialValues[v.name];
       let isDirty = initialValues[v.name] !== undefined;
       
-      // If useGlobalVariables is true and we don't have a value yet, try to get it from global variables
       if (useGlobalVariables && initialValue === undefined) {
         const globalVar = globalVariables.find(gv => gv.name === v.name);
         if (globalVar) {
@@ -64,7 +65,6 @@ function useTemplateVariables({
         }
       }
 
-      // If we still don't have a value, use the default value
       if (initialValue === undefined) {
         initialValue = v.defaultValue ?? '';
         isDirty = false;
@@ -83,7 +83,6 @@ function useTemplateVariables({
 
   const [values, setValues] = useState(initialState);
 
-  // Update values when global variables change
   useEffect(() => {
     if (useGlobalVariables && globalVariables.length > 0) {
       setValues(prev => {
@@ -93,7 +92,6 @@ function useTemplateVariables({
         safeVariables.forEach(v => {
           const globalVar = globalVariables.find(gv => gv.name === v.name);
           
-          // Only update if the variable doesn't already have a user-set value
           if (globalVar && !prev[v.name]?.isDirty) {
             newValues[v.name] = {
               ...prev[v.name],
@@ -109,7 +107,6 @@ function useTemplateVariables({
     }
   }, [globalVariables, safeVariables, useGlobalVariables]);
 
-  // Validate a single variable value
   const validateValue = useCallback((name, value) => {
     const variable = safeVariables.find(v => v.name === name);
     const options = validationOptions[name];
@@ -154,7 +151,6 @@ function useTemplateVariables({
     return errors;
   }, [safeVariables, validationOptions]);
 
-  // Set a single variable value
   const setVariableValue = useCallback((name, value) => {
     setValues(prev => {
       const errors = validateValue(name, value);
@@ -170,12 +166,10 @@ function useTemplateVariables({
     });
   }, [validateValue]);
 
-  // Reset values to initial state
   const resetValues = useCallback(() => {
     setValues(initialState);
   }, [initialState]);
 
-  // Get all validation errors
   const validationErrors = useMemo(() => {
     return safeVariables
       .map(variable => {
@@ -186,7 +180,6 @@ function useTemplateVariables({
       .flat();
   }, [safeVariables, values]);
 
-  // Save selected variables to global variables
   const saveToGlobalVariables = useCallback(async (variableNames) => {
     if (!useGlobalVariables) return;
 

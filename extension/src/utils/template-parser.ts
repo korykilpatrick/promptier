@@ -55,27 +55,27 @@ function validateTemplateSyntax(template: string): TemplateVariableValidationErr
     ));
   }
   
-  // Check for unmatched braces
-  const unmatchedOpen = Array.from(template.matchAll(PATTERNS.UNMATCHED_OPEN));
-  const unmatchedClose = Array.from(template.matchAll(PATTERNS.UNMATCHED_CLOSE));
+  // // Check for unmatched braces
+  // const unmatchedOpen = Array.from(template.matchAll(PATTERNS.UNMATCHED_OPEN));
+  // const unmatchedClose = Array.from(template.matchAll(PATTERNS.UNMATCHED_CLOSE));
   
-  unmatchedOpen.forEach(match => {
-    errors.push(createError(
-      TemplateVariableError.MALFORMED_SYNTAX,
-      'Unmatched opening braces',
-      undefined,
-      { start: match.index!, end: match.index! + 2 }
-    ));
-  });
+  // unmatchedOpen.forEach(match => {
+  //   errors.push(createError(
+  //     TemplateVariableError.MALFORMED_SYNTAX,
+  //     'Unmatched opening braces',
+  //     undefined,
+  //     { start: match.index!, end: match.index! + 2 }
+  //   ));
+  // });
   
-  unmatchedClose.forEach(match => {
-    errors.push(createError(
-      TemplateVariableError.MALFORMED_SYNTAX,
-      'Unmatched closing braces',
-      undefined,
-      { start: match.index!, end: match.index! + 2 }
-    ));
-  });
+  // unmatchedClose.forEach(match => {
+  //   errors.push(createError(
+  //     TemplateVariableError.MALFORMED_SYNTAX,
+  //     'Unmatched closing braces',
+  //     undefined,
+  //     { start: match.index!, end: match.index! + 2 }
+  //   ));
+  // });
   
   return errors;
 }
@@ -137,14 +137,17 @@ export function parseTemplate(template: string): TemplateParseResult {
   }
   
   // Then extract and validate variables
+  console.log('[parseTemplate] Starting parsing for template:', template);
   let match: RegExpExecArray | null;
   while ((match = PATTERNS.VARIABLE.exec(template)) !== null) {
+    console.log('[parseTemplate] Found match:', match);
     const [fullMatch, name, defaultValue, description] = match;
     const trimmedName = name.trim();
     const position = {
       start: match.index,
       end: match.index + fullMatch.length
     };
+    console.log('[parseTemplate] Parsing complete. Variables:', variables, 'Errors:', errors);
     
     // Validate variable name
     const nameError = validateVariableName(trimmedName, position);

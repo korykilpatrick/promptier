@@ -1,14 +1,14 @@
-// Use a different pattern that avoids redeclaration errors
 try {
   const _React = require('react');
   const _VariableList = require('./variable/VariableList').VariableList;
   const { useNavigate } = require('react-router-dom');
 
   /**
-   * @typedef {import('../../../types/template-variables').TemplateVariable} TemplateVariable
-   * @typedef {import('../../../types/template-variables').TemplateVariableValues} TemplateVariableValues
-   * @typedef {import('../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
-   * @typedef {import('../../../shared/types/variables').UserVariable} UserVariable
+   * @typedef {import('../../../../types/template-variables').TemplateVariable} TemplateVariable
+   * @typedef {import('../../../../types/template-variables').TemplateVariableValues} TemplateVariableValues
+   * @typedef {import('../../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
+   * @typedef {import('../../../../types/template-variables').TemplateParseResult} TemplateParseResult
+   * @typedef {import('../../../../shared/types/variables').UserVariable} UserVariable
    */
 
   /**
@@ -23,6 +23,7 @@ try {
    * @property {string} [className] - Additional CSS class
    * @property {UserVariable[]} [globalVariables] - Global user variables from store
    * @property {boolean} [isLoadingGlobalVariables] - Whether global variables are loading
+   * @property {TemplateParseResult} parseResult - Parse result including errors
    */
 
   /**
@@ -40,28 +41,30 @@ try {
     multilineVariables = [],
     className = '',
     globalVariables = [],
-    isLoadingGlobalVariables = false
+    isLoadingGlobalVariables = false,
+    parseResult
   }) {
     try {
+      // Log received variables for debugging
+      console.log('[VariableMapping] Received variables:', variables);
+      
       console.log("VariableMapping rendering with", { 
         variablesCount: variables?.length || 0, 
         valuesCount: Object.keys(values || {}).length,
-        globalVariablesCount: globalVariables?.length || 0
+        globalVariablesCount: globalVariables?.length || 0,
+        parseErrors: parseResult?.errors || []
       });
       
-      // Filter out invalid variables (safety check)
       const safeVariables = Array.isArray(variables) 
         ? variables.filter(v => v && typeof v.name === 'string')
         : [];
         
       const hasVariables = safeVariables.length > 0;
       
-      // Check if any variable has been modified from its default
       const hasModifiedValues = Object.values(values || {}).some(
         varState => varState && varState.isDirty
       );
 
-      // Handle saving selected variables to global store
       const handleSaveToGlobal = async () => {
         if (onSaveToGlobal) {
           const modifiedVariables = Object.entries(values || {})
@@ -74,7 +77,6 @@ try {
         }
       };
       
-      // Handle saving a single variable to global store
       const handleSaveSingleToGlobal = async (variableName) => {
         if (onSaveToGlobal) {
           await onSaveToGlobal([variableName]);
@@ -85,7 +87,6 @@ try {
 
       return (
         <div className={`${className}`}>
-          {/* Header */}
           <div className="plasmo-flex plasmo-flex-wrap plasmo-justify-between plasmo-items-center plasmo-mb-3">
             <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
               Template Variables
@@ -126,6 +127,22 @@ try {
               )}
             </div>
           </div>
+
+          {parseResult.errors.length > 0 && (
+            <div className="plasmo-bg-red-50 plasmo-border plasmo-border-red-200 plasmo-rounded-md plasmo-p-4 plasmo-mb-4">
+              <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-red-700 plasmo-mb-2">
+                Template Parsing Errors
+              </h4>
+              <ul className="plasmo-text-xs plasmo-text-red-600 plasmo-list-disc plasmo-list-inside">
+                {parseResult.errors.map((error, index) => (
+                  <li key={index} className="plasmo-mb-0.5">
+                    {error.message}
+                    {error.position && ` (at position ${error.position.start}-${error.position.end})`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {hasVariables ? (
             <div className="plasmo-bg-gray-50 plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-p-4">
@@ -206,12 +223,10 @@ try {
     }
   }
 
-  // Export with module.exports
   module.exports = { VariableMapping };
 } catch (error) {
   console.error("Error in VariableMapping module:", error);
   
-  // Provide a fallback component
   function FallbackVariableMapping() {
     return (
       <div className="plasmo-p-3 plasmo-bg-red-50 plasmo-border plasmo-border-red-200 plasmo-rounded-md">

@@ -1,4 +1,3 @@
-// Import dependencies using CommonJS pattern
 const React = require("react");
 const { useState, useEffect } = React;
 const { useTemplateVariables } = require("../../../hooks/useTemplateVariables");
@@ -32,6 +31,7 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
 
     // Add template variables management
     const {
+      parseResult, // Add parseResult from useTemplateVariables
       variables,
       values,
       setVariableValue,
@@ -53,7 +53,7 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
         content: formData.content,
         category: formData.category,
         isFavorite: formData.isFavorite,
-        variables: values // Include variable values in the submission
+        variables: values
       });
     };
     
@@ -82,9 +82,7 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
 
     return (
       <form onSubmit={handleSubmit} className="plasmo-w-full">
-        {/* Form fields are directly in the page without cards for better mobile compatibility */}
         <div className="plasmo-space-y-6">
-          {/* Name Field */}
           <div>
             <label htmlFor="name" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
               Template Name
@@ -102,7 +100,6 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
             />
           </div>
 
-          {/* Category Field */}
           <div>
             <label htmlFor="category" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
               Category <span className="plasmo-text-gray-500 plasmo-text-xs">(optional)</span>
@@ -119,7 +116,6 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
             />
           </div>
 
-          {/* Template Content Field */}
           <div>
             <label htmlFor="content" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
               Template Content
@@ -141,7 +137,6 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
               </div>
             </div>
             
-            {/* Variable Syntax Info - Integrated into Content Section */}
             <div className="plasmo-mt-3 plasmo-flex plasmo-flex-col plasmo-sm:flex-row plasmo-items-start plasmo-gap-2 plasmo-text-xs plasmo-bg-blue-50 plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-blue-100">
               <div className="plasmo-flex plasmo-items-center plasmo-text-blue-700 plasmo-font-medium plasmo-whitespace-nowrap">
                 <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -163,9 +158,9 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
             </div>
           </div>
 
-          {/* Variables section */}
           <div className="plasmo-mt-4">
             <VariableMapping
+              parseResult={parseResult}
               variables={variables}
               values={values}
               onVariableChange={setVariableValue}
@@ -176,7 +171,6 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
             />
           </div>
 
-          {/* Form Actions */}
           <div className="plasmo-flex plasmo-justify-end plasmo-space-x-3 plasmo-pt-2 plasmo-mt-6">
             <button
               type="button"
@@ -212,5 +206,4 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
   }
 };
 
-// Use exports assigned to module.exports pattern
 module.exports = { TemplateForm }; 
