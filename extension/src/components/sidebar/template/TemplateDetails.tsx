@@ -1,467 +1,651 @@
-// Use a different pattern that avoids redeclaration errors
-// Start with a try/catch to provide better error reporting
+// Import using a try/catch pattern to avoid redeclaration issues
 try {
-  /** @typedef {import("../../../../shared/types/templates").Template} Template */
+  // Use consistent CommonJS requires
+  const _React = require("react")
+  const { useState, useEffect } = _React
 
-  // Assign imports to unique variable names to avoid redeclaration
-  const _reactRouterDom = require("react-router-dom");
-  const _useLocation = _reactRouterDom.useLocation;
-  const _useNavigate = _reactRouterDom.useNavigate;
-  const _useParams = _reactRouterDom.useParams;
-  const _React = require("react");
-  const _useState = _React.useState;
-  const _useEffect = _React.useEffect;
+  // For icons, we'll just use simple text or HTML symbols 
+  // instead of lucide-react
+  // You can replace with actual icons later
 
-  // Import with unique names
-  const _TemplateForm = require("./TemplateForm").TemplateForm;
-  const _useTemplates = require("../../../hooks/useTemplates").useTemplates;
-  const _useToast = require("../../../hooks/useToast").useToast;
+  // Import custom components and utilities
+  const _VariableInput = require("./variable/VariableInput").VariableInput
+  const _templates = require("../../../utils/templates")
+  const { createTemplate, updateTemplate, deleteTemplate } = _templates
+
+  // Import API utilities for variables
+  const _apiUtils = require("../../../utils/api")
+  const _templateParser = require("../../../utils/template-parser")
+  
+  // Try to import potentially missing hooks with fallbacks
+  let useGlobalVariables;
+  try {
+    useGlobalVariables = require("../../../hooks/useGlobalVariables").useGlobalVariables;
+  } catch (error) {
+    console.warn("useGlobalVariables not available, using fallback:", error);
+    // Simple fallback implementation if the hook is missing
+    useGlobalVariables = function(options = {}) {
+      return {
+        variables: [],
+        isLoading: false,
+        getVariableByName: () => undefined,
+        getValueByName: () => undefined,
+        variableMap: {},
+        refreshVariables: async () => {},
+      };
+    };
+  }
+  
+  const { useTemplateVariables } = require("../../../hooks/useTemplateVariables")
+  const { useTemplateParser } = require("../../../hooks/useTemplateParser")
+  const { useToast } = require("../../../hooks/useToast")
+  const { useNavigate } = require("react-router-dom")
 
   /**
-   * Template details component for creating, editing, and viewing templates
-   * @returns {JSX.Element} Component JSX
+   * Helper function to conditionally join class names
+   * @param {...string} classes - CSS class names to conditionally join
+   * @returns {string} Joined class names
    */
-  function TemplateDetails() {
-    console.log("TemplateDetails function invoked");
+  function cn(...classes) {
+    return classes.filter(Boolean).join(" ")
+  }
+
+  /**
+   * Helper function to show a toast notification
+   * @param {Object} options - Toast options
+   */
+  function toast(options) {
+    // Simple toast implementation
+    console.log(`TOAST: ${options.type || "info"} - ${options.message}`)
     
-    try {
-      const location = _useLocation();
-      const navigate = _useNavigate();
-      const params = _useParams();
-      const toast = _useToast();
-      
-      // State for tracking viewing/editing mode
-      const [isEditing, setIsEditing] = _useState(false);
-      const [isCreating, setIsCreating] = _useState(false);
-      
-      // Get template operations
-      const { getTemplate, createTemplate, updateTemplate } = _useTemplates({ toast });
-      
-      // Safely retrieve template from state, defaulting to undefined if missing
-      /** @type {Template|undefined} */
-      const [template, setTemplate] = _useState(location.state?.template);
-      
-      // Log state for debugging
-      console.log("TemplateDetails initial state:", { 
-        locationPathname: location.pathname,
-        locationState: location.state,
-        params,
-        template,
-        isEditing,
-        isCreating
-      });
-      
-      // Load template from params if not in state
-      _useEffect(() => {
-        const loadTemplate = async () => {
-          // Skip if we're in create mode
-          if (location.pathname === "/templates/new" || params.id === "new") {
-            return;
-          }
-          
-          // Skip if we already have the template
-          if (template) {
-            return;
-          }
-          
-          // If we have an ID but no template, try to load it
-          if (params.id && params.id !== "new") {
-            try {
-              console.log("Loading template by ID:", params.id);
-              const loadedTemplate = await getTemplate(params.id);
-              if (loadedTemplate) {
-                console.log("Template loaded:", loadedTemplate);
-                setTemplate(loadedTemplate);
-              }
-            } catch (err) {
-              console.error("Error loading template:", err);
-              toast.error("Failed to load template");
-            }
-          }
-        };
-        
-        loadTemplate();
-      }, [params.id, template, getTemplate, location.pathname, toast]);
-      
-      // Check if we're on the new template route or if edit mode is requested
-      _useEffect(() => {
-        // Handle create mode: check for /templates/new path or createTemplate state
-        if (location.pathname === "/templates/new" || params.id === "new" || location.state?.createTemplate) {
-          console.log("Setting create mode to true");
-          setIsCreating(true);
-          setIsEditing(false);
-        } else {
-          setIsCreating(false);
-        }
-        
-        // Handle edit mode via editMode state flag
-        if (location.state?.editMode && template) {
-          console.log("Setting edit mode to true");
-          setIsEditing(true);
-        } else if (!location.state?.editMode) {
-          setIsEditing(false);
-        }
-      }, [location.state, location.pathname, params, template]);
-
-      /**
-       * Copy template content to clipboard
-       */
-      const handleCopy = async () => {
-        if (!template) return;
-        try {
-          await navigator.clipboard.writeText(template.content);
-          toast.success("Template copied to clipboard");
-        } catch (error) {
-          console.error("Failed to copy template:", error);
-          toast.error("Failed to copy template");
-        }
-      };
-
-      /**
-       * Toggle edit mode
-       */
-      const handleEdit = () => {
-        if (!template) return;
-        setIsEditing(true);
-      };
-      
-      /**
-       * Handle canceling edit or create
-       */
-      const handleCancel = () => {
-        if (isCreating) {
-          // When canceling creation, go back to main view
-          navigate("/");
-        } else {
-          // When canceling edit, just turn off edit mode
-          setIsEditing(false);
-        }
-      };
-      
-      /**
-       * Handle form submission for create or update
-       * @param {any} data - Form data to submit
-       */
-      const handleSubmit = async (data) => {
-        try {
-          if (isCreating) {
-            console.log("Creating template with data:", data);
-            // Use the createTemplate function from useTemplates
-            await createTemplate({
-              name: data.name,
-              category: data.category,
-              content: data.content,
-              isFavorite: data.isFavorite,
-              variables: data.variables
-            });
-            toast.success("Template created successfully");
-            // After creating, we should navigate to the main view
-            navigate("/");
-          } else if (isEditing && template) {
-            console.log("Updating template with data:", data);
-            // Use the updateTemplate function from useTemplates
-            await updateTemplate({
-              id: template.id,
-              name: data.name,
-              category: data.category,
-              content: data.content,
-              isFavorite: data.isFavorite,
-              variables: data.variables
-            });
-            toast.success("Template updated successfully");
-            // After updating, turn off edit mode but stay on details page
-            setIsEditing(false);
-            // Update the local template state
-            setTemplate({
-              ...template,
-              ...data
-            });
-          }
-        } catch (error) {
-          console.error("Failed to save template:", error);
-          toast.error("Failed to save template");
-        }
-      };
-
-      // Output for debugging
-      console.log("TemplateDetails rendering:", { 
-        isCreating, 
-        isEditing, 
-        hasTemplate: !!template,
-        pathname: location.pathname,
-        params,
-        template
-      });
-
-      // When in create mode, show the form even without a template
-      if (isCreating) {
-        console.log("Rendering create template form");
-        return (
-          <div className="plasmo-flex plasmo-flex-col plasmo-h-full">
-            {/* Header Section */}
-            <div className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-px-6 plasmo-py-4 plasmo-shadow-sm">
-              <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
-                <div>
-                  <button
-                    onClick={() => navigate("/")}
-                    className="plasmo-group plasmo-flex plasmo-items-center plasmo-text-sm plasmo-text-gray-600 hover:plasmo-text-gray-900 plasmo-mb-3 plasmo-transition-colors"
-                    aria-label="Back to Templates"
-                  >
-                    <span className="plasmo-transform plasmo-transition-transform plasmo-group-hover:plasmo-translate-x-[-4px]">←</span>
-                    <span className="plasmo-ml-2">Back to Templates</span>
-                  </button>
-                  <h2 className="plasmo-text-2xl plasmo-font-semibold plasmo-text-gray-900 plasmo-tracking-tight">
-                    Create New Template
-                  </h2>
-                  <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mt-1">
-                    Create a new prompt template with variables to use in your prompts
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Form in Content Section */}
-            <div className="plasmo-flex-1 plasmo-overflow-auto plasmo-p-6 plasmo-bg-gray-50">
-              <_TemplateForm 
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-              />
-            </div>
-          </div>
-        );
-      }
-
-      // Handle missing template (e.g., direct navigation or state loss)
-      if (!template && !isCreating) {
-        console.log("Template not found, showing error page");
-        return (
-          <div className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-h-full plasmo-p-8 plasmo-bg-gray-50">
-            <div className="plasmo-bg-white plasmo-rounded-lg plasmo-shadow-sm plasmo-border plasmo-border-gray-200 plasmo-p-8 plasmo-max-w-md plasmo-w-full plasmo-text-center">
-              <svg 
-                className="plasmo-w-12 plasmo-h-12 plasmo-mx-auto plasmo-text-gray-400" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={1.5} 
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mt-4">Template not found</h3>
-              <p className="plasmo-text-gray-500 plasmo-mt-2 plasmo-mb-6">The template you're looking for doesn't exist or couldn't be loaded.</p>
-              <button
-                onClick={() => navigate("/")}
-                className="plasmo-group plasmo-inline-flex plasmo-items-center plasmo-px-4 plasmo-py-2 plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-transition-colors plasmo-border plasmo-border-blue-100 plasmo-rounded-md plasmo-bg-blue-50"
-                aria-label="Back to Templates"
-              >
-                <span className="plasmo-transform plasmo-transition-transform plasmo-group-hover:plasmo-translate-x-[-4px]">←</span>
-                <span className="plasmo-ml-2">Back to Templates</span>
-              </button>
-            </div>
-          </div>
-        );
-      }
-
-      // When in edit mode with an existing template, show the form
-      if (isEditing && template) {
-        console.log("Rendering edit template form");
-        return (
-          <div className="plasmo-flex plasmo-flex-col plasmo-h-full">
-            {/* Header Section */}
-            <div className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-px-6 plasmo-py-4 plasmo-shadow-sm">
-              <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
-                <div>
-                  <button
-                    onClick={() => navigate("/")}
-                    className="plasmo-group plasmo-flex plasmo-items-center plasmo-text-sm plasmo-text-gray-600 hover:plasmo-text-gray-900 plasmo-mb-3 plasmo-transition-colors"
-                    aria-label="Back to Templates"
-                  >
-                    <span className="plasmo-transform plasmo-transition-transform plasmo-group-hover:plasmo-translate-x-[-4px]">←</span>
-                    <span className="plasmo-ml-2">Back to Templates</span>
-                  </button>
-                  <h2 className="plasmo-text-2xl plasmo-font-semibold plasmo-text-gray-900 plasmo-tracking-tight">
-                    Edit Template
-                  </h2>
-                  <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mt-1">
-                    Update your template content and variables
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Form in Content Section */}
-            <div className="plasmo-flex-1 plasmo-overflow-auto plasmo-p-6 plasmo-bg-gray-50">
-              <_TemplateForm 
-                template={template}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-              />
-            </div>
-          </div>
-        );
-      }
-
-      // Regular view mode for existing template
-      if (template) {
-        console.log("Rendering template view");
-        return (
-          <div className="plasmo-flex plasmo-flex-col plasmo-h-full">
-            {/* Header Section */}
-            <div className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-px-6 plasmo-py-4 plasmo-shadow-sm">
-              <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
-                <div>
-                  <button
-                    onClick={() => navigate("/")}
-                    className="plasmo-group plasmo-flex plasmo-items-center plasmo-text-sm plasmo-text-gray-600 hover:plasmo-text-gray-900 plasmo-mb-3 plasmo-transition-colors"
-                    aria-label="Back to Templates"
-                  >
-                    <span className="plasmo-transform plasmo-transition-transform plasmo-group-hover:plasmo-translate-x-[-4px]">←</span>
-                    <span className="plasmo-ml-2">Back to Templates</span>
-                  </button>
-                  <h2 className="plasmo-text-2xl plasmo-font-semibold plasmo-text-gray-900 plasmo-tracking-tight">
-                    {template.name}
-                  </h2>
-                  {template.category && (
-                    <div className="plasmo-mt-1 plasmo-flex plasmo-items-center">
-                      <span className="plasmo-inline-flex plasmo-items-center plasmo-px-2.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
-                        {template.category}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="plasmo-flex plasmo-space-x-2">
-                  <button
-                    onClick={handleEdit}
-                    className="plasmo-inline-flex plasmo-items-center plasmo-px-3 plasmo-py-2 plasmo-border plasmo-border-gray-300 plasmo-shadow-sm plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white hover:plasmo-bg-gray-50 plasmo-transition-colors"
-                    aria-label="Edit template"
-                  >
-                    <svg className="plasmo-w-4 plasmo-h-4 plasmo-mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button
-                    onClick={handleCopy}
-                    className="plasmo-inline-flex plasmo-items-center plasmo-px-3 plasmo-py-2 plasmo-border plasmo-border-gray-300 plasmo-shadow-sm plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white hover:plasmo-bg-gray-50 plasmo-transition-colors"
-                    aria-label="Copy template"
-                  >
-                    <svg className="plasmo-w-4 plasmo-h-4 plasmo-mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    Copy
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Content Section */}
-            <div className="plasmo-flex-1 plasmo-overflow-auto plasmo-p-6 plasmo-bg-gray-50">
-              <div className="plasmo-max-w-3xl plasmo-mx-auto">
-                {/* Template Content Card */}
-                <div className="plasmo-bg-white plasmo-rounded-lg plasmo-shadow-sm plasmo-border plasmo-border-gray-200 plasmo-p-6 plasmo-mb-6">
-                  <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-3">Template Content</h3>
-                  <div className="plasmo-bg-gray-50 plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-p-4 plasmo-font-mono plasmo-text-sm plasmo-whitespace-pre-wrap plasmo-break-words">
-                    {template.content}
-                  </div>
-                </div>
-
-                {/* Variables Section - if any variables detected */}
-                {template.variables && Object.keys(template.variables).length > 0 && (
-                  <div className="plasmo-bg-white plasmo-rounded-lg plasmo-shadow-sm plasmo-border plasmo-border-gray-200 plasmo-p-6">
-                    <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-3">Template Variables</h3>
-                    <div className="plasmo-space-y-4">
-                      {Object.entries(template.variables).map(([name, valueObj]) => {
-                        // Ensure value is an object with expected properties
-                        const varValue = typeof valueObj === 'object' && valueObj !== null 
-                          ? valueObj 
-                          : { value: String(valueObj || ''), description: '' };
-                        
-                        return (
-                          <div key={name} className="plasmo-bg-gray-50 plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-p-4">
-                            <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
-                              <div className="plasmo-flex plasmo-items-center">
-                                <span className="plasmo-font-medium plasmo-text-gray-700">{name}</span>
-                                {!varValue.value || varValue.value === '' ? (
-                                  <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-red-100 plasmo-text-red-800 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-md">Required</span>
-                                ) : (
-                                  <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-blue-100 plasmo-text-blue-800 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-md">Has Default</span>
-                                )}
-                              </div>
-                              {varValue.description && (
-                                <span className="plasmo-text-xs plasmo-text-gray-500">{varValue.description}</span>
-                              )}
-                            </div>
-                            {varValue.value && varValue.value !== '' && (
-                              <div className="plasmo-mt-2 plasmo-text-sm plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-px-3 plasmo-py-1.5 plasmo-font-mono">
-                                {varValue.value}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // Fallback if none of the above conditions are met
-      console.log("Rendering fallback view");
-      return (
-        <div className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-h-full plasmo-p-8 plasmo-bg-gray-50">
-          <p className="plasmo-text-gray-500 plasmo-text-lg">Loading template...</p>
-        </div>
-      );
-    } catch (error) {
-      console.error("Error in TemplateDetails render:", error);
-      return (
-        <div className="plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center plasmo-h-full plasmo-p-8 plasmo-bg-gray-50">
-          <div className="plasmo-bg-white plasmo-rounded-lg plasmo-shadow-sm plasmo-border plasmo-border-red-200 plasmo-p-8 plasmo-max-w-md plasmo-w-full plasmo-text-center plasmo-bg-red-50">
-            <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-red-800 plasmo-mt-4">Error Rendering Template</h3>
-            <p className="plasmo-text-red-600 plasmo-mt-2 plasmo-mb-2">There was an error rendering the template view.</p>
-            <pre className="plasmo-text-xs plasmo-text-red-700 plasmo-bg-white plasmo-p-2 plasmo-rounded plasmo-overflow-auto plasmo-max-h-32 plasmo-text-left">
-              {error?.message || 'Unknown error'}
-            </pre>
-            <button
-              onClick={() => _useNavigate()("/")}
-              className="plasmo-mt-6 plasmo-inline-flex plasmo-items-center plasmo-px-4 plasmo-py-2 plasmo-text-red-600 hover:plasmo-text-red-800 plasmo-transition-colors plasmo-border plasmo-border-red-100 plasmo-rounded-md"
-              aria-label="Back to Templates"
-            >
-              <span className="plasmo-transform plasmo-transition-transform plasmo-group-hover:plasmo-translate-x-[-4px]">←</span>
-              <span className="plasmo-ml-2">Back to Templates</span>
-            </button>
-          </div>
-        </div>
-      );
+    // You can replace this with your actual toast implementation
+    const toastContainer = document.getElementById("toast-container")
+    if (toastContainer) {
+      const toastEl = document.createElement("div")
+      toastEl.className = `fixed top-4 right-4 px-4 py-2 rounded ${
+        options.type === "error" ? "bg-red-500" : "bg-green-500"
+      } text-white z-50`
+      toastEl.textContent = options.message
+      toastContainer.appendChild(toastEl)
+      setTimeout(() => toastEl.remove(), 3000)
     }
   }
 
-  // New export pattern to avoid conflicts
-  module.exports = { TemplateDetails };
-} catch (error) {
-  console.error("Error in TemplateDetails module:", error);
-  
-  // Provide a fallback component that shows the error
-  function FallbackTemplateDetails() {
+  // Success toast shorthand
+  toast.success = function(message) {
+    return toast({ type: "success", message })
+  }
+  // Error toast shorthand
+  toast.error = function(message) {
+    return toast({ type: "error", message })
+  }
+
+  /**
+   * Template details component for viewing, editing, and creating templates
+   * @param {Object} props - Component props
+   * @param {Object} [props.template] - Template data, undefined for create mode
+   * @param {Function} props.onBack - Callback when navigating back
+   * @param {Function} [props.onTemplateChange] - Callback when template is modified
+   */
+  function TemplateDetails(props) {
+    console.log("TemplateDetails: Rendering with props:", JSON.stringify(props, null, 2));
+    const { template, onBack, onTemplateChange } = props
+    const { addToast } = useToast()
+    const navigate = useNavigate()
+    
+    const [isEditingName, setIsEditingName] = useState(false)
+    const [isEditingContent, setIsEditingContent] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isCopying, setIsCopying] = useState(false)
+    const [name, setName] = useState(template?.name || "")
+    const [content, setContent] = useState(template?.content || "")
+    const [category, setCategory] = useState(template?.category || "")
+
+    const isCreate = !template
+    const [initialLoad, setInitialLoad] = useState(true)
+
+    console.log("TemplateDetails: Initial state values:", { 
+      isCreate, 
+      name, 
+      hasContent: !!content, 
+      contentLength: content?.length,
+      category
+    });
+
+    // Use the template variables hook for better variable management
+    const {
+      parseResult,
+      values,
+      setVariableValue,
+      resetValues,
+      saveToGlobalVariables,
+      globalVariables,
+      isLoadingGlobalVariables
+    } = useTemplateVariables({
+      template: content,
+      initialValues: template?.variables,
+      useGlobalVariables: true
+    })
+
+    // Extract variables from parse result
+    const variables = parseResult?.variables || []
+    console.log("TemplateDetails: Variables parsed:", { 
+      variablesCount: variables.length,
+      variableNames: variables.map(v => v.name).join(', ')
+    });
+
+    useEffect(() => {
+      if (template && initialLoad) {
+        console.log("TemplateDetails: Initializing from template:", {
+          id: template.id,
+          name: template.name,
+          contentLength: template.content?.length,
+          hasVariables: !!template.variables
+        });
+        setName(template.name)
+        setContent(template.content) 
+        setCategory(template.category || "")
+        setInitialLoad(false)
+      }
+    }, [template, initialLoad])
+
+    // Handlers for editing, saving, copying, and deleting templates
+    const handleEdit = function(field) {
+      if (field === "name") {
+        setIsEditingName(true)
+      } else {
+        setIsEditingContent(true)
+      }
+    }
+
+    const handleCopy = async function() {
+      try {
+        setIsCopying(true)
+        
+        // Process the template with variable replacement
+        let processedContent = content
+        
+        // Replace variables using our utility, passing global variables
+        processedContent = _templateParser.replaceVariables(processedContent, values, globalVariables)
+        
+        await navigator.clipboard.writeText(processedContent)
+        addToast({
+          type: "success",
+          title: "Template copied",
+          message: "Template copied to clipboard with variables filled in"
+        })
+      } catch (e) {
+        console.error("Error copying template:", e)
+        addToast({
+          type: "error",
+          title: "Failed to copy",
+          message: "Could not copy template to clipboard"
+        })
+      } finally {
+        setIsCopying(false)
+      }
+    }
+
+    // Handle saving a variable to global store
+    const handleSaveToGlobal = async (variableNames) => {
+      try {
+        await saveToGlobalVariables(variableNames)
+        addToast({
+          type: "success",
+          title: "Variables saved",
+          message: "Variables were saved to your global store"
+        })
+      } catch (error) {
+        console.error("Error saving variables:", error)
+        addToast({
+          type: "error",
+          title: "Failed to save",
+          message: "There was an error saving variables to global store"
+        })
+      }
+    }
+
+    // Template saving and management logic
+    const handleSave = async function() {
+      try {
+        setIsSaving(true)
+
+        // Validate fields
+        if (!name) {
+          addToast({
+            type: "error",
+            title: "Missing name",
+            message: "Please enter a template name"
+          })
+          return
+        }
+
+        if (!content) {
+          addToast({
+            type: "error",
+            title: "Missing content",
+            message: "Please enter template content"
+          })
+          return
+        }
+
+        // Create template object with variables from the hook
+        const templateData = {
+          name,
+          content,
+          category,
+          variables: Object.entries(values).reduce((acc, [varName, varState]) => {
+            if (varState && typeof varState === 'object' && 'value' in varState) {
+              acc[varName] = varState.value;
+            }
+            return acc;
+          }, {})
+        }
+
+        if (isCreate) {
+          // Create new template
+          await createTemplate(templateData)
+          addToast({
+            type: "success",
+            title: "Template created",
+            message: "Template was created successfully"
+          })
+        } else if (template) {
+          // Update existing template
+          await updateTemplate(template.id, templateData)
+          addToast({
+            type: "success",
+            title: "Template updated",
+            message: "Template was updated successfully"
+          })
+        }
+
+        if (onTemplateChange) onTemplateChange()
+        onBack()
+      } catch (e) {
+        console.error("Error saving template:", e)
+        addToast({
+          type: "error",
+          title: "Failed to save",
+          message: "There was an error saving the template"
+        })
+      } finally {
+        setIsSaving(false)
+      }
+    }
+
+    // Delete template logic
+    const handleDelete = async function() {
+      if (!template) return
+
+      try {
+        setIsDeleting(true)
+        await deleteTemplate(template.id)
+        addToast({
+          type: "success",
+          title: "Template deleted",
+          message: "Template was deleted successfully"
+        })
+        if (onTemplateChange) onTemplateChange()
+        onBack()
+      } catch (e) {
+        console.error("Error deleting template:", e)
+        addToast({
+          type: "error",
+          title: "Failed to delete",
+          message: "There was an error deleting the template"
+        })
+      } finally {
+        setIsDeleting(false)
+      }
+    }
+
+    // Check if any variable is using a global value
+    const hasGlobalValues = Object.entries(values).some(([name]) => {
+      return Array.isArray(globalVariables) && globalVariables.some(v => v && typeof v === 'object' && 'name' in v && v.name === name)
+    })
+
+    // Check if any variable has been modified
+    const hasModifiedValues = Object.values(values).some(state => state && typeof state === 'object' && 'isDirty' in state && state.isDirty)
+
     return (
-      <div className="plasmo-p-8 plasmo-bg-red-50 plasmo-border plasmo-border-red-200 plasmo-rounded-md">
-        <h2 className="plasmo-text-lg plasmo-font-medium plasmo-text-red-800">Error Loading Template Component</h2>
-        <p className="plasmo-text-red-600 plasmo-mt-2">{error?.message || 'Unknown error'}</p>
-        <button
-          onClick={() => window.location.href = '/'}
-          className="plasmo-mt-4 plasmo-px-4 plasmo-py-2 plasmo-bg-red-100 plasmo-text-red-800 plasmo-rounded-md plasmo-border plasmo-border-red-200"
+      <div className="plasmo-flex plasmo-flex-col plasmo-gap-4 plasmo-p-2">
+        {/* Header with back button */}
+        <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+          <button
+            className="plasmo-h-8 plasmo-w-8 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-border plasmo-border-gray-300 plasmo-rounded hover:plasmo-bg-gray-100"
+            onClick={onBack}
+          >
+            ←
+          </button>
+          <h3 className="plasmo-text-sm plasmo-font-medium">
+            {isCreate ? "Create Template" : "Template Details"}
+          </h3>
+          <div className="plasmo-w-8" />
+        </div>
+
+        {/* Template name */}
+        <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+            <label className="plasmo-text-xs plasmo-text-gray-500">Template Name</label>
+            {!isEditingName && !isCreate && (
+              <button
+                className="plasmo-h-6 plasmo-w-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-gray-500 hover:plasmo-text-gray-700"
+                onClick={() => handleEdit("name")}
+              >
+                ✎
+              </button>
+            )}
+          </div>
+          {isEditingName || isCreate ? (
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter template name"
+              className="plasmo-h-8 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+            />
+          ) : (
+            <div className="plasmo-text-sm">{name}</div>
+          )}
+        </div>
+
+        {/* Category field */}
+        {(isEditingContent || isCreate) && (
+          <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+            <label className="plasmo-text-xs plasmo-text-gray-500">Category (optional)</label>
+            <input
+              type="text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Enter category"
+              className="plasmo-h-8 plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+            />
+          </div>
+        )}
+
+        {/* Template content */}
+        <div className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+            <label className="plasmo-text-xs plasmo-text-gray-500">Template Content</label>
+            {!isEditingContent && !isCreate && (
+              <div className="plasmo-flex plasmo-items-center plasmo-gap-1">
+                <button
+                  className="plasmo-h-6 plasmo-w-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-gray-500 hover:plasmo-text-gray-700"
+                  onClick={() => handleEdit("content")}
+                >
+                  ✎
+                </button>
+                <button
+                  className="plasmo-h-6 plasmo-w-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-gray-500 hover:plasmo-text-gray-700"
+                  onClick={handleCopy}
+                  disabled={isCopying}
+                >
+                  {isCopying ? 
+                    <span className="plasmo-animate-spin">↻</span> : 
+                    <span>📋</span>
+                  }
+                </button>
+              </div>
+            )}
+          </div>
+          {isEditingContent || isCreate ? (
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Enter template content"
+              className="plasmo-min-h-[100px] plasmo-text-sm plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+            />
+          ) : (
+            <div className="plasmo-whitespace-pre-wrap plasmo-rounded plasmo-border plasmo-border-gray-200 plasmo-bg-gray-50 plasmo-p-2 plasmo-text-sm">
+              {content}
+            </div>
+          )}
+        </div>
+
+        {/* Variables Section */}
+        <div className="plasmo-flex plasmo-flex-col plasmo-gap-2">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+            <div className="plasmo-flex plasmo-items-center">
+              <label className="plasmo-text-xs plasmo-text-gray-500 plasmo-mr-2">Template Variables</label>
+              
+              {/* Show count of variables */}
+              {variables.length > 0 && (
+                <span className="plasmo-text-xs plasmo-bg-gray-100 plasmo-text-gray-700 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full">
+                  {variables.length}
+                </span>
+              )}
+              
+              {/* Show indicator if using global values */}
+              {hasGlobalValues && (
+                <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-green-100 plasmo-text-green-700 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full plasmo-flex plasmo-items-center">
+                  <span className="plasmo-h-1.5 plasmo-w-1.5 plasmo-rounded-full plasmo-bg-green-500 plasmo-mr-1"></span>
+                  Using global values
+                </span>
+              )}
+            </div>
+
+            {/* Variable actions */}
+            {!isEditingContent && !isCreate && variables.length > 0 && (
+              <div className="plasmo-flex plasmo-items-center plasmo-space-x-2">
+                {/* Reset button */}
+                {hasModifiedValues && (
+                  <button
+                    onClick={resetValues}
+                    className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
+                  >
+                    <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reset
+                  </button>
+                )}
+                
+                {/* Save to Global button */}
+                {hasModifiedValues && (
+                  <button
+                    onClick={() => handleSaveToGlobal()}
+                    className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
+                  >
+                    <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Save to Global
+                  </button>
+                )}
+                
+                {/* Manage variables button */}
+                <button
+                  onClick={() => navigate("/variables")}
+                  className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
+                >
+                  <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  Manage Variables
+                  {isLoadingGlobalVariables ? (
+                    <svg className="plasmo-animate-spin plasmo-h-3 plasmo-w-3 plasmo-ml-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="plasmo-opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="plasmo-opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <span className="plasmo-ml-1 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full plasmo-bg-gray-100 plasmo-text-gray-600 plasmo-text-xs">
+                      {globalVariables.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Variable Inputs */}
+          {variables.length > 0 ? (
+            <div className="plasmo-rounded plasmo-border plasmo-border-gray-200 plasmo-p-3 plasmo-bg-white">
+              {/* Info about global variables */}
+              {globalVariables.length > 0 && (
+                <div className="plasmo-mb-3 plasmo-p-2 plasmo-bg-gray-50 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
+                  <div className="plasmo-flex plasmo-items-center plasmo-text-xs plasmo-text-gray-600">
+                    <svg className="plasmo-h-4 plasmo-w-4 plasmo-mr-1.5 plasmo-text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Variables with a <span className="plasmo-text-green-600 plasmo-font-medium">green background</span> are using values from your global variables.</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="plasmo-space-y-4">
+                {variables.map((variable, index) => {
+                  // Check if this variable has a matching global variable
+                  const globalVariable = Array.isArray(globalVariables) && globalVariables.find(g => g && typeof g === 'object' && 'name' in g && g.name === variable.name);
+                  const state = values[variable.name] || { value: '', isDirty: false, isValid: true, errors: [] };
+                  const isGlobalValue = !!globalVariable;
+                  
+                  return (
+                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+                      <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+                        <div className="plasmo-flex plasmo-items-center">
+                          <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                            {variable.name}
+                            {variable.isRequired && <span className="plasmo-text-red-500 plasmo-ml-0.5">*</span>}
+                          </label>
+                          
+                          {/* Status badges */}
+                          {state.isDirty && (
+                            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
+                              Modified
+                            </span>
+                          )}
+                          
+                          {isGlobalValue && (
+                            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-green-100 plasmo-text-green-800">
+                              Global
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Individual save button */}
+                        {state.isDirty && state.isValid && (
+                          <button
+                            onClick={() => handleSaveToGlobal([variable.name])}
+                            className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-green-600 plasmo-focus:outline-none"
+                            title="Save to global variables"
+                          >
+                            <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Description if available */}
+                      {variable.description && (
+                        <p className="plasmo-text-xs plasmo-text-gray-500 plasmo-mb-1">
+                          {variable.description}
+                        </p>
+                      )}
+                      
+                      {/* Input field */}
+                      <div className="plasmo-relative plasmo-group">
+                        <input
+                          type="text"
+                          value={state.value}
+                          onChange={(e) => setVariableValue(variable.name, e.target.value)}
+                          placeholder={variable.defaultValue || ''}
+                          className={`
+                            plasmo-block plasmo-w-full plasmo-rounded-md plasmo-shadow-sm plasmo-px-3 plasmo-py-1.5 plasmo-text-sm
+                            ${!state.isValid ? 'plasmo-border-red-300 plasmo-bg-red-50' : isGlobalValue ? 'plasmo-border-green-300 plasmo-bg-green-50' : state.isDirty ? 'plasmo-border-blue-300 plasmo-bg-white' : 'plasmo-border-gray-300 plasmo-bg-gray-50'}
+                            plasmo-focus:outline-none plasmo-focus:ring-2 ${!state.isValid ? 'plasmo-focus:ring-red-500 plasmo-focus:ring-opacity-30' : 'plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-30'}
+                          `}
+                        />
+                      </div>
+                      
+                      {/* Error messages */}
+                      {state.errors && state.errors.length > 0 && (
+                        <ul className="plasmo-mt-1 plasmo-text-xs plasmo-text-red-600 plasmo-list-disc plasmo-list-inside">
+                          {state.errors.map((error, i) => (
+                            <li key={i}>{error.message}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-p-3 plasmo-bg-gray-50 plasmo-rounded plasmo-border plasmo-border-gray-200">
+              No variables defined in this template
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="plasmo-flex plasmo-justify-end plasmo-gap-2 plasmo-mt-2">
+          {!isCreate && (
+            <button
+              className={cn(
+                "plasmo-h-8 plasmo-px-3 plasmo-py-1 plasmo-text-xs plasmo-text-white plasmo-bg-red-500 plasmo-rounded hover:plasmo-bg-red-600 plasmo-flex plasmo-items-center plasmo-gap-1",
+                isDeleting && "plasmo-opacity-70 plasmo-cursor-not-allowed"
+              )}
+              disabled={isDeleting}
+              onClick={handleDelete}
+            >
+              {isDeleting ? 
+                <span className="plasmo-animate-spin">↻</span> : 
+                <span>🗑</span>
+              }
+              Delete
+            </button>
+          )}
+          <button
+            className={cn(
+              "plasmo-h-8 plasmo-px-3 plasmo-py-1 plasmo-text-xs plasmo-text-white plasmo-bg-blue-500 plasmo-rounded hover:plasmo-bg-blue-600 plasmo-flex plasmo-items-center plasmo-gap-1",
+              isSaving && "plasmo-opacity-70 plasmo-cursor-not-allowed"
+            )}
+            disabled={isSaving}
+            onClick={handleSave}
+          >
+            {isSaving ? 
+              <span className="plasmo-animate-spin">↻</span> : 
+              <span>+</span>
+            }
+            {isCreate ? "Create" : "Save"}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Export using CommonJS module syntax
+  module.exports = TemplateDetails
+  
+  // Also export as a named export for ESM compatibility
+  module.exports.TemplateDetails = TemplateDetails
+} catch (error) {
+  console.error("Error in TemplateDetails component initialization:", error);
+  
+  // Provide a fallback component if the main one fails to load
+  function FallbackTemplateDetails(props) {
+    return (
+      <div className="plasmo-p-4 plasmo-bg-red-50 plasmo-border plasmo-border-red-200 plasmo-rounded-md plasmo-text-red-600">
+        <h3 className="plasmo-text-sm plasmo-font-medium">Error Loading Template Details</h3>
+        <p className="plasmo-mt-2 plasmo-text-sm">
+          There was an error loading the template details component. Please try refreshing the page.
+        </p>
+        {error && <p className="plasmo-mt-1 plasmo-text-xs">{String(error)}</p>}
+        <button 
+          className="plasmo-mt-3 plasmo-px-3 plasmo-py-1 plasmo-text-xs plasmo-text-white plasmo-bg-blue-500 plasmo-rounded" 
+          onClick={props.onBack}
         >
-          Return to Home
+          Go Back
         </button>
       </div>
     );
   }
   
-  module.exports = { TemplateDetails: FallbackTemplateDetails };
+  module.exports = FallbackTemplateDetails;
+  
+  // Also export as a named export for ESM compatibility
+  module.exports.TemplateDetails = FallbackTemplateDetails;
 } 

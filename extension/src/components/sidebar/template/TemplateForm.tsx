@@ -38,6 +38,8 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
       resetValues,
       hasAllRequiredValues,
       saveToGlobalVariables,
+      globalVariables,
+      isLoadingGlobalVariables
     } = useTemplateVariables({
       template: formData.content,
       initialValues: template?.variables,
@@ -169,6 +171,8 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
               onVariableChange={setVariableValue}
               onReset={resetValues}
               onSaveToGlobal={handleSaveToGlobal}
+              globalVariables={globalVariables}
+              isLoadingGlobalVariables={isLoadingGlobalVariables}
             />
           </div>
 

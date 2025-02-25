@@ -8,6 +8,7 @@ try {
    * @typedef {import('../../../types/template-variables').TemplateVariable} TemplateVariable
    * @typedef {import('../../../types/template-variables').TemplateVariableValues} TemplateVariableValues
    * @typedef {import('../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
+   * @typedef {import('../../../shared/types/variables').UserVariable} UserVariable
    */
 
   /**
@@ -20,6 +21,8 @@ try {
    * @property {Record<string, VariableValidationOptions>} [validationOptions] - Validation options
    * @property {string[]} [multilineVariables] - List of variables that should use multiline inputs
    * @property {string} [className] - Additional CSS class
+   * @property {UserVariable[]} [globalVariables] - Global user variables from store
+   * @property {boolean} [isLoadingGlobalVariables] - Whether global variables are loading
    */
 
   /**
@@ -35,12 +38,15 @@ try {
     onSaveToGlobal,
     validationOptions,
     multilineVariables = [],
-    className = ''
+    className = '',
+    globalVariables = [],
+    isLoadingGlobalVariables = false
   }) {
     try {
       console.log("VariableMapping rendering with", { 
         variablesCount: variables?.length || 0, 
-        valuesCount: Object.keys(values || {}).length 
+        valuesCount: Object.keys(values || {}).length,
+        globalVariablesCount: globalVariables?.length || 0
       });
       
       // Filter out invalid variables (safety check)
@@ -65,6 +71,13 @@ try {
           if (modifiedVariables.length > 0) {
             await onSaveToGlobal(modifiedVariables);
           }
+        }
+      };
+      
+      // Handle saving a single variable to global store
+      const handleSaveSingleToGlobal = async (variableName) => {
+        if (onSaveToGlobal) {
+          await onSaveToGlobal([variableName]);
         }
       };
 
@@ -123,10 +136,23 @@ try {
                 {onSaveToGlobal && (
                   <button
                     onClick={() => navigate("/variables")}
-                    className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-focus:outline-none"
+                    className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-focus:outline-none plasmo-flex plasmo-items-center"
                     type="button"
                   >
+                    <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
                     Manage Global Variables
+                    {isLoadingGlobalVariables ? (
+                      <svg className="plasmo-animate-spin plasmo-h-3 plasmo-w-3 plasmo-ml-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="plasmo-opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="plasmo-opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <span className="plasmo-ml-1 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full plasmo-bg-gray-100 plasmo-text-gray-600 plasmo-text-xs">
+                        {globalVariables.length}
+                      </span>
+                    )}
                   </button>
                 )}
               </div>
@@ -136,6 +162,8 @@ try {
                 onVariableChange={onVariableChange}
                 validationOptions={validationOptions || {}}
                 multilineVariables={multilineVariables}
+                globalVariables={globalVariables}
+                onSaveToGlobal={onSaveToGlobal ? handleSaveSingleToGlobal : undefined}
               />
             </div>
           ) : (

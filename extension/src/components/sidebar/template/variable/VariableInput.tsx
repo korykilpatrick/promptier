@@ -16,6 +16,8 @@ const { useDebounceValue } = require('../../../../hooks/useDebounce');
  * @property {VariableValidationOptions} [validationOptions] - Validation options
  * @property {boolean} [multiline=false] - Whether to use multiline input
  * @property {string} [className] - Additional CSS class
+ * @property {boolean} [isGlobalValue=false] - Whether this variable has a value from global variables
+ * @property {function(string): void} [onSaveToGlobal] - Function to save this variable to global variables
  */
 
 /**
@@ -29,7 +31,9 @@ function VariableInput({
   onChange,
   validationOptions,
   className = '',
-  multiline = false
+  multiline = false,
+  isGlobalValue = false,
+  onSaveToGlobal
 }) {
   const inputId = `var-${variable.name}`;
   const hasErrors = state.errors && state.errors.length > 0;
@@ -64,6 +68,13 @@ function VariableInput({
   const handleFocus = useCallback(() => setIsFocused(true), []);
   const handleBlur = useCallback(() => setIsFocused(false), []);
 
+  // Handle saving to global variables
+  const handleSaveToGlobal = useCallback(() => {
+    if (onSaveToGlobal) {
+      onSaveToGlobal(variable.name);
+    }
+  }, [onSaveToGlobal, variable.name]);
+
   // Calculate status message
   const getStatusMessage = () => {
     if (isPending) return 'Typing...';
@@ -79,12 +90,14 @@ function VariableInput({
   const getBorderColorClass = () => {
     if (!state.isValid) return 'plasmo-border-red-300 plasmo-focus:border-red-500 plasmo-focus:ring-red-500 plasmo-focus:ring-opacity-30';
     if (isFocused) return 'plasmo-border-blue-400 plasmo-ring-2 plasmo-ring-blue-500 plasmo-ring-opacity-20';
+    if (isGlobalValue) return 'plasmo-border-green-300 plasmo-focus:border-green-500 plasmo-focus:ring-green-500 plasmo-focus:ring-opacity-20';
     return 'plasmo-border-gray-300 plasmo-focus:border-blue-500 plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20';
   };
 
   // Get background color based on state
   const getBackgroundColorClass = () => {
     if (!state.isValid) return 'plasmo-bg-red-50';
+    if (isGlobalValue) return 'plasmo-bg-green-50';
     if (state.isDirty) return 'plasmo-bg-white';
     return 'plasmo-bg-gray-50';
   };
@@ -131,6 +144,12 @@ function VariableInput({
           {state.isDirty && (
             <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
               Modified
+            </span>
+          )}
+          
+          {isGlobalValue && (
+            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-green-100 plasmo-text-green-800">
+              Global
             </span>
           )}
         </div>
@@ -212,6 +231,22 @@ function VariableInput({
                 clipRule="evenodd"
               />
             </svg>
+          </div>
+        )}
+        
+        {/* Save to global button for valid variables */}
+        {state.isValid && state.isDirty && onSaveToGlobal && !isGlobalValue && !hasErrors && (
+          <div className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-2 plasmo-flex plasmo-items-center plasmo-opacity-0 group-hover:plasmo-opacity-100 plasmo-transition-opacity">
+            <button
+              type="button"
+              onClick={handleSaveToGlobal}
+              className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-green-600 plasmo-focus:outline-none"
+              title="Save to global variables"
+            >
+              <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+            </button>
           </div>
         )}
       </div>
