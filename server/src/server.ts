@@ -28,6 +28,7 @@ import type { Request, Response } from 'express';
 import cors from 'cors';
 import templatesRouter from './routes/templates.js';
 import chainsRouter from './routes/chains.js';
+import variablesRouter from './routes/variables.js';
 import { requireAuth } from '@clerk/express';
 import dotenv from 'dotenv';
 
@@ -60,6 +61,7 @@ app.get('/health', (req: Request, res: Response) => {
 // Mount protected routes with authentication middleware
 app.use('/templates', authMiddleware, templatesRouter);
 app.use('/chains', authMiddleware, chainsRouter);
+app.use('/variables', authMiddleware, variablesRouter);
 
 // Start the server on the specified port (default 3000)
 const port = process.env.PORT || 3000;

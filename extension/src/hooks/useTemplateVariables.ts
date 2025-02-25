@@ -1,70 +1,119 @@
-import { useState, useCallback, useMemo } from 'react';
-import { TemplateVariableError } from 'shared/types/template-variables';
-import type {
-  TemplateVariable,
-  TemplateVariableValues,
-  TemplateVariableValidationError,
-  VariableValidationOptions
-} from 'shared/types/template-variables';
-import { useTemplateParser } from './useTemplateParser';
+const { useState, useCallback, useMemo, useEffect } = require('react');
+const { TemplateVariableError } = require('shared/types/template-variables');
+const { useTemplateParser } = require('./useTemplateParser');
+const { useUserVariables } = require('./useUserVariables');
 
-interface UseTemplateVariablesProps {
-  template: string;
-  initialValues?: Record<string, string>;
-  validationOptions?: Record<string, VariableValidationOptions>;
-  parserOptions?: {
-    useCache?: boolean;
-    skipUnchanged?: boolean;
-  };
-}
+/**
+ * @typedef {import('shared/types/template-variables').TemplateVariable} TemplateVariable
+ * @typedef {import('shared/types/template-variables').TemplateVariableValues} TemplateVariableValues
+ * @typedef {import('shared/types/template-variables').TemplateVariableValidationError} TemplateVariableValidationError
+ * @typedef {import('shared/types/template-variables').VariableValidationOptions} VariableValidationOptions
+ */
 
-interface UseTemplateVariablesReturn {
-  parseResult: ReturnType<typeof useTemplateParser>['parseResult'];
-  values: TemplateVariableValues;
-  setVariableValue: (name: string, value: string) => void;
-  resetValues: () => void;
-  hasAllRequiredValues: boolean;
-  validationErrors: TemplateVariableValidationError[];
-  parserStats: {
-    cacheHit: boolean;
-    parseTime: number;
-  };
-}
+/**
+ * @typedef {Object} UseTemplateVariablesProps
+ * @property {string} template - The template string to parse
+ * @property {Record<string, string>} [initialValues] - Initial variable values
+ * @property {Record<string, VariableValidationOptions>} [validationOptions] - Validation options
+ * @property {Object} [parserOptions] - Parser options
+ * @property {boolean} [parserOptions.useCache] - Whether to use cache
+ * @property {boolean} [parserOptions.skipUnchanged] - Whether to skip unchanged
+ * @property {boolean} [useGlobalVariables] - Whether to use global variables
+ */
 
-export function useTemplateVariables({
+/**
+ * Hook for extracting and managing template variables
+ * @param {UseTemplateVariablesProps} options - Options
+ * @returns {Object} Template variables state and methods
+ */
+function useTemplateVariables({
   template,
   initialValues = {}, // Default to empty object
   validationOptions = {},
-  parserOptions = {}
-}: UseTemplateVariablesProps): UseTemplateVariablesReturn {
+  parserOptions = {},
+  useGlobalVariables = true
+}) {
   // Use optimized template parser
   const { parseResult, cacheStats } = useTemplateParser(template, parserOptions);
+
+  // Access global user variables
+  const {
+    variables: globalVariables,
+    isLoading: isLoadingGlobalVariables,
+    createVariable
+  } = useUserVariables({ autoFetch: useGlobalVariables });
 
   // Ensure variables is always an array
   const safeVariables = parseResult.variables ?? [];
 
-  // Initialize values with defaults from variables
+  // Initialize values with defaults from variables and global variables
   const initialState = useMemo(() => {
-    const state: TemplateVariableValues = {};
+    const state = {};
+    
     safeVariables.forEach(v => {
-      const initialValue = initialValues[v.name] ?? v.defaultValue ?? '';
+      // Try to get the value from initialValues, then global variables, then default value
+      let initialValue = initialValues[v.name];
+      let isDirty = initialValues[v.name] !== undefined;
+      
+      // If useGlobalVariables is true and we don't have a value yet, try to get it from global variables
+      if (useGlobalVariables && initialValue === undefined) {
+        const globalVar = globalVariables.find(gv => gv.name === v.name);
+        if (globalVar) {
+          initialValue = globalVar.value;
+          isDirty = true;
+        }
+      }
+
+      // If we still don't have a value, use the default value
+      if (initialValue === undefined) {
+        initialValue = v.defaultValue ?? '';
+        isDirty = false;
+      }
+
       state[v.name] = {
         value: initialValue,
-        isDirty: initialValues[v.name] !== undefined,
+        isDirty,
         isValid: true,
         errors: []
       };
     });
+    
     return state;
-  }, [safeVariables, initialValues]);
+  }, [safeVariables, initialValues, globalVariables, useGlobalVariables]);
 
-  const [values, setValues] = useState<TemplateVariableValues>(initialState);
+  const [values, setValues] = useState(initialState);
+
+  // Update values when global variables change
+  useEffect(() => {
+    if (useGlobalVariables && globalVariables.length > 0) {
+      setValues(prev => {
+        const newValues = { ...prev };
+        let hasChanges = false;
+
+        safeVariables.forEach(v => {
+          const globalVar = globalVariables.find(gv => gv.name === v.name);
+          
+          // Only update if the variable doesn't already have a user-set value
+          if (globalVar && !prev[v.name]?.isDirty) {
+            newValues[v.name] = {
+              ...prev[v.name],
+              value: globalVar.value,
+              isDirty: true
+            };
+            hasChanges = true;
+          }
+        });
+
+        return hasChanges ? newValues : prev;
+      });
+    }
+  }, [globalVariables, safeVariables, useGlobalVariables]);
 
   // Validate a single variable value
-  const validateValue = useCallback((name: string, value: string) => {
+  const validateValue = useCallback((name, value) => {
     const variable = safeVariables.find(v => v.name === name);
     const options = validationOptions[name];
-    const errors: TemplateVariableValidationError[] = [];
+    const errors = [];
 
     if (variable?.isRequired && !value) {
       errors.push({
@@ -106,7 +155,7 @@ export function useTemplateVariables({
   }, [safeVariables, validationOptions]);
 
   // Set a single variable value
-  const setVariableValue = useCallback((name: string, value: string) => {
+  const setVariableValue = useCallback((name, value) => {
     setValues(prev => {
       const errors = validateValue(name, value);
       return {
@@ -137,6 +186,23 @@ export function useTemplateVariables({
       .flat();
   }, [safeVariables, values]);
 
+  // Save selected variables to global variables
+  const saveToGlobalVariables = useCallback(async (variableNames) => {
+    if (!useGlobalVariables) return;
+
+    const namesToSave = variableNames || 
+      Object.entries(values)
+        .filter(([_, state]) => state.isDirty && state.isValid)
+        .map(([name]) => name);
+
+    for (const name of namesToSave) {
+      const state = values[name];
+      if (state && state.isValid) {
+        await createVariable({ name, value: state.value });
+      }
+    }
+  }, [values, createVariable, useGlobalVariables]);
+
   const hasAllRequiredValues = validationErrors.length === 0;
 
   return {
@@ -146,6 +212,11 @@ export function useTemplateVariables({
     resetValues,
     hasAllRequiredValues,
     validationErrors,
-    parserStats: cacheStats
+    parserStats: cacheStats,
+    saveToGlobalVariables,
+    globalVariables,
+    isLoadingGlobalVariables
   };
 }
+
+module.exports = { useTemplateVariables };

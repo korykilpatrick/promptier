@@ -3,6 +3,7 @@ const React = require("react");
 const { useState, useEffect } = React;
 const { useTemplateVariables } = require("../../../hooks/useTemplateVariables");
 const { VariableMapping } = require("./VariableMapping");
+const { useToast } = require("../../../hooks/useToast");
 
 /**
  * @typedef {import("../../../../shared/types/templates").Template} Template
@@ -20,6 +21,8 @@ const { VariableMapping } = require("./VariableMapping");
  */
 const TemplateForm = ({ template, onSubmit, onCancel }) => {
   try {
+    const { addToast } = useToast();
+    
     const [formData, setFormData] = useState({
       name: template?.name ?? "",
       category: template?.category ?? "",
@@ -33,10 +36,12 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
       values,
       setVariableValue,
       resetValues,
-      hasAllRequiredValues
+      hasAllRequiredValues,
+      saveToGlobalVariables,
     } = useTemplateVariables({
       template: formData.content,
-      initialValues: template?.variables
+      initialValues: template?.variables,
+      useGlobalVariables: true
     });
 
     const handleSubmit = (e) => {
@@ -48,6 +53,25 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
         isFavorite: formData.isFavorite,
         variables: values // Include variable values in the submission
       });
+    };
+    
+    // Save variables to global store
+    const handleSaveToGlobal = async (variableNames) => {
+      try {
+        await saveToGlobalVariables(variableNames);
+        addToast({
+          type: "success",
+          title: "Variables saved",
+          message: "Variables were saved to your global store",
+        });
+      } catch (error) {
+        console.error("Error saving variables:", error);
+        addToast({
+          type: "error",
+          title: "Failed to save variables",
+          message: "There was an error saving your variables to the global store",
+        });
+      }
     };
 
     useEffect(() => {
@@ -144,6 +168,7 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
               values={values}
               onVariableChange={setVariableValue}
               onReset={resetValues}
+              onSaveToGlobal={handleSaveToGlobal}
             />
           </div>
 

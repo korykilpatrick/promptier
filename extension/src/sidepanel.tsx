@@ -6,6 +6,8 @@ import { TemplateDetails } from "~components/sidebar/template/TemplateDetails"
 import { ToastContainer } from "~components/common/Toast"
 import { useToast } from "~hooks/useToast"
 import "./style.css"
+import { VariablesPage } from "~components/sidebar/variables/VariablesPage"
+import { Navigation } from "~components/sidebar/Navigation"
 
 const PUBLISHABLE_KEY = process.env.PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY
 
@@ -33,10 +35,12 @@ function SidePanel() {
         <main className="plasmo-flex-1 plasmo-overflow-y-auto">
           <SignedIn>
             <Router>
+              <Navigation />
               <Routes>
                 <Route path="/" element={<Sidebar />} />
                 <Route path="/templates/new" element={<TemplateDetails />} />
                 <Route path="/templates/:id" element={<TemplateDetails />} />
+                <Route path="/variables" element={<VariablesPage />} />
               </Routes>
             </Router>
           </SignedIn>
