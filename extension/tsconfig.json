@@ -15,8 +15,9 @@
       "shared/*": ["../shared/*"]
     },
     "baseUrl": ".",
-    "moduleResolution": "bundler",
+    "module": "ES6",
+    "moduleResolution": "node",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": false
   }
 }
