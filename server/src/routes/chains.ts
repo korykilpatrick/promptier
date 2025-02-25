@@ -34,13 +34,13 @@ import {
   createChain, 
   updateChain, 
   deleteChain 
-} from '../services/chains';
+} from '../services/chains.js';
 import { 
   ChainRequest, 
   ChainResponse, 
   SuccessResponse, 
   ErrorResponse 
-} from '../types/api';
+} from '../types/api.js';
 
 const router = express.Router();
 

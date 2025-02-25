@@ -7,12 +7,56 @@ globs:
 ## Background
 We integrated Clerk authentication into our Express backend and encountered issues with TypeScript errors when trying to access custom properties (e.g., `req.userId`). The Clerk docs recommend using helper functions rather than directly attaching properties to the Express Request object. Reference the Express quickstart guide found here https://clerk.com/docs/quickstarts/express#add-global-type-script-type-optional
 
-## Module System
+## Module System and Tech Stack
 
-We use ES6 modules throughout the entire project. This means:
-- Always use `import` and `export` syntax (not `require` or `module.exports`)
+We use the following tech stack EXCLUSIVELY throughout the entire project:
+- **ES6 modules only** (NEVER use CommonJS)
+- **TypeScript only** (NEVER create .js files, always use .ts/.tsx)
+- **React** for frontend components
+- **Express** with TypeScript for backend
+
+This means:
+- Always use `import` and `export` syntax (NEVER use `require` or `module.exports`)
 - Use named exports where appropriate for better tree-shaking
 - Import type definitions using `import type { Type } from 'path'`
+- All new files must be .ts or .tsx (NEVER .js or .jsx)
+
+### ES6 Modules with TypeScript
+
+When working with ES6 modules in TypeScript, especially in Node.js environments:
+
+1. **Package.json Configuration**
+   - Always include `"type": "module"` in package.json to indicate ES6 modules
+   - Use the proper loader for ts-node: `node --loader ts-node/esm` instead of just `ts-node`
+
+2. **TSConfig Settings**
+   - Set `"module": "ES6"` and `"moduleResolution": "node"` in tsconfig.json
+   - Include `"esm": true` and `"experimentalSpecifierResolution": "node"` in the ts-node section
+   - Set `"rootDir"` to include all source directories (including shared code)
+
+3. **Importing CommonJS Modules in ES6**
+   - Many npm packages are still CommonJS modules
+   - Use this pattern for importing CommonJS modules:
+     ```ts
+     // Instead of: import { Something } from 'commonjs-package';
+     import pkg from 'commonjs-package';
+     const { Something } = pkg;
+     ```
+
+4. **File Extensions in Imports**
+   - With ES6 modules, file extensions are required in relative imports
+   - Always use `.js` extension in imports, even for TypeScript files:
+     ```ts
+     // Correct
+     import { something } from './utils/helpers.js';
+     
+     // Incorrect - will cause runtime errors
+     import { something } from './utils/helpers';
+     ```
+
+5. **Shared Code Between Projects**
+   - When importing from shared directories, use proper relative paths with extensions
+   - Set `"rootDir"` in tsconfig.json to include all source directories
 
 ## Key Learnings
 
@@ -29,19 +73,9 @@ We use ES6 modules throughout the entire project. This means:
 3. **Before creating any new files, ALWAYS check to ensure you are not making a file that already exists somewhere else.** 
    Before each change, understand the whole code base thoroughly and ensure you are making decisions that a world-class engineer would make.
 
-4. **Module System Consistency Across Components**
-   - When converting files between module systems (for compatibility reasons), use a consistent approach across related components.
-   - If using CommonJS pattern temporarily, prefix imported variables with underscores to avoid redeclaration conflicts:
-     ```js
-     // Use this pattern to avoid redeclaration errors
-     const _React = require("react");
-     const { useState } = _React;
-     ```
-   - Always use try/catch blocks in CommonJS components to provide graceful degradation and meaningful error messages.
-
-5. **Navigation State Management in React Router**
+4. **Navigation State Management in React Router**
    - When navigating between pages, always include necessary state flags for different modes:
-     ```js
+     ```ts
      navigate("/templates/new", { state: { createTemplate: true } });
      navigate(`/templates/${id}`, { state: { template, editMode: true } });
      ```
