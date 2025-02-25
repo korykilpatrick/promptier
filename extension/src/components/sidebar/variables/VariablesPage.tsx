@@ -27,7 +27,9 @@ function VariablesPage() {
     setEditingId(variable.id);
     setEditForm({
       name: variable.name,
-      value: variable.value
+      value: Array.isArray(variable.value) && variable.value.length > 0 
+        ? variable.value.map(entry => entry.value).join('\n') 
+        : ''
     });
   }, []);
 
@@ -49,9 +51,14 @@ function VariablesPage() {
     }
 
     try {
+      // Convert the value string to an array of text entries
+      const valueArray = editForm.value.trim()
+        ? [{ type: 'text', value: editForm.value }]
+        : [];
+        
       await updateVariable(editingId, {
         name: editForm.name.trim(),
-        value: editForm.value
+        value: valueArray
       });
       
       setEditingId(null);
@@ -107,9 +114,14 @@ function VariablesPage() {
     }
 
     try {
+      // Convert the value string to an array of text entries
+      const valueArray = newVariable.value.trim()
+        ? [{ type: 'text', value: newVariable.value }]
+        : [];
+        
       await createVariable({
         name: newVariable.name.trim(),
-        value: newVariable.value
+        value: valueArray
       });
       
       setNewVariable({ name: "", value: "" });
@@ -294,7 +306,19 @@ function VariablesPage() {
                     </div>
                   </div>
                   <div className="plasmo-mt-2">
-                    <pre className="plasmo-whitespace-pre-wrap plasmo-break-all plasmo-text-sm plasmo-bg-gray-50 plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-gray-200">{variable.value}</pre>
+                    <pre className="plasmo-whitespace-pre-wrap plasmo-break-all plasmo-text-sm plasmo-bg-gray-50 plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
+                      {Array.isArray(variable.value) 
+                        ? variable.value.map((entry: { type: string; value: string; name?: string }, index: number) => (
+                            <div key={index} className="plasmo-mb-2">
+                              {entry.name && <div className="plasmo-font-semibold plasmo-mb-1">{entry.name}</div>}
+                              <div className="plasmo-ml-2">
+                                <span className="plasmo-text-xs plasmo-text-gray-500 plasmo-mr-1">[{entry.type}]</span>
+                                {entry.value}
+                              </div>
+                            </div>
+                          ))
+                        : variable.value}
+                    </pre>
                   </div>
                 </div>
               )}

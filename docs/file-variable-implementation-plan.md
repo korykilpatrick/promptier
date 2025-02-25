@@ -30,267 +30,264 @@ When working on this feature:
 3. Add notes or modifications to steps as needed during implementation
 4. Use this as a reference to track progress and ensure all components are completed
 
+## Implementation Approach Change
+Note: The original implementation plan called for adding a 'type' column to the user_variables table. However, after further consideration, we've decided to use a more flexible approach:
+
+1. We're converting the 'value' column to JSONB format instead of adding a type column
+2. This allows variables to store multiple files/directories and supports mixed content types
+3. The JSONB structure uses an array of objects with 'type', 'id', 'name', and 'value' fields
+4. This approach better supports the advanced features we want to implement
+
+The steps below have been updated to reflect this new approach.
+
 ## Implementation Steps
 
 ### Database Changes
-- [ ] 1. **Migration: Add Type Column**
-   - Create migration file to add `type` column to `user_variables` table
-   - Set default value to 'text'
-   - Add enum constraint for valid types ('text', 'file', 'directory')
-
-- [ ] 2. **Migration: Add Index**
-   - Add index on the new `type` column for query performance
-
-- [ ] 3. **Update Schema Documentation**
-   - Update database schema documentation to reflect new column
+- [x] 1. **Migration: Convert Value to JSONB**
+   - Create migration file to convert the 'value' column in 'user_variables' table to JSONB
+   - Implement migration strategy that preserves existing text values
+   - Update database documentation to reflect the change
 
 ### Backend Model Updates
-- [ ] 4. **Update Variable Model**
-   - Add `type` field to variable model/class
-   - Update type definitions
+- [x] 2. **Update Variable Types**
+   - Create types for variable entries (text, file, directory)
+   - Update variable model interfaces to use the new JSONB structure
+   - Add constants for entry types
 
-- [ ] 5. **Add Validation**
-   - Implement validation for the new variable types
-   - Add constraints for file paths
-
-- [ ] 6. **Create Type Constants**
-   - Define constants for variable types ('TEXT', 'FILE', 'DIRECTORY')
-   - Add helper functions to check variable types
+- [x] 3. **Add Validation**
+   - Implement validation for variable entries
+   - Add path validation for file and directory entries
 
 ### Basic File Variable Backend Support
-- [ ] 7. **Type Check Utility**
-   - Create utility function to check if variable is file-type
-   - Add type-specific validation
+- [x] 4. **Variable Entry Utilities**
+   - Create utility functions to work with the new variable format
+   - Add helper functions to create and validate entries
 
-- [ ] 8. **Creation Endpoint Update**
-   - Update variable creation logic to handle file-type variables
-   - Add validation for file paths
+- [x] 5. **Creation Endpoint Update**
+   - Update variable creation logic to handle JSONB entries
+   - Add validation for file/directory paths
 
-- [ ] 9. **Update Endpoint Enhancement**
-   - Modify variable update logic for file-type variables
-   - Handle file path changes
+- [x] 6. **Update Endpoint Enhancement**
+   - Modify variable update logic for JSONB data
+   - Ensure proper error handling
 
-- [ ] 10. **Path Validation**
-    - Create utility to validate file paths
-    - Add security checks for path traversal
+- [x] 7. **Path Validation**
+   - Create utilities to validate file paths
+   - Add security checks for path traversal
 
 ### Advanced Backend File Handling
-- [ ] 11. **File Reading Utility**
-    - Create function to read file contents
-    - Add error handling for file access issues
+- [x] 8. **File Reading Utility**
+   - Create function to read file contents
+   - Add error handling for file access issues
 
-- [ ] 12. **Text File Content Extraction**
-    - Implement content extraction for text files
-    - Add encoding detection/handling
+- [x] 9. **Text File Content Extraction**
+   - Implement content extraction for text files
+   - Add encoding detection/handling
 
-- [ ] 13. **Directory Path Handling**
+- [x] 10. **Directory Path Handling**
     - Add support for directory path variables
     - Implement directory content listing
 
-- [ ] 14. **File Size Checking**
+- [x] 11. **File Size Checking**
     - Implement size validation for files
     - Add configurable limits for file sizes
 
-- [ ] 15. **Content Caching**
+- [ ] 12. **Content Caching**
     - Create caching mechanism for file contents
     - Add cache invalidation logic
 
 ### API Endpoint Updates
-- [ ] 16. **GET Variable Endpoint**
-    - Update to include type information
-    - Add file metadata in response
+- [x] 13. **GET Variable Endpoint**
+    - Update to include JSONB data in response
+    - Ensure proper parsing of JSONB values
 
-- [ ] 17. **Add Content Control Parameter**
-    - Add parameter to control whether file content is included in response
-    - Implement conditional content loading
+- [x] 14. **Add Content Processing**
+    - Add endpoint to process file/directory entries
+    - Include file contents in response
 
-- [ ] 18. **List Endpoint Filtering**
-    - Update variable list endpoint to support filtering by type
-    - Add sorting options for file variables
-
-- [ ] 19. **API Documentation**
+- [ ] 15. **API Documentation**
     - Update API documentation for all modified endpoints
     - Add examples for file variable usage
 
 ### Frontend Variable Model Updates
-- [ ] 20. **Update Interface/Type**
-    - Add file type to variable interface
+- [ ] 16. **Update Interface/Type**
+    - Add new variable entry interfaces
     - Update related component props
 
-- [ ] 21. **Frontend Type Constants**
-    - Create constants matching backend variable types
+- [ ] 17. **Frontend Entry Constants**
+    - Create constants matching backend entry types
     - Add type checking helpers
 
-- [ ] 22. **Type Utility Functions**
-    - Add utility functions to check variable types
+- [ ] 18. **Type Utility Functions**
+    - Add utility functions to work with entries
     - Create formatters for file paths
 
 ### File Picker Component - Initial
-- [ ] 23. **Basic Component Structure**
+- [ ] 19. **Basic Component Structure**
     - Create file picker component skeleton
     - Add container and styling
 
-- [ ] 24. **API Permission Request**
+- [ ] 20. **API Permission Request**
     - Implement File System Access API permission request
     - Add permission state management
 
-- [ ] 25. **Single File Selection**
+- [ ] 21. **Single File Selection**
     - Add single file selection functionality
     - Implement file handle management
 
-- [ ] 26. **File Metadata Extraction**
+- [ ] 22. **File Metadata Extraction**
     - Extract name, size, type from selected files
     - Create display format for metadata
 
 ### File Picker Component - Advanced
-- [ ] 27. **Multiple File Selection**
+- [ ] 23. **Multiple File Selection**
     - Implement multiple file selection support
     - Add file list management
 
-- [ ] 28. **Directory Selection**
+- [ ] 24. **Directory Selection**
     - Add directory selection functionality
     - Implement recursive path handling
 
-- [ ] 29. **File Size Validation**
+- [ ] 25. **File Size Validation**
     - Add client-side file size checking
     - Implement warning for large files
 
-- [ ] 30. **File Type Filtering**
+- [ ] 26. **File Type Filtering**
     - Add file type filter options
     - Implement extension filtering
 
-- [ ] 31. **Selected Files Display**
+- [ ] 27. **Selected Files Display**
     - Create list view for selected files
     - Add removal functionality
 
 ### Variable Creation UI Updates
-- [ ] 32. **Type Selector**
-    - Add variable type radio/dropdown in creation form
-    - Style type selection component
+- [ ] 28. **Entry Creator Component**
+    - Create component for adding variable entries
+    - Support text, file, and directory entries
 
-- [ ] 33. **Conditional File Picker**
-    - Show file picker only when file type is selected
+- [ ] 29. **Conditional File Picker**
+    - Show file picker only when file/directory type is selected
     - Add smooth transitions
 
-- [ ] 34. **Form Submission Update**
-    - Modify submission logic to handle file data
+- [ ] 30. **Form Submission Update**
+    - Modify submission logic to handle entry arrays
     - Update validation for file variables
 
-- [ ] 35. **Size Warnings**
+- [ ] 31. **Size Warnings**
     - Add file size warnings in UI
     - Implement confirmation for large files
 
 ### Variable Editing UI Updates
-- [ ] 36. **Edit Modal Update**
-    - Update edit variable modal to support file type
-    - Show current file selection
+- [ ] 32. **Edit Modal Update**
+    - Update edit variable modal to support entry arrays
+    - Show current entries in editable format
 
-- [ ] 37. **File Replacement**
-    - Add functionality to replace selected files
-    - Preserve previous selection if needed
+- [ ] 33. **Entry Replacement**
+    - Add functionality to replace selected entries
+    - Preserve previous entries when needed
 
-- [ ] 38. **Clear Selection**
-    - Create clear file selection button
+- [ ] 34. **Clear Selection**
+    - Create clear entries button
     - Add confirmation dialog
 
-- [ ] 39. **UI Indicators**
-    - Add visual indicators for file-based variables in list
-    - Create file-specific badges/icons
+- [ ] 35. **UI Indicators**
+    - Add visual indicators for file/directory entries in list
+    - Create entry-specific badges/icons
 
 ### Prompt Template Integration - Basic
-- [ ] 40. **Variable Interpolation Update**
-    - Modify interpolation logic to handle file variables
+- [ ] 36. **Variable Interpolation Update**
+    - Modify interpolation logic to handle entry arrays
     - Add special formatting for file content
 
-- [ ] 41. **Content Extraction**
+- [ ] 37. **Content Extraction**
     - Implement file content extraction during prompt generation
     - Add error handling for missing files
 
-- [ ] 42. **Template Preview**
+- [ ] 38. **Template Preview**
     - Create placeholder text for file variables in template preview
     - Add file summary in preview
 
 ### Prompt Template Integration - Advanced
-- [ ] 43. **Content Formatting**
+- [ ] 39. **Content Formatting**
     - Add formatting based on file type (code, text, etc.)
     - Implement syntax-aware formatting
 
-- [ ] 44. **Size Limit Checks**
+- [ ] 40. **Size Limit Checks**
     - Add size checks during prompt generation
     - Implement truncation for oversized files
 
-- [ ] 45. **Large File Warnings**
+- [ ] 41. **Large File Warnings**
     - Create warning UI for large file variables
     - Add confirmation before using large files
 
-- [ ] 46. **Syntax Highlighting**
+- [ ] 42. **Syntax Highlighting**
     - Implement syntax highlighting for code files in preview
     - Add language detection
 
 ### Error Handling
-- [ ] 47. **File Not Found**
+- [ ] 43. **File Not Found**
     - Implement graceful handling for missing files
     - Add user-friendly error messages
 
-- [ ] 48. **Permission Denial**
+- [ ] 44. **Permission Denial**
     - Handle permission denial scenarios
     - Add instructions for granting permissions
 
-- [ ] 49. **Error Messages**
+- [ ] 45. **Error Messages**
     - Create consistent error message format
     - Add troubleshooting guidance
 
-- [ ] 50. **Retry Mechanism**
+- [ ] 46. **Retry Mechanism**
     - Implement retry for file access failures
     - Add exponential backoff
 
 ### Testing & Validation
-- [ ] 51. **Model Tests**
-    - Create unit tests for file variable model
+- [ ] 47. **Model Tests**
+    - Create unit tests for variable entries
     - Test type validation
 
-- [ ] 52. **Content Extraction Tests**
+- [ ] 48. **Content Extraction Tests**
     - Add tests for file content extraction
     - Test various file types and encodings
 
-- [ ] 53. **Permission Tests**
+- [ ] 49. **Permission Tests**
     - Create tests for permission handling
     - Test error conditions
 
-- [ ] 54. **Integration Tests**
+- [ ] 50. **Integration Tests**
     - Test with various file types and nested directories
     - Verify end-to-end functionality
 
 ### User Experience Improvements
-- [ ] 55. **Loading Indicators**
+- [ ] 51. **Loading Indicators**
     - Add loading states during file processing
     - Implement progress indicators for large files
 
-- [ ] 56. **Tooltips**
+- [ ] 52. **Tooltips**
     - Create tooltips explaining file variable usage
     - Add help text in appropriate places
 
-- [ ] 57. **File Indicators**
+- [ ] 53. **File Indicators**
     - Add file icon indicators in variable list
     - Create visual file type identification
 
-- [ ] 58. **Drag & Drop**
+- [ ] 54. **Drag & Drop**
     - Implement drag and drop support for file selection
     - Add visual feedback during drag operations
 
 ### Documentation
-- [ ] 59. **User Documentation**
+- [ ] 55. **User Documentation**
     - Update user-facing documentation with file variable explanation
     - Add screenshots and examples
 
-- [ ] 60. **Example Use Cases**
+- [ ] 56. **Example Use Cases**
     - Create example use cases for file variables
     - Add template examples
 
-- [ ] 61. **Developer Documentation**
+- [ ] 57. **Developer Documentation**
     - Create developer documentation for the feature
     - Add architecture overview
 
-- [ ] 62. **Code Comments**
+- [ ] 58. **Code Comments**
     - Add inline code comments explaining file handling logic
     - Document edge cases and solutions

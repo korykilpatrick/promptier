@@ -2,11 +2,30 @@
  * Shared types for user variables between frontend and backend
  */
 
+// Variable entry type constants
+export const VARIABLE_ENTRY_TYPES = {
+  TEXT: 'text',
+  FILE: 'file',
+  DIRECTORY: 'directory'
+} as const;
+
+// Type for variable entry types
+export type VariableEntryType = typeof VARIABLE_ENTRY_TYPES[keyof typeof VARIABLE_ENTRY_TYPES];
+
+// Base variable entry interface
+export interface VariableEntry {
+  id?: string;         // Optional identifier for the entry
+  type: VariableEntryType;
+  name?: string;       // Optional display name
+  value: string;       // Value (text content or file/directory path)
+  metadata?: Record<string, any>; // Optional additional metadata
+}
+
 // Base variable interface
 export interface BaseVariable {
   id: number;
   name: string;
-  value: string;
+  value: VariableEntry[];
   created_at: string;
   updated_at: string;
 }
@@ -14,7 +33,7 @@ export interface BaseVariable {
 // Request type for creating/updating user variables
 export interface VariableRequest {
   name: string;
-  value: string;
+  value: VariableEntry[];
 }
 
 // Response type for user variables
@@ -26,7 +45,7 @@ export interface VariableResponse {
 export interface UserVariable {
   id: number;
   name: string;
-  value: string;
+  value: VariableEntry[];
   createdAt: string;
   updatedAt: string;
 }
@@ -36,7 +55,7 @@ export function toFrontendVariable(backendVariable: BaseVariable): UserVariable 
   return {
     id: backendVariable.id,
     name: backendVariable.name,
-    value: backendVariable.value,
+    value: backendVariable.value || [],
     createdAt: backendVariable.created_at,
     updatedAt: backendVariable.updated_at
   };
@@ -45,6 +64,68 @@ export function toFrontendVariable(backendVariable: BaseVariable): UserVariable 
 export function toBackendVariable(frontendVariable: Partial<UserVariable>): VariableRequest {
   return {
     name: frontendVariable.name!,
-    value: frontendVariable.value!
+    value: frontendVariable.value || []
+  };
+}
+
+// Helper functions for working with variable entries
+
+// Check if a variable contains any file entries
+export function hasFileEntries(variable: BaseVariable | UserVariable): boolean {
+  return variable.value.some(entry => entry.type === VARIABLE_ENTRY_TYPES.FILE);
+}
+
+// Check if a variable contains any directory entries
+export function hasDirectoryEntries(variable: BaseVariable | UserVariable): boolean {
+  return variable.value.some(entry => entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY);
+}
+
+// Check if a variable contains only text entries
+export function hasOnlyTextEntries(variable: BaseVariable | UserVariable): boolean {
+  return variable.value.every(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT);
+}
+
+// Get all file entries from a variable
+export function getFileEntries(variable: BaseVariable | UserVariable): VariableEntry[] {
+  return variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.FILE);
+}
+
+// Get all directory entries from a variable
+export function getDirectoryEntries(variable: BaseVariable | UserVariable): VariableEntry[] {
+  return variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY);
+}
+
+// Get all text entries from a variable
+export function getTextEntries(variable: BaseVariable | UserVariable): VariableEntry[] {
+  return variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT);
+}
+
+// Create a simple text variable entry
+export function createTextEntry(value: string, id?: string, name?: string): VariableEntry {
+  return {
+    id,
+    type: VARIABLE_ENTRY_TYPES.TEXT,
+    name,
+    value
+  };
+}
+
+// Create a file variable entry
+export function createFileEntry(path: string, id?: string, name?: string): VariableEntry {
+  return {
+    id,
+    type: VARIABLE_ENTRY_TYPES.FILE,
+    name: name || path.split('/').pop(),
+    value: path
+  };
+}
+
+// Create a directory variable entry
+export function createDirectoryEntry(path: string, id?: string, name?: string): VariableEntry {
+  return {
+    id,
+    type: VARIABLE_ENTRY_TYPES.DIRECTORY,
+    name: name || path.split('/').pop(),
+    value: path
   };
 } 
