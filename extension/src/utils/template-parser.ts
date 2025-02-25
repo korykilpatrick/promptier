@@ -166,19 +166,52 @@ export function parseTemplate(template: string): TemplateParseResult {
 
 /**
  * Replaces variables in a template with their values
+ * @param template The template string
+ * @param variableValues The variable values from the template
+ * @param globalVariables Optional array of global variables that may have complex structure
  */
 export function replaceVariables(
   template: string,
-  variableValues: TemplateVariableValues
+  variableValues: TemplateVariableValues,
+  globalVariables: any[] = []
 ): string {
   // First unescape any escaped braces
   let result = unescapeTemplate(template);
+  
+  // Create a map of global variables for quick lookup
+  const globalVariableMap: Record<string, any> = {};
+  if (Array.isArray(globalVariables)) {
+    globalVariables.forEach(gv => {
+      if (gv && typeof gv === 'object' && 'name' in gv) {
+        globalVariableMap[gv.name] = gv;
+      }
+    });
+  }
   
   // Then replace variables
   return result.replace(PATTERNS.VARIABLE, (match, name) => {
     const trimmedName = name.trim();
     const state = variableValues[trimmedName];
-    return state?.isValid ? state.value : match;
+    
+    // First try template values
+    if (state?.isValid) {
+      return state.value;
+    }
+    
+    // If not found or invalid, try global variables
+    const globalVar = trimmedName in globalVariableMap ? globalVariableMap[trimmedName] : null;
+    if (globalVar) {
+      if (Array.isArray(globalVar.value) && globalVar.value.length > 0) {
+        // Get first text entry or just first entry
+        const textEntry = globalVar.value.find((entry: any) => entry.type === 'text') || globalVar.value[0];
+        return textEntry.value;
+      } else if (typeof globalVar.value === 'string') {
+        return globalVar.value;
+      }
+    }
+    
+    // Fallback to original template syntax
+    return match;
   });
 }
 

@@ -49,6 +49,30 @@ function useTemplateVariables({
   // Ensure variables is always an array
   const safeVariables = parseResult.variables ?? [];
 
+  // Helper function to extract the value from a global variable
+  const extractGlobalVariableValue = useCallback((globalVar) => {
+    if (!globalVar) return '';
+    
+    // Handle array of objects with type and value
+    if (Array.isArray(globalVar.value) && globalVar.value.length > 0) {
+      // First try to find a text entry
+      const textEntry = globalVar.value.find(entry => entry && entry.type === 'text');
+      if (textEntry) return textEntry.value;
+      
+      // Fall back to the first entry's value
+      if (globalVar.value[0] && typeof globalVar.value[0].value === 'string') {
+        return globalVar.value[0].value;
+      }
+    }
+    
+    // Handle string value (backward compatibility)
+    if (typeof globalVar.value === 'string') {
+      return globalVar.value;
+    }
+    
+    return '';
+  }, []);
+
   // Initialize values with defaults from variables and global variables
   const initialState = useMemo(() => {
     const state = {};
@@ -60,7 +84,7 @@ function useTemplateVariables({
       if (useGlobalVariables && initialValue === undefined) {
         const globalVar = globalVariables.find(gv => gv.name === v.name);
         if (globalVar) {
-          initialValue = globalVar.value;
+          initialValue = extractGlobalVariableValue(globalVar);
           isDirty = true;
         }
       }
@@ -79,7 +103,7 @@ function useTemplateVariables({
     });
     
     return state;
-  }, [safeVariables, initialValues, globalVariables, useGlobalVariables]);
+  }, [safeVariables, initialValues, globalVariables, useGlobalVariables, extractGlobalVariableValue]);
 
   const [values, setValues] = useState(initialState);
 
@@ -95,7 +119,7 @@ function useTemplateVariables({
           if (globalVar && !prev[v.name]?.isDirty) {
             newValues[v.name] = {
               ...prev[v.name],
-              value: globalVar.value,
+              value: extractGlobalVariableValue(globalVar),
               isDirty: true
             };
             hasChanges = true;
@@ -105,7 +129,7 @@ function useTemplateVariables({
         return hasChanges ? newValues : prev;
       });
     }
-  }, [globalVariables, safeVariables, useGlobalVariables]);
+  }, [globalVariables, safeVariables, useGlobalVariables, extractGlobalVariableValue]);
 
   const validateValue = useCallback((name, value) => {
     const variable = safeVariables.find(v => v.name === name);
