@@ -16,6 +16,10 @@ This feature will allow users to set variables to file(s) selected from a file p
 - Security: Ensure proper validation of file paths and content
 - Performance: Handle large files appropriately, implement caching where needed
 - UX: Create an intuitive interface for selecting and managing file variables
+- Permissions: Utilize the File System Access API's session-based permission model
+  - Once permission is granted, it persists for the entire browser session
+  - Store and reuse FileSystemHandle objects to maintain access without re-prompting
+  - Implement permission verification for graceful degradation if access is revoked
 
 ### Implementation Philosophy
 - Each step should be focused and self-contained
@@ -128,6 +132,9 @@ The steps below have been updated to reflect this new approach and order.
 - [x] 19. **API Permission Request**
     - Implement File System Access API permission request
     - Add permission state management
+    - Store FileSystemHandle objects for session-long access
+    - Implement handle serialization for potential cross-session persistence
+    - Add permission verification before file operations
 
 - [x] 20. **Single File Selection**
     - Add single file selection functionality
@@ -159,36 +166,36 @@ The steps below have been updated to reflect this new approach and order.
     - Add removal functionality
 
 ### Variable Creation UI Updates
-- [ ] 27. **Entry Creator Component**
+- [x] 27. **Entry Creator Component**
     - Create component for adding variable entries
     - Support text, file, and directory entries
 
-- [ ] 28. **Conditional File Picker**
+- [x] 28. **Conditional File Picker**
     - Show file picker only when file/directory type is selected
     - Add smooth transitions
 
-- [ ] 29. **Form Submission Update**
+- [x] 29. **Form Submission Update**
     - Modify submission logic to handle entry arrays
     - Update validation for file variables
 
-- [ ] 30. **Size Warnings**
+- [x] 30. **Size Warnings**
     - Add file size warnings in UI
     - Implement confirmation for large files
 
 ### Variable Editing UI Updates
-- [ ] 31. **Edit Modal Update**
+- [x] 31. **Edit Modal Update**
     - Update edit variable modal to support entry arrays
     - Show current entries in editable format
 
-- [ ] 32. **Entry Replacement**
+- [x] 32. **Entry Replacement**
     - Add functionality to replace selected entries
     - Preserve previous entries when needed
 
-- [ ] 33. **Clear Selection**
+- [x] 33. **Clear Selection**
     - Create clear entries button
     - Add confirmation dialog
 
-- [ ] 34. **UI Indicators**
+- [x] 34. **UI Indicators**
     - Add visual indicators for file/directory entries in list
     - Create entry-specific badges/icons
 
@@ -205,6 +212,9 @@ The steps below have been updated to reflect this new approach and order.
 - [ ] 37. **Content Extraction**
     - Implement file content extraction during prompt generation
     - Add error handling for missing files
+    - Add mechanism to reuse stored FileSystemHandle objects
+    - Implement graceful verification of access permissions
+    - Provide fallback options if access is denied
 
 - [ ] 38. **Template Preview**
     - Create placeholder text for file variables in template preview
@@ -235,6 +245,10 @@ The steps below have been updated to reflect this new approach and order.
 - [ ] 44. **Permission Denial**
     - Handle permission denial scenarios
     - Add instructions for granting permissions
+    - Implement session-based permission tracking
+    - Add verification flow that minimizes permission requests
+    - Store permission state to prevent unnecessary re-prompting
+    - Provide clear UI for re-requesting access when needed
 
 - [ ] 45. **Error Messages**
     - Create consistent error message format
