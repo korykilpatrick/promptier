@@ -3,6 +3,7 @@ const { useState, useCallback, useEffect } = React;
 const { useUserVariables } = require("../../../hooks/useUserVariables");
 const { useToast } = require("../../../hooks/useToast");
 const { createTextEntry, getTextEntries, VARIABLE_ENTRY_TYPES, getFileEntries, getDirectoryEntries } = require("shared/types/variables");
+import type { UserVariable, VariableEntry } from "shared/types/variables";
 import FilePicker from "./FilePicker";
 import VariableTypeSelector from "./VariableTypeSelector";
 
@@ -29,7 +30,7 @@ function VariablesPage() {
   const [editForm, setEditForm] = useState<{
     name: string;
     textValue: string;
-    entries: any[];
+    entries: VariableEntry[];
   }>({ 
     name: "", 
     textValue: "", 
@@ -37,7 +38,7 @@ function VariablesPage() {
   });
   
   const [variableType, setVariableType] = useState(VARIABLE_ENTRY_TYPES.TEXT);
-  const [fileEntries, setFileEntries] = useState<any[]>([]);
+  const [fileEntries, setFileEntries] = useState<VariableEntry[]>([]);
   
   // Add state for edit mode
   const [editVariableType, setEditVariableType] = useState(VARIABLE_ENTRY_TYPES.TEXT);
@@ -158,13 +159,13 @@ function VariablesPage() {
   }, []);
 
   // Handle file selection
-  const handleFileSelect = useCallback((entries: any) => {
+  const handleFileSelect = useCallback((entries: VariableEntry | VariableEntry[]) => {
     const entriesArray = Array.isArray(entries) ? entries : [entries];
     setFileEntries(entriesArray);
   }, []);
 
   // Handle file selection for edit mode
-  const handleEditFileSelect = useCallback((entries: any) => {
+  const handleEditFileSelect = useCallback((entries: VariableEntry | VariableEntry[]) => {
     const entriesArray = Array.isArray(entries) ? entries : [entries];
     
     // Add new entries to the existing entries
@@ -175,7 +176,7 @@ function VariablesPage() {
   }, [editForm]);
 
   // Create a new variable
-  const handleCreateVariable = useCallback(async (/** @type {React.FormEvent} */ e) => {
+  const handleCreateVariable = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newVariable.name.trim()) {
@@ -188,13 +189,13 @@ function VariablesPage() {
     }
 
     try {
-      let valueArray = [];
+      let valueArray: VariableEntry[] = [];
       
       // Handle different variable types
       if (variableType === VARIABLE_ENTRY_TYPES.TEXT) {
         // Convert the value string to an array of text entries
         valueArray = newVariable.value.trim()
-          ? newVariable.value.split('\n').map(/** @param {string} value */ value => createTextEntry(value))
+          ? newVariable.value.split('\n').map((value: string) => createTextEntry(value))
           : [];
       } else if (
         (variableType === VARIABLE_ENTRY_TYPES.FILE || 
@@ -219,8 +220,10 @@ function VariablesPage() {
         value: valueArray
       });
       
+      // Reset form after successful creation
       setNewVariable({ name: "", value: "" });
       setFileEntries([]);
+      setVariableType(VARIABLE_ENTRY_TYPES.TEXT); // Reset to text type
       
       addToast({
         type: "success",
@@ -413,7 +416,22 @@ function VariablesPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                     </svg>
                                   )}
-                                  <span>{entry.name || entry.value.split('/').pop() || 'Unnamed file'}</span>
+                                  <div className="plasmo-flex plasmo-flex-col">
+                                    <span className="plasmo-font-medium">{entry.name || entry.value.split('/').pop() || 'Unnamed file'}</span>
+                                    {entry.metadata && (
+                                      <span className="plasmo-text-xs plasmo-text-gray-500">
+                                        {entry.metadata.size 
+                                          ? `${(entry.metadata.size / 1024).toFixed(2)} KB` 
+                                          : ''}
+                                        {entry.metadata.type 
+                                          ? ` · ${entry.metadata.type.split('/').pop()}` 
+                                          : ''}
+                                        {entry.metadata.path 
+                                          ? ` · ${entry.metadata.path.split('/').pop()}` 
+                                          : ''}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <button
                                   type="button"
@@ -487,14 +505,33 @@ function VariablesPage() {
                             <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span>{entry.name || entry.value.split('/').pop()}</span>
+                            <div className="plasmo-flex plasmo-flex-col">
+                              <span className="plasmo-font-medium">{entry.name || entry.value.split('/').pop()}</span>
+                              {entry.metadata && (
+                                <span className="plasmo-text-xs plasmo-text-gray-500">
+                                  {entry.metadata.size 
+                                    ? `${(entry.metadata.size / 1024).toFixed(2)} KB` 
+                                    : ''}
+                                  {entry.metadata.type 
+                                    ? ` · ${entry.metadata.type.split('/').pop()}` 
+                                    : ''}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <div className="plasmo-flex plasmo-items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                             </svg>
-                            <span>{entry.name || entry.value.split('/').pop()}</span>
+                            <div className="plasmo-flex plasmo-flex-col">
+                              <span className="plasmo-font-medium">{entry.name || entry.value.split('/').pop()}</span>
+                              {entry.metadata && (
+                                <span className="plasmo-text-xs plasmo-text-gray-500">
+                                  {entry.metadata.path ? `${entry.metadata.path}` : ''}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

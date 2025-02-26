@@ -18,7 +18,13 @@ export interface VariableEntry {
   type: VariableEntryType;
   name?: string;       // Optional display name
   value: string;       // Value (text content or file/directory path)
-  metadata?: Record<string, any>; // Optional additional metadata
+  metadata?: {
+    size?: number;     // File size in bytes
+    type?: string;     // MIME type
+    lastModified?: number; // Last modified timestamp
+    handle?: any;      // Optional file system handle reference (serialized)
+    path?: string;     // Original file path
+  };
 }
 
 // Base variable interface
@@ -111,22 +117,34 @@ export function createTextEntry(value: string, id?: string, name?: string): Vari
 }
 
 // Create a file variable entry
-export function createFileEntry(path: string, id?: string, name?: string): VariableEntry {
+export function createFileEntry(
+  path: string, 
+  id?: string, 
+  name?: string, 
+  metadata?: VariableEntry['metadata']
+): VariableEntry {
   return {
     id,
     type: VARIABLE_ENTRY_TYPES.FILE,
     name: name || path.split('/').pop(),
-    value: path
+    value: path,
+    metadata
   };
 }
 
 // Create a directory variable entry
-export function createDirectoryEntry(path: string, id?: string, name?: string): VariableEntry {
+export function createDirectoryEntry(
+  path: string, 
+  id?: string, 
+  name?: string,
+  metadata?: VariableEntry['metadata']
+): VariableEntry {
   return {
     id,
     type: VARIABLE_ENTRY_TYPES.DIRECTORY,
     name: name || path.split('/').pop(),
-    value: path
+    value: path,
+    metadata
   };
 }
 

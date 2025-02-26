@@ -4,7 +4,7 @@ const { createFileEntry, createDirectoryEntry, VARIABLE_ENTRY_TYPES } = require(
 const { useToast } = require("../../../hooks/useToast");
 
 // Import needed types
-type VariableEntry = import("shared/types/variables").VariableEntry;
+import type { VariableEntry } from "shared/types/variables";
 
 // File System Access API types (not yet fully included in standard TypeScript definitions)
 interface FileSystemHandle {
@@ -96,39 +96,29 @@ function FilePicker({
         fileHandles.map(async (handle) => {
           const file = await handle.getFile();
           
-          // Get the file content as base64 for text files or small files
-          let fileContent = "";
-          if (file.size <= 10 * 1024 * 1024) { // Limit to 10MB
-            try {
-              // For text files, use the text content
-              if (file.type.startsWith('text/') || 
-                  file.type === 'application/json' ||
-                  file.type === 'application/javascript') {
-                fileContent = await file.text();
-              } else {
-                // For binary files, use base64 encoding
-                const buffer = await file.arrayBuffer();
-                const bytes = new Uint8Array(buffer);
-                fileContent = btoa(
-                  bytes.reduce((data, byte) => data + String.fromCharCode(byte), '')
-                );
-              }
-            } catch (error) {
-              console.error("Error reading file content:", error);
-              // Fallback to just using file name
-              fileContent = file.name;
-            }
-          } else {
-            // For large files, just include metadata
-            fileContent = `[FILE: ${file.name}, Size: ${(file.size / 1024).toFixed(2)} KB, Type: ${file.type || 'unknown'}]`;
-          }
+          // Instead of reading file content, just create an entry with metadata
+          const fileMetadata = {
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+            // Store a serialized representation of the file path
+            path: file.name
+          };
           
           // Create the appropriate entry based on file type
-          return createFileEntry(
-            fileContent, // Use file content as the value
-            undefined,   // Let the backend assign an ID
-            file.name    // Use the filename as the display name
-          );
+          return handle.kind === 'file' 
+            ? createFileEntry(
+                file.name, // Use file name as the value
+                undefined, // Let the backend assign an ID
+                file.name, // Use the filename as the display name
+                fileMetadata // Add metadata
+              )
+            : createDirectoryEntry(
+                file.name, // Use directory name as the value
+                undefined, // Let the backend assign an ID
+                file.name, // Use the directory name as the display name
+                fileMetadata // Add metadata
+              );
         })
       );
       
