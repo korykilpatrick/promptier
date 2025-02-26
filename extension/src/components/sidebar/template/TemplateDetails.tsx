@@ -43,6 +43,9 @@ try {
   const { useToast } = require("../../../hooks/useToast")
   const { useNavigate } = require("react-router-dom")
 
+  // Import file content resolver utilities
+  const { copyWithResolvedFileContents, ensureFilePermissions } = require("../../../utils/file-content-resolver");
+
   /**
    * Helper function to conditionally join class names
    * @param {...string} classes - CSS class names to conditionally join
@@ -172,21 +175,48 @@ try {
     }
 
     const handleCopy = async function() {
+      if (!template) return
+
+      setIsCopying(true)
+
       try {
-        setIsCopying(true)
+        let processedContent = template.content || ""
         
-        // Process the template with variable replacement
-        let processedContent = content
+        // Get valid values for variables
+        const validValues = Object.entries(values).reduce((acc, [name, state]) => {
+          if (state?.isValid) {
+            acc[name] = state
+          }
+          return acc
+        }, {})
         
-        // Replace variables using our utility, passing global variables
-        processedContent = _templateParser.replaceVariables(processedContent, values, globalVariables)
+        // Check if we have any file variables that need permission
+        if (globalVariables?.some(v => v?.value?.some?.(entry => entry?.type === 'file' || entry?.type === 'directory'))) {
+          // Ensure file permissions are granted before proceeding
+          const permissionsGranted = await ensureFilePermissions(globalVariables);
+          
+          if (!permissionsGranted) {
+            addToast({
+              type: "warning",
+              title: "Permission denied",
+              message: "Could not access one or more files. Please grant permission when prompted."
+            });
+          }
+        }
         
-        await navigator.clipboard.writeText(processedContent)
-        addToast({
-          type: "success",
-          title: "Template copied",
-          message: "Template copied to clipboard with variables filled in"
-        })
+        // Use our enhanced copy function with file content resolution
+        // Note: This internally uses replaceVariables, so we don't need to call it separately
+        const copySuccess = await copyWithResolvedFileContents(processedContent, validValues, globalVariables);
+        
+        if (copySuccess) {
+          addToast({
+            type: "success",
+            title: "Template copied",
+            message: "Template copied to clipboard with variables filled in"
+          });
+        } else {
+          throw new Error("Failed to copy with resolved file contents");
+        }
       } catch (e) {
         console.error("Error copying template:", e)
         addToast({

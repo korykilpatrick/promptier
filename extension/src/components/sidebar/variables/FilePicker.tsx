@@ -1,7 +1,8 @@
 const React = require("react");
-const { useState, useCallback } = React;
+const { useState, useCallback, useEffect } = React;
 const { createFileEntry, createDirectoryEntry, VARIABLE_ENTRY_TYPES } = require("shared/types/variables");
 const { useToast } = require("../../../hooks/useToast");
+const { v4: uuidv4 } = require('uuid'); // Add uuid dependency if not already available
 
 // Import needed types
 import type { VariableEntry } from "shared/types/variables";
@@ -27,6 +28,67 @@ interface FilePickerProps {
   acceptTypes?: string[];
 }
 
+/**
+ * A registry to maintain references to file handles in memory
+ * This prevents handles from being serialized/deserialized and losing their functionality
+ */
+class FileHandleRegistry {
+  private static instance: FileHandleRegistry;
+  private handles: Map<string, FileSystemHandle> = new Map();
+
+  private constructor() {}
+
+  public static getInstance(): FileHandleRegistry {
+    if (!FileHandleRegistry.instance) {
+      FileHandleRegistry.instance = new FileHandleRegistry();
+    }
+    return FileHandleRegistry.instance;
+  }
+
+  /**
+   * Register a file handle and get a unique ID
+   */
+  public registerHandle(handle: FileSystemHandle): string {
+    const id = uuidv4(); // Generate a unique ID
+    this.handles.set(id, handle);
+    console.log(`[FileHandleRegistry] Registered handle with ID: ${id}, name: ${handle.name}, kind: ${handle.kind}`);
+    return id;
+  }
+
+  /**
+   * Get a file handle by ID
+   */
+  public getHandle(id: string): FileSystemHandle | undefined {
+    const handle = this.handles.get(id);
+    console.log(`[FileHandleRegistry] Retrieved handle with ID: ${id}, exists: ${!!handle}`);
+    return handle;
+  }
+
+  /**
+   * Remove a file handle from the registry
+   */
+  public removeHandle(id: string): boolean {
+    return this.handles.delete(id);
+  }
+
+  /**
+   * Get all registered handles
+   */
+  public getAllHandles(): Map<string, FileSystemHandle> {
+    return new Map(this.handles);
+  }
+
+  /**
+   * Get the number of registered handles
+   */
+  public getHandleCount(): number {
+    return this.handles.size;
+  }
+}
+
+// Export the registry for use in other components
+export const fileHandleRegistry = FileHandleRegistry.getInstance();
+
 // Add the File System Access API to the window type
 declare global {
   interface Window {
@@ -51,7 +113,6 @@ function FilePicker({
   acceptTypes = []
 }: FilePickerProps) {
   const { addToast } = useToast();
-  const [permissionState, setPermissionState] = useState<"pending" | "granted" | "denied">("pending");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<VariableEntry[]>([]);
 
@@ -85,40 +146,98 @@ function FilePicker({
         ] : undefined,
       };
       
+      console.log('[FilePicker] Opening file picker with options:', options);
+      
       // Show file picker dialog
       const fileHandles = await window.showOpenFilePicker(options);
-      
-      // Set permission state to granted if we got this far
-      setPermissionState("granted");
+      console.log('[FilePicker] File picker returned handles:', fileHandles.length);
       
       // Process selected files
       const selectedEntries = await Promise.all(
         fileHandles.map(async (handle) => {
-          const file = await handle.getFile();
+          console.log('[FilePicker] Processing file handle:', handle.name, 'kind:', handle.kind);
           
-          // Instead of reading file content, just create an entry with metadata
-          const fileMetadata = {
-            size: file.size,
-            type: file.type,
-            lastModified: file.lastModified,
-            // Store a serialized representation of the file path
-            path: file.name
-          };
-          
-          // Create the appropriate entry based on file type
-          return handle.kind === 'file' 
-            ? createFileEntry(
-                file.name, // Use file name as the value
-                undefined, // Let the backend assign an ID
-                file.name, // Use the filename as the display name
-                fileMetadata // Add metadata
-              )
-            : createDirectoryEntry(
-                file.name, // Use directory name as the value
-                undefined, // Let the backend assign an ID
-                file.name, // Use the directory name as the display name
-                fileMetadata // Add metadata
-              );
+          try {
+            // Try to get the file directly - this will trigger permission prompt if needed
+            const file = await handle.getFile();
+            console.log('[FilePicker] File info:', {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              lastModified: file.lastModified
+            });
+            
+            // Get the full path if possible
+            let filePath = file.name;
+            try {
+              // Some browsers might support webkitRelativePath or other path properties
+              if ('webkitRelativePath' in file && file.webkitRelativePath) {
+                filePath = file.webkitRelativePath;
+                console.log('[FilePicker] Using webkitRelativePath:', filePath);
+              }
+            } catch (pathError) {
+              console.error('[FilePicker] Error getting file path:', pathError);
+            }
+            
+            // Register the handle with our registry instead of trying to serialize it
+            const handleId = fileHandleRegistry.registerHandle(handle);
+            
+            // Create file metadata - now using handleId instead of storing the actual handle
+            const fileMetadata = {
+              size: file.size,
+              type: file.type,
+              lastModified: file.lastModified,
+              // Store a serialized representation of the file path
+              path: filePath,
+              // Store the handle ID instead of the handle itself
+              handleId: handleId
+            };
+            
+            console.log('[FilePicker] Created file metadata:', JSON.stringify(fileMetadata));
+            
+            // Create the appropriate entry based on file type
+            const entry = handle.kind === 'file' 
+              ? createFileEntry(
+                  filePath, // Use proper path as the value
+                  undefined, // Let the backend assign an ID
+                  file.name, // Use the filename as the display name
+                  fileMetadata // Add metadata with handleId instead of handle
+                )
+              : createDirectoryEntry(
+                  filePath, // Use proper path as the value
+                  undefined, // Let the backend assign an ID
+                  file.name, // Use the directory name as the display name
+                  fileMetadata // Add metadata with handleId instead of handle
+                );
+                
+            console.log('[FilePicker] Created entry:', JSON.stringify(entry));
+            
+            return entry;
+          } catch (fileError) {
+            console.error('[FilePicker] Error accessing file:', fileError);
+            
+            // Even on error, register the handle
+            const handleId = fileHandleRegistry.registerHandle(handle);
+            
+            // Create an entry even if we can't access the file right now
+            // The user might grant permission later
+            const entry = handle.kind === 'file' 
+              ? createFileEntry(
+                  handle.name, 
+                  undefined,
+                  handle.name,
+                  { handleId: handleId, path: handle.name }
+                )
+              : createDirectoryEntry(
+                  handle.name,
+                  undefined,
+                  handle.name,
+                  { handleId: handleId, path: handle.name }
+                );
+                
+            console.warn('[FilePicker] Created fallback entry due to access error:', entry);
+            return entry;
+          }
         })
       );
       
@@ -128,18 +247,21 @@ function FilePicker({
         onFileSelect(allowMultiple ? selectedEntries : selectedEntries[0]);
       }
       
+      // Show success toast
+      addToast({
+        type: "success",
+        title: "Files selected",
+        message: `Selected ${selectedEntries.length} file(s)`
+      });
+      
     } catch (error: unknown) {
       console.error("Error selecting file:", error);
       
-      // Handle permission denied
+      // Handle errors
       if (error instanceof Error) {
-        if (error.name === "AbortError" || error.name === "SecurityError") {
-          setPermissionState("denied");
-          addToast({
-            type: "error",
-            title: "Permission denied",
-            message: "Please grant permission to access files"
-          });
+        if (error.name === "AbortError") {
+          console.log("User cancelled file selection");
+          // No need for an error toast when user cancels
         } else {
           addToast({
             type: "error",
@@ -160,6 +282,19 @@ function FilePicker({
   }, [allowMultiple, acceptTypes, allowDirectories, onFileSelect, addToast]);
 
   /**
+   * Cleanup function to remove handles when component unmounts
+   */
+  useEffect(() => {
+    // No cleanup needed for mounted component
+    
+    return () => {
+      // When component unmounts, we could clean up unused handles
+      // But it's better to keep them for the session in case they're referenced elsewhere
+      console.log('[FilePicker] Component unmounting, handles remain in registry');
+    };
+  }, []);
+
+  /**
    * Render the file picker UI
    */
   return (
@@ -172,12 +307,6 @@ function FilePicker({
       >
         {isLoading ? "Selecting..." : "Select File"}
       </button>
-      
-      {permissionState === "denied" && (
-        <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-red-500">
-          Permission denied. Please grant file access permission.
-        </div>
-      )}
       
       {selectedFiles.length > 0 && (
         <div className="plasmo-mt-3">
