@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { BsTrash, BsTrashFill, BsStarFill, BsStar, BsPencil, BsPencilFill, BsClipboard, BsDiamondHalf, BsThreeDots } from 'react-icons/bs';
-import { replaceVariables } from '../../../utils/template-parser';
+import { replaceVariables, parseTemplate } from '../../../utils/template-parser';
 import { ensureFilePermissions, activeFetchFileContent, activeResolveAllFileContents, reacquireFileHandles, fileHandleRegistry } from '../../../utils/file-content-resolver';
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTemplateVariables } from '../../../hooks/useTemplateVariables';
 import { Template } from 'shared/types/templates';
-import { copyToClipboard } from '../../../utils/clipboard';
-import { toast } from 'react-toastify';
+import { useToast } from '../../../hooks/useToast';
 
 /**
  * @typedef {Object} TemplateItemProps
@@ -26,13 +24,13 @@ type MouseEvent = {
 };
 
 type TemplateItemProps = {
-  template: typeof Template;
+  template: any;
   isFavorite: boolean;
   isSelected: boolean;
-  onSelect: (template: typeof Template) => void;
+  onSelect: (template: any) => void;
   onFavorite: (id: number) => void;
   onUnfavorite: (id: number) => void;
-  onEdit: (template: typeof Template) => void;
+  onEdit: (template: any) => void;
   onDelete: (id: number) => void;
 };
 
@@ -53,6 +51,7 @@ const TemplateItem = memo(({
 }: TemplateItemProps) => {
   const navigate = useNavigate();
   const [isCopying, setIsCopying] = useState(false);
+  const { addToast, success, error } = useToast();
 
   // Add template variables hook
   const {
@@ -89,34 +88,61 @@ const TemplateItem = memo(({
   const handleCopyClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      setIsCopying(true);
       console.log(`[TemplateItem] Copy clicked for template ID: ${template.id}`);
       
       // Process the template
       let processedContent = template.content;
       
-      // Identify all file variables that need content resolution
+      // Parse the template to find which variables are actually used
+      const parseResult = parseTemplate(template.content);
+      const usedVariableNames = new Set(parseResult.variables.map(v => v.name));
+      
+      console.log(`[TemplateItem] Template uses these variables:`, Array.from(usedVariableNames));
+      
+      // Identify file variables that are used in this specific template
       if (globalVariables && Array.isArray(globalVariables)) {
         const fileVars = globalVariables.filter((v) => 
-          v && Array.isArray(v.value) && 
-          v.value.some((entry) => entry && entry.type === 'file')
+          v && 
+          usedVariableNames.has(v.name) && // Only include variables used in this template
+          Array.isArray(v.value) && 
+          v.value.some((entry: any) => entry && entry.type === 'file')
         );
         
         if (fileVars.length > 0) {
-          console.log(`[TemplateItem] Template contains ${fileVars.length} file variables - resolving content`);
+          console.log(`[TemplateItem] Template contains ${fileVars.length} used file variables - resolving content`);
           
-          // Actively resolve all file contents with automatic handle reacquisition
+          // Create a filtered global variables array with only the used file variables
+          const usedFileGlobalVariables = globalVariables.filter(v => 
+            v && usedVariableNames.has(v.name)
+          );
+          
+          // Actively resolve only the file contents for variables used in this template
           try {
-            const resolved = await activeResolveAllFileContents(globalVariables, { 
-              autoReacquireHandles: true 
+            const resolved = await activeResolveAllFileContents(usedFileGlobalVariables, { 
+              autoReacquireHandles: true,
+              // Don't force reacquisition on every copy - only if we have missing handles
             });
             
             console.log(`[TemplateItem] File content resolution ${resolved ? 'successful' : 'failed'}`);
             
             if (!resolved) {
               console.warn('Some file contents could not be resolved. The template may be incomplete.');
+              
+              // If resolution failed, try once more with forced reacquisition
+              const forcedResolved = await activeResolveAllFileContents(usedFileGlobalVariables, {
+                autoReacquireHandles: true,
+                forceReacquire: true
+              });
+              
+              if (!forcedResolved) {
+                console.error(`[TemplateItem] Even forced reacquisition failed`);
+                error('Unable to access file contents. Please try again.');
+              }
             }
-          } catch (error) {
-            console.error(`[TemplateItem] Error resolving file contents:`, error);
+          } catch (err) {
+            console.error(`[TemplateItem] Error resolving file contents:`, err);
+            error(err instanceof Error ? err.message : 'Unknown error');
           }
         }
       }
@@ -127,8 +153,13 @@ const TemplateItem = memo(({
       // Copy to clipboard
       await navigator.clipboard.writeText(processedContent);
       console.log(`[TemplateItem] Successfully copied template to clipboard`);
-    } catch (error) {
-      console.error('Failed to copy template:', error);
+      
+      success('Template copied to clipboard with all variables resolved');
+    } catch (err) {
+      console.error('Failed to copy template:', err);
+      error(err instanceof Error ? err.message : 'Failed to copy template');
+    } finally {
+      setIsCopying(false);
     }
   };
 
@@ -173,10 +204,15 @@ const TemplateItem = memo(({
             onClick={handleCopyClick}
             className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-gray-500 plasmo-transition-colors"
             aria-label="Copy template"
+            disabled={isCopying}
           >
-            <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-            </svg>
+            {isCopying ? (
+              <span className="plasmo-animate-pulse">Copying...</span>
+            ) : (
+              <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            )}
           </button>
           <button
             onClick={handleFavoriteClick}

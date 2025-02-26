@@ -11,6 +11,8 @@ import type { VariableEntry } from "shared/types/variables";
 interface FileSystemHandle {
   kind: 'file' | 'directory';
   name: string;
+  // Add permission API which is part of the File System Access API but not fully typed in TS yet
+  requestPermission?: (descriptor: { mode: 'read' | 'readwrite' }) => Promise<'granted' | 'denied'>;
 }
 
 interface FileSystemFileHandle extends FileSystemHandle {
@@ -29,14 +31,22 @@ interface FilePickerProps {
 }
 
 /**
- * A registry to maintain references to file handles in memory
+ * A registry to maintain references to file handles in memory and persist them in IndexedDB
  * This prevents handles from being serialized/deserialized and losing their functionality
  */
 class FileHandleRegistry {
   private static instance: FileHandleRegistry;
   private handles: Map<string, FileSystemHandle> = new Map();
+  private dbName = 'promptier-file-handles';
+  private storeName = 'handles';
+  private dbPromise: Promise<IDBDatabase> | null = null;
 
-  private constructor() {}
+  private constructor() {
+    // Initialize the database connection
+    this.initDatabase();
+    // Load saved handles when constructed
+    this.loadHandlesFromDB();
+  }
 
   public static getInstance(): FileHandleRegistry {
     if (!FileHandleRegistry.instance) {
@@ -46,11 +56,151 @@ class FileHandleRegistry {
   }
 
   /**
+   * Initialize IndexedDB database for storing file handles
+   */
+  private initDatabase(): Promise<IDBDatabase> {
+    if (this.dbPromise) return this.dbPromise;
+
+    this.dbPromise = new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        console.error('[FileHandleRegistry] IndexedDB not supported');
+        reject(new Error('IndexedDB not supported'));
+        return;
+      }
+
+      const request = indexedDB.open(this.dbName, 1);
+
+      request.onerror = (event) => {
+        console.error('[FileHandleRegistry] IndexedDB error:', event);
+        reject(new Error('Failed to open IndexedDB'));
+      };
+
+      request.onsuccess = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        console.log('[FileHandleRegistry] IndexedDB opened successfully');
+        resolve(db);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          db.createObjectStore(this.storeName, { keyPath: 'id' });
+          console.log('[FileHandleRegistry] Created object store:', this.storeName);
+        }
+      };
+    });
+
+    return this.dbPromise;
+  }
+
+  /**
+   * Load saved handles from IndexedDB
+   */
+  private async loadHandlesFromDB(): Promise<void> {
+    try {
+      const db = await this.initDatabase();
+      const transaction = db.transaction(this.storeName, 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.getAll();
+
+      request.onsuccess = async () => {
+        const items = request.result;
+        console.log(`[FileHandleRegistry] Loaded ${items.length} handles from IndexedDB`);
+        
+        // Verify each handle and add to in-memory map
+        for (const item of items) {
+          try {
+            if (await this.verifyPermission(item.handle)) {
+              this.handles.set(item.id, item.handle);
+              console.log(`[FileHandleRegistry] Restored handle: ${item.id}, name: ${item.handle.name}`);
+            } else {
+              console.log(`[FileHandleRegistry] Permission denied for handle: ${item.id}, removing from DB`);
+              this.removeHandleFromDB(item.id);
+            }
+          } catch (error) {
+            console.error(`[FileHandleRegistry] Error verifying handle ${item.id}:`, error);
+            this.removeHandleFromDB(item.id);
+          }
+        }
+      };
+
+      request.onerror = (event) => {
+        console.error('[FileHandleRegistry] Error loading handles from IndexedDB:', event);
+      };
+    } catch (error) {
+      console.error('[FileHandleRegistry] Failed to load handles from IndexedDB:', error);
+    }
+  }
+
+  /**
+   * Verify permission for a file handle
+   */
+  private async verifyPermission(handle: FileSystemHandle): Promise<boolean> {
+    if (!handle || typeof handle.requestPermission !== 'function') return false;
+    
+    try {
+      // Check if we already have permission, or request it
+      const permission = await handle.requestPermission({ mode: 'read' });
+      return permission === 'granted';
+    } catch (error) {
+      console.error('[FileHandleRegistry] Permission verification error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Save a handle to IndexedDB
+   */
+  private async saveHandleToDB(id: string, handle: FileSystemHandle): Promise<void> {
+    try {
+      const db = await this.initDatabase();
+      const transaction = db.transaction(this.storeName, 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      
+      const request = store.put({ id, handle });
+      
+      request.onsuccess = () => {
+        console.log(`[FileHandleRegistry] Saved handle to IndexedDB: ${id}`);
+      };
+      
+      request.onerror = (event) => {
+        console.error(`[FileHandleRegistry] Error saving handle to IndexedDB:`, event);
+      };
+    } catch (error) {
+      console.error('[FileHandleRegistry] Failed to save handle to IndexedDB:', error);
+    }
+  }
+
+  /**
+   * Remove a handle from IndexedDB
+   */
+  private async removeHandleFromDB(id: string): Promise<void> {
+    try {
+      const db = await this.initDatabase();
+      const transaction = db.transaction(this.storeName, 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      
+      const request = store.delete(id);
+      
+      request.onsuccess = () => {
+        console.log(`[FileHandleRegistry] Removed handle from IndexedDB: ${id}`);
+      };
+      
+      request.onerror = (event) => {
+        console.error(`[FileHandleRegistry] Error removing handle from IndexedDB:`, event);
+      };
+    } catch (error) {
+      console.error('[FileHandleRegistry] Failed to remove handle from IndexedDB:', error);
+    }
+  }
+
+  /**
    * Register a file handle and get a unique ID
    */
   public registerHandle(handle: FileSystemHandle): string {
     const id = uuidv4(); // Generate a unique ID
     this.handles.set(id, handle);
+    this.saveHandleToDB(id, handle);
     console.log(`[FileHandleRegistry] Registered handle with ID: ${id}, name: ${handle.name}, kind: ${handle.kind}`);
     return id;
   }
@@ -68,7 +218,11 @@ class FileHandleRegistry {
    * Remove a file handle from the registry
    */
   public removeHandle(id: string): boolean {
-    return this.handles.delete(id);
+    const result = this.handles.delete(id);
+    if (result) {
+      this.removeHandleFromDB(id);
+    }
+    return result;
   }
 
   /**

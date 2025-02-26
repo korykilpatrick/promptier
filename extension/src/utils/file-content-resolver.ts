@@ -18,6 +18,70 @@ import { fileHandleRegistry } from '../components/sidebar/variables/FilePicker';
 const MAX_FILE_SIZE = 800 * 1024;
 
 /**
+ * Represents a variable entry for a file
+ */
+interface FileVariableEntry {
+  type: 'file';
+  value: string;
+  metadata: FileEntryMetadata;
+}
+
+/**
+ * File entry metadata structure
+ */
+interface FileEntryMetadata {
+  /**
+   * Path or name of the file
+   */
+  path?: string;
+  
+  /**
+   * Size of the file in bytes
+   */
+  size?: number;
+  
+  /**
+   * MIME type of the file
+   */
+  type?: string;
+  
+  /**
+   * Last modified timestamp
+   */
+  lastModified?: number;
+  
+  /**
+   * ID reference to the file handle in the registry
+   */
+  handleId?: string;
+  
+  /**
+   * Legacy handle reference (deprecated, use handleId instead)
+   */
+  handle?: any;
+  
+  /**
+   * Whether content has been resolved
+   */
+  contentResolved?: boolean;
+  
+  /**
+   * When content was last fetched
+   */
+  lastFetchedAt?: number;
+  
+  /**
+   * Tag name used for wrapping content
+   */
+  tagName?: string;
+  
+  /**
+   * Length of the resolved content
+   */
+  contentLength?: number;
+}
+
+/**
  * Options for file content resolution
  */
 interface FileContentResolutionOptions {
@@ -69,7 +133,7 @@ function createTagFromFilename(filename: string): string {
  * @param metadata The file metadata object
  * @returns The file handle or undefined if not available
  */
-function getFileHandleFromMetadata(metadata: any): any {
+function getFileHandleFromMetadata(metadata: FileEntryMetadata): any {
   // Check if we have a handleId (new approach)
   if (metadata?.handleId) {
     console.log(`[getFileHandleFromMetadata] Retrieving handle from registry with ID: ${metadata.handleId}`);
@@ -204,7 +268,7 @@ export async function resolveFileContents(
             console.log(`[resolveFileContents] Processing file entry: ${entry.value}`);
             
             // Get the file handle from metadata (either direct or from registry)
-            const handle = getFileHandleFromMetadata(entry.metadata);
+            const handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
             
             // Debug handle retrieval
             if (resolveOptions.debug) {
@@ -356,7 +420,7 @@ export async function resolveFileContents(
       // Handle directory entries (optional future enhancement)
         else if (isDirectoryEntry(entry) && entry.metadata) {
           // Get the directory handle (either direct or from registry)
-          const handle = getFileHandleFromMetadata(entry.metadata);
+          const handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
           
         // For directories, you might want to list files or process them
         // This is a placeholder for directory handling
@@ -508,7 +572,7 @@ export async function ensureFilePermissions(variables: any[]): Promise<boolean> 
               attemptedFiles.push(fileName);
               
               // Get the handle from metadata or registry
-              const handle = getFileHandleFromMetadata(entry.metadata);
+              const handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
               
               if (!handle) {
                 console.warn(`[ensureFilePermissions] No valid handle found for ${fileName}`);
@@ -593,7 +657,7 @@ export async function activeFetchFileContent(entry: any): Promise<string | null>
       console.log(`[activeFetchFileContent] Retrieved handle from registry with ID: ${handleId}`);
     } else if (entry.metadata?.handle) {
       // Legacy path for backward compatibility
-      handle = getFileHandleFromMetadata(entry.metadata);
+      handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
     }
     
     if (!handle) {
@@ -678,7 +742,8 @@ export async function activeFetchFileContent(entry: any): Promise<string | null>
 export async function activeResolveAllFileContents(
   variables: any[], 
   options: { 
-    autoReacquireHandles?: boolean 
+    autoReacquireHandles?: boolean,
+    forceReacquire?: boolean
   } = {}
 ): Promise<boolean> {
   if (!Array.isArray(variables) || variables.length === 0) {
@@ -693,7 +758,8 @@ export async function activeResolveAllFileContents(
   
   // Default options
   const opts = {
-    autoReacquireHandles: options.autoReacquireHandles !== false
+    autoReacquireHandles: options.autoReacquireHandles !== false,
+    forceReacquire: options.forceReacquire === true
   };
   
   // Check the file handle registry status
@@ -706,13 +772,27 @@ export async function activeResolveAllFileContents(
       if (variable?.value && Array.isArray(variable.value)) {
         for (const entry of variable.value) {
           if (entry && entry.type === 'file' && entry.metadata) {
-            // Access the handle property from metadata (not handleId)
-            const handleId = entry.metadata.handle;
-            if (handleId) {
-              const handle = fileHandleRegistry.getHandle(handleId);
-              if (!handle) {
+            fileCount++;
+            const metadata = entry.metadata as FileEntryMetadata;
+            
+            // Check for handleId in metadata 
+            if (metadata.handleId) {
+              const handle = fileHandleRegistry.getHandle(metadata.handleId);
+              if (!handle || opts.forceReacquire) {
                 missingHandlesCount++;
               }
+            } 
+            // Legacy check for direct handle
+            else if (metadata.handle) {
+              const handleId = metadata.handle;
+              const handle = fileHandleRegistry.getHandle(handleId);
+              if (!handle || opts.forceReacquire) {
+                missingHandlesCount++;
+              }
+            }
+            // No handle information at all
+            else {
+              missingHandlesCount++;
             }
           }
         }
@@ -720,8 +800,8 @@ export async function activeResolveAllFileContents(
     }
     
     // If we found missing handles, try to reacquire them
-    if (missingHandlesCount > 0 || registryHandleCount === 0) {
-      console.log(`[activeResolveAllFileContents] Found ${missingHandlesCount} missing handles, attempting to reacquire`);
+    if (missingHandlesCount > 0 || registryHandleCount === 0 || opts.forceReacquire) {
+      console.log(`[activeResolveAllFileContents] Found ${missingHandlesCount}/${fileCount} missing handles, attempting to reacquire`);
       try {
         const reacquired = await reacquireFileHandles(variables);
         console.log(`[activeResolveAllFileContents] Handle reacquisition ${reacquired ? 'successful' : 'failed'}`);
@@ -735,6 +815,8 @@ export async function activeResolveAllFileContents(
         console.error(`[activeResolveAllFileContents] Error reacquiring file handles:`, error);
         // Continue anyway, we'll try with whatever handles we have
       }
+    } else {
+      console.log(`[activeResolveAllFileContents] All file handles are present in registry, no need to reacquire`);
     }
   }
   
@@ -748,7 +830,7 @@ export async function activeResolveAllFileContents(
     }
   } catch (error) {
     console.error(`[activeResolveAllFileContents] Error checking file permissions:`, error);
-    // Continue anyway, we'll fail on individual files if needed
+    return false;
   }
   
   // Process each variable
@@ -758,12 +840,12 @@ export async function activeResolveAllFileContents(
       
       // Find all file entries in this variable
       for (let i = 0; i < variable.value.length; i++) {
-        const entry = variable.value[i];
+        const entry = variable.value[i] as FileVariableEntry;
         
         if (entry && entry.type === 'file' && entry.metadata) {
           fileCount++;
-          const filePath = entry.metadata?.path || entry.value || 'unknown';
-          console.log(`[activeResolveAllFileContents] Processing file: ${filePath}`);
+          const metadata = entry.metadata;
+          const filePath = metadata?.path || entry.value || 'unknown';
           
           try {
             // Use our active fetch function to get fresh content
@@ -827,10 +909,11 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
   for (const variable of variables) {
     if (variable?.value && Array.isArray(variable.value)) {
       for (let i = 0; i < variable.value.length; i++) {
-        const entry = variable.value[i];
+        const entry = variable.value[i] as FileVariableEntry;
         
         if (entry && entry.type === 'file' && entry.metadata) {
-          const filePath = entry.metadata?.path || entry.value || 'unknown';
+          const metadata = entry.metadata;
+          const filePath = metadata?.path || entry.value || 'unknown';
           
           // Skip if we've already processed this file path
           if (processedPaths.has(filePath)) {
@@ -839,8 +922,8 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
           
           // Check if handle exists in registry
           let handleExists = false;
-          if (entry.metadata?.handleId) {
-            const handle = fileHandleRegistry.getHandle(entry.metadata.handleId);
+          if (metadata?.handleId) {
+            const handle = fileHandleRegistry.getHandle(metadata.handleId);
             handleExists = !!handle;
           }
           
