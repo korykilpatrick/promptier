@@ -2,7 +2,9 @@ const React = require("react");
 const { useState, useCallback, useEffect } = React;
 const { useUserVariables } = require("../../../hooks/useUserVariables");
 const { useToast } = require("../../../hooks/useToast");
-const { createTextEntry, getTextEntries } = require("shared/types/variables");
+const { createTextEntry, getTextEntries, VARIABLE_ENTRY_TYPES } = require("shared/types/variables");
+import FilePicker from "./FilePicker";
+import VariableTypeSelector from "./VariableTypeSelector";
 
 /**
  * Component for managing global user variables
@@ -23,6 +25,8 @@ function VariablesPage() {
   const [newVariable, setNewVariable] = useState({ name: "", value: "" });
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", value: "" });
+  const [variableType, setVariableType] = useState(VARIABLE_ENTRY_TYPES.TEXT);
+  const [fileEntries, setFileEntries] = useState([]);
 
   // Start editing a variable
   const handleEdit = useCallback((/** @type {UserVariable} */ variable) => {
@@ -107,6 +111,21 @@ function VariablesPage() {
     }
   }, [deleteVariable, addToast]);
 
+  // Handle variable type change
+  const handleVariableTypeChange = useCallback((type) => {
+    setVariableType(type);
+    // Reset file entries when changing type
+    if (type !== VARIABLE_ENTRY_TYPES.FILE && type !== VARIABLE_ENTRY_TYPES.DIRECTORY) {
+      setFileEntries([]);
+    }
+  }, []);
+
+  // Handle file selection
+  const handleFileSelect = useCallback((entries) => {
+    const entriesArray = Array.isArray(entries) ? entries : [entries];
+    setFileEntries(entriesArray);
+  }, []);
+
   // Create a new variable
   const handleCreateVariable = useCallback(async (/** @type {React.FormEvent} */ e) => {
     e.preventDefault();
@@ -121,10 +140,31 @@ function VariablesPage() {
     }
 
     try {
-      // Convert the value string to an array of text entries
-      const valueArray = newVariable.value.trim()
-        ? newVariable.value.split('\n').map(/** @param {string} value */ value => createTextEntry(value))
-        : [];
+      let valueArray = [];
+      
+      // Handle different variable types
+      if (variableType === VARIABLE_ENTRY_TYPES.TEXT) {
+        // Convert the value string to an array of text entries
+        valueArray = newVariable.value.trim()
+          ? newVariable.value.split('\n').map(/** @param {string} value */ value => createTextEntry(value))
+          : [];
+      } else if (
+        (variableType === VARIABLE_ENTRY_TYPES.FILE || 
+         variableType === VARIABLE_ENTRY_TYPES.DIRECTORY) && 
+        fileEntries.length > 0
+      ) {
+        // Use the selected file entries
+        valueArray = fileEntries;
+      }
+      
+      if (valueArray.length === 0) {
+        addToast({
+          type: "error",
+          title: "Empty value",
+          message: "Please provide a value for the variable"
+        });
+        return;
+      }
         
       await createVariable({
         name: newVariable.name.trim(),
@@ -132,6 +172,7 @@ function VariablesPage() {
       });
       
       setNewVariable({ name: "", value: "" });
+      setFileEntries([]);
       
       addToast({
         type: "success",
@@ -146,7 +187,7 @@ function VariablesPage() {
         message: "Failed to create the variable"
       });
     }
-  }, [newVariable, createVariable, addToast]);
+  }, [newVariable, variableType, fileEntries, createVariable, addToast]);
 
   return (
     <div className="plasmo-w-full plasmo-bg-white plasmo-p-4">
@@ -163,38 +204,58 @@ function VariablesPage() {
             <input
               type="text"
               id="variableName"
-              className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border plasmo-border-gray-300 
-                plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
-                plasmo-text-sm plasmo-py-1.5 plasmo-px-3"
               value={newVariable.name}
-              onChange={(e) => setNewVariable(/** @param {Object} prev */ prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Variable name"
-              required
+              onChange={(e) => setNewVariable({...newVariable, name: e.target.value})}
+              className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
+              placeholder="my_variable"
             />
           </div>
           
-          <div>
-            <label htmlFor="variableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-              Value
-            </label>
-            <textarea
-              id="variableValue"
-              className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border plasmo-border-gray-300 
-                plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
-                plasmo-text-sm plasmo-py-1.5 plasmo-px-3 plasmo-resize-y"
-              value={newVariable.value}
-              onChange={(e) => setNewVariable(/** @param {Object} prev */ prev => ({ ...prev, value: e.target.value }))}
-              placeholder="Variable value"
-              rows={3}
-            />
-          </div>
+          {/* Variable Type Selector */}
+          <VariableTypeSelector 
+            selectedType={variableType} 
+            onChange={handleVariableTypeChange} 
+          />
+          
+          {variableType === VARIABLE_ENTRY_TYPES.TEXT ? (
+            <div>
+              <label htmlFor="variableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                Variable Value
+              </label>
+              <textarea
+                id="variableValue"
+                value={newVariable.value}
+                onChange={(e) => setNewVariable({...newVariable, value: e.target.value})}
+                rows={3}
+                className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
+                placeholder="Enter variable value..."
+              />
+              <p className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
+                Each line will be treated as a separate value.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                Select {variableType === VARIABLE_ENTRY_TYPES.FILE ? "File" : "Directory"}
+              </label>
+              <FilePicker 
+                onFileSelect={handleFileSelect}
+                allowDirectories={variableType === VARIABLE_ENTRY_TYPES.DIRECTORY}
+                allowMultiple={true}
+              />
+              {fileEntries.length === 0 && (
+                <p className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
+                  Please select at least one {variableType === VARIABLE_ENTRY_TYPES.FILE ? "file" : "directory"}.
+                </p>
+              )}
+            </div>
+          )}
           
           <div className="plasmo-flex plasmo-justify-end">
             <button
               type="submit"
-              className="plasmo-px-4 plasmo-py-2 plasmo-bg-blue-600 plasmo-text-white plasmo-text-sm plasmo-font-medium plasmo-rounded-md
-                plasmo-shadow-sm hover:plasmo-bg-blue-700 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-offset-2
-                plasmo-focus:ring-blue-500 plasmo-transition-colors plasmo-duration-150"
+              className="plasmo-inline-flex plasmo-items-center plasmo-px-4 plasmo-py-2 plasmo-border plasmo-border-transparent plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-shadow-sm plasmo-text-white plasmo-bg-blue-600 plasmo-hover:bg-blue-700 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
             >
               Create Variable
             </button>
@@ -202,128 +263,104 @@ function VariablesPage() {
         </form>
       </div>
       
-      {/* Variables List */}
-      <h2 className="plasmo-text-sm plasmo-font-medium plasmo-mb-3 plasmo-text-gray-700">Your Variables</h2>
+      {/* Variable List */}
+      <h2 className="plasmo-text-md plasmo-font-medium plasmo-mb-3 plasmo-text-gray-800">Your Variables</h2>
       
       {isLoading ? (
-        <div className="plasmo-flex plasmo-justify-center plasmo-py-10">
-          <div className="plasmo-flex plasmo-items-center plasmo-text-gray-500">
-            <svg className="plasmo-animate-spin plasmo-h-5 plasmo-w-5 plasmo-mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="plasmo-opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="plasmo-opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Loading variables...
-          </div>
-        </div>
-      ) : variables.length === 0 ? (
-        <div className="plasmo-bg-gray-50 plasmo-rounded-lg plasmo-p-6 plasmo-text-center plasmo-border plasmo-border-gray-200">
-          <p className="plasmo-text-gray-500 plasmo-text-sm">
-            You don't have any global variables yet. Create one to get started!
-          </p>
-        </div>
-      ) : (
-        <div className="plasmo-bg-white plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-divide-y plasmo-divide-gray-200">
-          {variables.map(/** @param {UserVariable} variable */ variable => (
+        <div className="plasmo-text-center plasmo-py-4 plasmo-text-gray-500 plasmo-text-sm">Loading variables...</div>
+      ) : variables && variables.length > 0 ? (
+        <div className="plasmo-bg-white plasmo-shadow-sm plasmo-rounded-md plasmo-border plasmo-border-gray-200 plasmo-divide-y plasmo-divide-gray-200">
+          {variables.map(variable => (
             <div key={variable.id} className="plasmo-p-4">
               {editingId === variable.id ? (
+                /* Edit Form */
                 <div className="plasmo-space-y-3">
-                  <div>
-                    <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                      Variable Name
-                    </label>
-                    <input
-                      type="text"
-                      className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border plasmo-border-gray-300 
-                        plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
-                        plasmo-text-sm plasmo-py-1.5 plasmo-px-3"
-                      value={editForm.name}
-                      onChange={(e) => setEditForm(/** @param {Object} prev */ prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Variable name"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                      Value
-                    </label>
-                    <textarea
-                      className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border plasmo-border-gray-300 
-                        plasmo-shadow-sm plasmo-focus:border-blue-500 plasmo-focus:ring plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
-                        plasmo-text-sm plasmo-py-1.5 plasmo-px-3 plasmo-resize-y"
-                      value={editForm.value}
-                      onChange={(e) => setEditForm(/** @param {Object} prev */ prev => ({ ...prev, value: e.target.value }))}
-                      placeholder="Variable value"
-                      rows={3}
-                    />
-                  </div>
-                  
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    className="plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
+                  />
+                  <textarea
+                    value={editForm.value}
+                    onChange={(e) => setEditForm({...editForm, value: e.target.value})}
+                    rows={3}
+                    className="plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
+                  />
                   <div className="plasmo-flex plasmo-justify-end plasmo-space-x-2">
                     <button
+                      type="button"
                       onClick={handleCancelEdit}
-                      className="plasmo-px-4 plasmo-py-2 plasmo-bg-gray-200 plasmo-text-gray-800 plasmo-text-sm plasmo-font-medium plasmo-rounded-md
-                        plasmo-shadow-sm hover:plasmo-bg-gray-300 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-offset-2
-                        plasmo-focus:ring-gray-500 plasmo-transition-colors plasmo-duration-150"
+                      className="plasmo-inline-flex plasmo-items-center plasmo-px-3 plasmo-py-1.5 plasmo-border plasmo-border-gray-300 plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white plasmo-hover:bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
                     >
                       Cancel
                     </button>
                     <button
+                      type="button"
                       onClick={handleSaveEdit}
-                      className="plasmo-px-4 plasmo-py-2 plasmo-bg-blue-600 plasmo-text-white plasmo-text-sm plasmo-font-medium plasmo-rounded-md
-                        plasmo-shadow-sm hover:plasmo-bg-blue-700 plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-offset-2
-                        plasmo-focus:ring-blue-500 plasmo-transition-colors plasmo-duration-150"
+                      className="plasmo-inline-flex plasmo-items-center plasmo-px-3 plasmo-py-1.5 plasmo-border plasmo-border-transparent plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-shadow-sm plasmo-text-white plasmo-bg-blue-600 plasmo-hover:bg-blue-700 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
                     >
-                      Save Changes
+                      Save
                     </button>
                   </div>
                 </div>
               ) : (
+                /* Variable Display */
                 <div>
                   <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
-                    <div>
-                      <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">
-                        {variable.name}
-                      </h3>
-                      <div className="plasmo-mt-1 plasmo-text-sm plasmo-text-gray-600 plasmo-whitespace-pre-wrap">
-                        {Array.isArray(variable.value) && variable.value.length > 0 
-                          ? getTextEntries(variable).map(/** @param {VariableEntry} entry */ entry => entry.value).join('\n') 
-                          : <em className="plasmo-text-gray-400">Empty value</em>}
-                      </div>
-                    </div>
-                    <div className="plasmo-flex plasmo-ml-4 plasmo-space-x-2">
+                    <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">{variable.name}</h3>
+                    <div className="plasmo-flex plasmo-space-x-2">
                       <button
+                        type="button"
                         onClick={() => handleEdit(variable)}
-                        className="plasmo-text-gray-400 hover:plasmo-text-blue-600 plasmo-focus:outline-none"
-                        title="Edit variable"
+                        className="plasmo-inline-flex plasmo-items-center plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-text-xs plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white plasmo-hover:bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
                       >
-                        <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                        Edit
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDelete(variable.id, variable.name)}
-                        className="plasmo-text-gray-400 hover:plasmo-text-red-600 plasmo-focus:outline-none"
-                        title="Delete variable"
+                        className="plasmo-inline-flex plasmo-items-center plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-text-xs plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white plasmo-hover:bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
                       >
-                        <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        Delete
                       </button>
                     </div>
                   </div>
-                  <div className="plasmo-mt-2 plasmo-text-xs plasmo-text-gray-500">
-                    Created: {new Date(variable.createdAt).toLocaleString()}
-                    {variable.updatedAt !== variable.createdAt && 
-                      ` • Updated: ${new Date(variable.updatedAt).toLocaleString()}`}
+                  <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-gray-600">
+                    {variable.value.map((entry, idx) => (
+                      <div key={idx} className="plasmo-py-1">
+                        {entry.type === VARIABLE_ENTRY_TYPES.TEXT ? (
+                          <span>{entry.value}</span>
+                        ) : entry.type === VARIABLE_ENTRY_TYPES.FILE ? (
+                          <div className="plasmo-flex plasmo-items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>{entry.name || entry.value.split('/').pop()}</span>
+                          </div>
+                        ) : (
+                          <div className="plasmo-flex plasmo-items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                            <span>{entry.name || entry.value.split('/').pop()}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
           ))}
         </div>
+      ) : (
+        <div className="plasmo-text-center plasmo-py-6 plasmo-bg-gray-50 plasmo-rounded-lg plasmo-border plasmo-border-gray-200">
+          <p className="plasmo-text-sm plasmo-text-gray-500">No variables created yet</p>
+        </div>
       )}
     </div>
   );
 }
 
-module.exports = { VariablesPage }; 
+export default VariablesPage; 

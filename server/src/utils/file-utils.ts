@@ -203,25 +203,50 @@ export function processFileEntries(entries: any[]): {
 
   for (const entry of entries) {
     if (entry.type === 'file') {
-      const { content, error } = readFileContent(entry.value);
-      
-      if (error) {
-        errors.push({ id: entry.id || entry.value, error });
+      // Check if entry.value already contains content (from browser extension)
+      // If it's a short string starting with '/', it's likely a path, otherwise treat as content
+      if (typeof entry.value === 'string' && 
+          entry.value.startsWith('/') && 
+          entry.value.length < 1000) {
+        // Process as file path
+        const { content, error } = readFileContent(entry.value);
+        
+        if (error) {
+          errors.push({ id: entry.id || entry.value, error });
+        } else {
+          processed.push({
+            ...entry,
+            content
+          });
+        }
       } else {
+        // It's already content - pass through
         processed.push({
           ...entry,
-          content
+          content: entry.value
         });
       }
     } else if (entry.type === 'directory') {
-      const { files, error } = listDirectoryFiles(entry.value, true);
-      
-      if (error) {
-        errors.push({ id: entry.id || entry.value, error });
+      // Check if entry.value is a path or content representation
+      if (typeof entry.value === 'string' && 
+          entry.value.startsWith('/') && 
+          entry.value.length < 500) {
+        // Process as directory path
+        const { files, error } = listDirectoryFiles(entry.value, true);
+        
+        if (error) {
+          errors.push({ id: entry.id || entry.value, error });
+        } else {
+          processed.push({
+            ...entry,
+            files
+          });
+        }
       } else {
+        // Treat as content representation
         processed.push({
           ...entry,
-          files
+          files: []  // Empty files list since we don't have real directory
         });
       }
     } else {
@@ -265,17 +290,31 @@ export function validateVariableEntries(entries: any[]): {
       continue;
     }
 
-    // Validate based on type
+    // Validate based on type - check for content-based entries from browser extension
     if (entry.type === 'file') {
-      const validation = validateFilePath(entry.value);
-      if (!validation.valid) {
-        errors.push({ id: entry.id || entry.value, error: validation.error || 'Invalid file path' });
+      // Skip file path validation for content-based entries from browser extension
+      // If it's a path-like string that begins with '/' and is less than 1000 chars, validate as path
+      if (typeof entry.value === 'string' && 
+          entry.value.startsWith('/') && 
+          entry.value.length < 1000) {
+        const validation = validateFilePath(entry.value);
+        if (!validation.valid) {
+          errors.push({ id: entry.id || entry.value, error: validation.error || 'Invalid file path' });
+        }
       }
+      // Otherwise assume it's file content and skip validation
     } else if (entry.type === 'directory') {
-      const validation = validateDirectoryPath(entry.value);
-      if (!validation.valid) {
-        errors.push({ id: entry.id || entry.value, error: validation.error || 'Invalid directory path' });
+      // Skip directory path validation for content-based entries from browser extension
+      // If it's a path-like string that begins with '/' and is less than 500 chars, validate as path
+      if (typeof entry.value === 'string' && 
+          entry.value.startsWith('/') && 
+          entry.value.length < 500) {
+        const validation = validateDirectoryPath(entry.value);
+        if (!validation.valid) {
+          errors.push({ id: entry.id || entry.value, error: validation.error || 'Invalid directory path' });
+        }
       }
+      // Otherwise assume it's directory content representation and skip validation
     }
     // No validation needed for text type
   }

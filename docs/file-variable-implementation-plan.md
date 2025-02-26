@@ -121,40 +121,40 @@ The steps below have been updated to reflect this new approach and order.
     - Create formatters for file paths
 
 ### File Picker Component - Initial
-- [ ] 18. **Basic Component Structure**
+- [x] 18. **Basic Component Structure**
     - Create file picker component skeleton
     - Add container and styling
 
-- [ ] 19. **API Permission Request**
+- [x] 19. **API Permission Request**
     - Implement File System Access API permission request
     - Add permission state management
 
-- [ ] 20. **Single File Selection**
+- [x] 20. **Single File Selection**
     - Add single file selection functionality
     - Implement file handle management
 
-- [ ] 21. **File Metadata Extraction**
+- [x] 21. **File Metadata Extraction**
     - Extract name, size, type from selected files
     - Create display format for metadata
 
 ### File Picker Component - Advanced
-- [ ] 22. **Multiple File Selection**
+- [x] 22. **Multiple File Selection**
     - Implement multiple file selection support
     - Add file list management
 
-- [ ] 23. **Directory Selection**
+- [x] 23. **Directory Selection**
     - Add directory selection functionality
     - Implement recursive path handling
 
-- [ ] 24. **File Size Validation**
+- [x] 24. **File Size Validation**
     - Add client-side file size checking
     - Implement warning for large files
 
-- [ ] 25. **File Type Filtering**
+- [x] 25. **File Type Filtering**
     - Add file type filter options
     - Implement extension filtering
 
-- [ ] 26. **Selected Files Display**
+- [x] 26. **Selected Files Display**
     - Create list view for selected files
     - Add removal functionality
 
