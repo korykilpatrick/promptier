@@ -1,7 +1,7 @@
 import React, { useEffect } from "react"
 import { createPortal } from "react-dom"
 
-export type ToastType = "success" | "error" | "info"
+export type ToastType = "success" | "error" | "info" | "warning"
 
 export interface Toast {
   id: string
@@ -28,13 +28,15 @@ const ToastComponent: React.FC<ToastProps> = ({ toast, onDismiss }) => {
   const bgColor = {
     success: "bg-green-500",
     error: "bg-red-500",
-    info: "bg-blue-500"
+    info: "bg-blue-500",
+    warning: "bg-yellow-500"
   }[toast.type]
 
   const icon = {
     success: "✓",
     error: "✕",
-    info: "ℹ"
+    info: "ℹ",
+    warning: "⚠"
   }[toast.type]
 
   return (

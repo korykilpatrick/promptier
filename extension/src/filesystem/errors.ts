@@ -374,4 +374,241 @@ export function createErrorHandler<T extends typeof FileSystemError>(
     
     return error;
   };
+}
+
+/**
+ * Enhanced logging configuration for tracking critical filesystem operations
+ */
+export interface LoggingConfig {
+  /** Enable or disable detailed operation logging */
+  enableDetailedLogging: boolean;
+
+  /** Log critical operations (file/directory operations that might fail) */
+  logCriticalOperations: boolean;
+
+  /** Track performance metrics for operations */
+  trackPerformance: boolean;
+
+  /** Maximum size of error history to maintain */
+  errorHistorySize: number;
+}
+
+// Default logging configuration
+let loggingConfig: LoggingConfig = {
+  enableDetailedLogging: false,
+  logCriticalOperations: true,
+  trackPerformance: false,
+  errorHistorySize: 50
+};
+
+// Store error history for tracking recurring problems
+const errorHistory: Array<{
+  timestamp: number;
+  operation: string;
+  level: LogLevel;
+  message: string;
+  error?: unknown;
+}> = [];
+
+/**
+ * Configure the logging system
+ * @param config New logging configuration 
+ */
+export function configureLogging(config: Partial<LoggingConfig>): void {
+  loggingConfig = { ...loggingConfig, ...config };
+  getLogger().info(`Filesystem logging configured: ${JSON.stringify(loggingConfig)}`);
+}
+
+/**
+ * Get current logging configuration
+ */
+export function getLoggingConfig(): LoggingConfig {
+  return { ...loggingConfig };
+}
+
+/**
+ * Get error history for analysis and debugging
+ */
+export function getErrorHistory(): Array<{
+  timestamp: number;
+  operation: string;
+  level: LogLevel;
+  message: string;
+  errorMessage?: string;
+}> {
+  return errorHistory.map(item => ({
+    timestamp: item.timestamp,
+    operation: item.operation,
+    level: item.level,
+    message: item.message,
+    errorMessage: item.error instanceof Error ? item.error.message : item.error ? String(item.error) : undefined
+  }));
+}
+
+/**
+ * Clear error history
+ */
+export function clearErrorHistory(): void {
+  errorHistory.length = 0;
+  getLogger().info('Filesystem error history cleared');
+}
+
+// Enhanced version of logError that tracks operation context
+export function logOperation(
+  level: LogLevel,
+  operation: string,
+  message: string,
+  error?: unknown,
+  metadata?: Record<string, any>
+): void {
+  // Get the logger instance
+  const logger = getLogger();
+  
+  // Create the log entry
+  const entry = {
+    timestamp: Date.now(),
+    operation,
+    level,
+    message,
+    error,
+    metadata
+  };
+  
+  // Add to error history if it's a warning or error
+  if (level === LogLevel.WARN || level === LogLevel.ERROR) {
+    errorHistory.push(entry);
+    
+    // Trim history if it exceeds the maximum size
+    if (errorHistory.length > loggingConfig.errorHistorySize) {
+      errorHistory.shift();
+    }
+  }
+  
+  // Only log detailed messages if enabled
+  if (!loggingConfig.enableDetailedLogging && level === LogLevel.DEBUG) {
+    return;
+  }
+  
+  // Critical operations are always logged if that setting is enabled
+  const isCriticalOperation = 
+    operation.includes('write') || 
+    operation.includes('delete') || 
+    operation.includes('create') ||
+    operation.includes('move') ||
+    operation.includes('permission');
+  
+  const shouldLog = 
+    level !== LogLevel.DEBUG || 
+    loggingConfig.enableDetailedLogging ||
+    (isCriticalOperation && loggingConfig.logCriticalOperations);
+  
+  if (!shouldLog) {
+    return;
+  }
+  
+  // Format metadata if present
+  let metadataStr = '';
+  if (metadata && Object.keys(metadata).length > 0) {
+    metadataStr = ' ' + JSON.stringify(metadata);
+  }
+  
+  // Format the message with operation context
+  const formattedMessage = `[${operation}] ${message}${metadataStr}`;
+  
+  // Log the message
+  switch (level) {
+    case LogLevel.DEBUG:
+      logger.debug(formattedMessage);
+      break;
+    case LogLevel.INFO:
+      logger.info(formattedMessage);
+      break;
+    case LogLevel.WARN:
+      logger.warn(formattedMessage);
+      break;
+    case LogLevel.ERROR:
+      logger.error(formattedMessage, error);
+      
+      // Add additional details for errors
+      if (error instanceof FileSystemError) {
+        logger.error(`Error chain: ${error.getErrorChain()}`);
+        
+        if (error.errorStack) {
+          logger.error(`Stack trace: ${error.errorStack}`);
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * Enhanced version of withErrorHandlingAndLogging that tracks performance metrics
+ */
+export function withOperationLogging<T extends (...args: any[]) => Promise<any>>(
+  operation: string,
+  fn: T,
+  options: {
+    errorHandler?: (error: unknown) => Promise<ReturnType<T>> | ReturnType<T>,
+    logLevel?: LogLevel,
+    shouldLogSuccess?: boolean,
+    trackPerformance?: boolean
+  } = {}
+): T {
+  return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+    // Default options
+    const {
+      errorHandler,
+      logLevel = LogLevel.ERROR,
+      shouldLogSuccess = false,
+      trackPerformance = loggingConfig.trackPerformance
+    } = options;
+    
+    let startTime = 0;
+    if (trackPerformance) {
+      startTime = performance.now();
+    }
+    
+    try {
+      // Execute the function
+      const result = await fn(...args);
+      
+      // Log success if requested
+      if (shouldLogSuccess) {
+        let successMessage = `${operation} succeeded`;
+        
+        // Add performance metrics if tracking is enabled
+        if (trackPerformance) {
+          const duration = Math.round(performance.now() - startTime);
+          successMessage += ` (${duration}ms)`;
+        }
+        
+        logOperation(LogLevel.INFO, operation, successMessage);
+      }
+      
+      return result;
+    } catch (error: unknown) {
+      // Calculate duration for performance tracking
+      let durationStr = '';
+      if (trackPerformance) {
+        const duration = Math.round(performance.now() - startTime);
+        durationStr = ` (${duration}ms)`;
+      }
+      
+      // Log the error
+      logOperation(
+        logLevel, 
+        operation, 
+        `${operation} failed${durationStr}`, 
+        error
+      );
+      
+      // If error handler is provided, use it
+      if (errorHandler) {
+        return errorHandler(error);
+      }
+      
+      // Otherwise rethrow the error
+      throw error;
+    }
+  }) as T;
 } 

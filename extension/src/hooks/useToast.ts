@@ -38,6 +38,10 @@ export function useToast(options: UseToastOptions = {}) {
     return addToast(message, "info", duration)
   }, [addToast])
 
+  const warn = useCallback((message: string, duration?: number) => {
+    return addToast(message, "warning", duration)
+  }, [addToast])
+
   const clear = useCallback(() => {
     setToasts([])
   }, [])
@@ -49,6 +53,7 @@ export function useToast(options: UseToastOptions = {}) {
     success,
     error,
     info,
+    warn,
     clear
   }
 } 

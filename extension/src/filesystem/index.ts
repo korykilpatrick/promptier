@@ -27,6 +27,7 @@ import { registry } from './registry';
 import * as Errors from './errors';
 import { cache } from './cache';
 import * as recursive from './utils/recursive';
+import * as pickers from './pickers';
 
 // Re-export everything from errors for convenience
 export * from './errors';
@@ -420,5 +421,10 @@ export const fs = {
   errors: Errors,
   
   // Cache
-  cache
+  cache,
+  
+  // File pickers
+  showFilePicker: pickers.showFilePicker,
+  showDirectoryPicker: pickers.showDirectoryPicker,
+  showMultiFilePicker: pickers.showMultiFilePicker
 }; 

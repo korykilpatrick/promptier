@@ -209,6 +209,27 @@ export class FileHandleRegistry {
   }
 
   /**
+   * Ensures the registry is fully loaded before performing operations
+   * This can be called before any operation that requires the registry to be ready
+   */
+  public async ensureRegistryLoaded(): Promise<void> {
+    // Wait for the database to be initialized
+    if (!this.dbPromise) {
+      this.initDatabase();
+    }
+    
+    try {
+      await this.dbPromise;
+      // Force a reload of handles if needed
+      await this.loadHandlesFromDB();
+      console.log('[FileHandleRegistry] Registry fully loaded and ready for use');
+    } catch (error) {
+      console.error('[FileHandleRegistry] Failed to ensure registry is loaded', error);
+      throw new Error('Failed to load file registry');
+    }
+  }
+
+  /**
    * Clear all handles from the registry
    */
   public async clearHandles(): Promise<void> {
