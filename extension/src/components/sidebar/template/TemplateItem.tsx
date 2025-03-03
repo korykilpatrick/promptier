@@ -184,15 +184,17 @@ const TemplateItem = memo(({
     >
       <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
         <div className="plasmo-flex-1 plasmo-min-w-0">
-          <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900 plasmo-truncate">
-            {template.name}
-          </h4>
-          <div className="plasmo-mt-1 plasmo-flex plasmo-items-center plasmo-space-x-2">
+          <div className="plasmo-flex plasmo-items-center">
+            <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900 plasmo-truncate">
+              {template.name}
+            </h4>
             {template.category && (
-              <span className="plasmo-text-xs plasmo-text-gray-500">
+              <span className="plasmo-ml-2 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-full plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
                 {template.category}
               </span>
             )}
+          </div>
+          <div className="plasmo-mt-1 plasmo-flex plasmo-items-center plasmo-space-x-2">
             <span className="plasmo-text-xs plasmo-text-gray-400">
               {new Date(template.createdAt).toLocaleDateString()}
             </span>
