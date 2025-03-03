@@ -105,10 +105,10 @@
            hover:plasmo-border-primary-200;
   }
   
-  /* Ultra-compact template item */
+  /* Ultra-compact template item - increased size by ~20% */
   .plasmo-template-item-compact {
     @apply plasmo-bg-white plasmo-border plasmo-border-gray-100 plasmo-rounded-md
-           plasmo-cursor-pointer plasmo-shadow-sm plasmo-overflow-hidden
+           plasmo-cursor-pointer plasmo-shadow-sm plasmo-overflow-hidden plasmo-w-full
            hover:plasmo-border-primary-200 hover:plasmo-shadow
            plasmo-transition-all plasmo-duration-200;
   }
@@ -143,22 +143,28 @@
     @apply plasmo-text-xs plasmo-leading-normal plasmo-text-gray-500;
   }
   
-  /* Template name - more compact */
+  /* Template name - increased font size */
   .plasmo-template-name {
     @apply plasmo-text-sm plasmo-leading-snug plasmo-font-medium plasmo-text-gray-800
            plasmo-truncate;
+    font-size: 0.95rem; /* Slightly increased from default text-sm */
   }
   
-  /* Template description - one line with ellipsis */
+  /* Template description - improved wrapping */
   .plasmo-template-description {
-    @apply plasmo-text-xs plasmo-text-gray-600 plasmo-break-words plasmo-line-clamp-1
+    @apply plasmo-text-xs plasmo-text-gray-600 plasmo-break-words
            plasmo-leading-relaxed plasmo-mt-0.5;
   }
   
-  /* Compact template description */
+  /* Compact template description - improved wrapping */
   .plasmo-template-description-compact {
     @apply plasmo-text-xs plasmo-text-gray-500 plasmo-break-words plasmo-leading-snug
-           plasmo-line-clamp-1 plasmo-mt-0.5 plasmo-pr-1;
+           plasmo-pr-1 plasmo-whitespace-normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.3;
   }
 
   /* Badge/chip styles - more compact */
@@ -201,7 +207,7 @@
     @apply plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1;
   }
 
-  /* Action button styles - increased size by 30% */
+  /* Action button styles - increased size */
   .plasmo-action-btn {
     @apply plasmo-p-2 plasmo-rounded-full
            plasmo-text-gray-400
@@ -219,24 +225,50 @@
     }
   }
 
-  /* Increased icon size by 30% */
+  /* Increased icon size */
   .plasmo-action-btn svg {
     @apply plasmo-w-5 plasmo-h-5;
   }
   
-  /* Ultra-compact action buttons for template list */
-  .plasmo-action-btn-compact {
-    @apply plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400
-           plasmo-transition-colors plasmo-duration-150 plasmo-mx-0.5;
+  /* Template action buttons - improved with subtle hover animations */
+  .plasmo-template-action-btn {
+    @apply plasmo-p-1.5 plasmo-rounded-full plasmo-text-gray-400
+           plasmo-transition-all plasmo-duration-200 plasmo-mx-0.5;
     
     &:hover {
       color: theme('colors.gray.700');
       background-color: theme('colors.gray.100');
+      transform: scale(1.1);
     }
     
     &:focus {
       outline: none;
       box-shadow: 0 0 0 2px theme('colors.primary.500 / 30%');
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+  
+  /* Ultra-compact action buttons for template list - increased size */
+  .plasmo-action-btn-compact {
+    @apply plasmo-p-1.5 plasmo-rounded-full plasmo-text-gray-400
+           plasmo-transition-all plasmo-duration-150 plasmo-mx-0.5;
+    
+    &:hover {
+      color: theme('colors.gray.700');
+      background-color: theme('colors.gray.100');
+      transform: scale(1.05);
+    }
+    
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px theme('colors.primary.500 / 30%');
+    }
+    
+    &:active {
+      transform: scale(0.95);
     }
   }
 
@@ -289,7 +321,7 @@
 
   /* Compact section */
   .plasmo-compact-section {
-    @apply plasmo-mb-3;
+    @apply plasmo-mb-3 plasmo-w-full;
   }
 
   /* Thin divider between templates */

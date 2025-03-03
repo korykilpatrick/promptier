@@ -82,7 +82,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   // Render a template item
   const renderTemplateItem = useCallback((template: Template, index: number) => {
     return (
-      <div className="plasmo-mb-0.5">
+      <div className="plasmo-mb-1">
         <TemplateItem
           key={template.id}
           template={template}
@@ -105,7 +105,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   // If no templates
   if (allTemplates.length === 0) {
     return (
-      <div className="plasmo-empty-state">
+      <div className="plasmo-empty-state plasmo-w-full">
         <div className="plasmo-text-gray-400 plasmo-mb-2">
           <svg className="plasmo-w-10 plasmo-h-10 plasmo-mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -126,7 +126,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   }
 
   return (
-    <div className="plasmo-space-y-1">
+    <div className="plasmo-space-y-1 plasmo-w-full">
       <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-1">
         <div className="plasmo-text-xs plasmo-text-gray-500">
           {allTemplates.length} template{allTemplates.length !== 1 ? 's' : ''}
@@ -148,8 +148,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         </button>
       </div>
       
-      {/* Unified template list */}
-      <div className="plasmo-space-y-0.5">
+      {/* Unified template list with full width */}
+      <div className="plasmo-space-y-0.5 plasmo-w-full">
         {allTemplates.map((template, index) => renderTemplateItem(template, index))}
       </div>
     </div>

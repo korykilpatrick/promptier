@@ -169,15 +169,15 @@ const TemplateItem = memo(({
   // Determine background color based on index (for alternating)
   const bgClass = index % 2 === 0 ? 'plasmo-template-item-even' : 'plasmo-template-item-odd';
 
-  // Extract first 100 characters of content for preview
-  const contentPreview = template.content.substring(0, 100) + (template.content.length > 100 ? '...' : '');
+  // Extract first 150 characters (increased from 100) of content for preview
+  const contentPreview = template.content.substring(0, 150) + (template.content.length > 150 ? '...' : '');
 
   return (
     <div
       onClick={() => onSelect(template)}
       className={`
         plasmo-template-item-compact ${bgClass}
-        plasmo-group plasmo-relative
+        plasmo-group plasmo-relative plasmo-w-full
         ${isSelected ? "plasmo-template-item-selected" : ""}
       `}
       role="button"
@@ -189,13 +189,13 @@ const TemplateItem = memo(({
         }
       }}
     >
-      <div className="plasmo-py-1 plasmo-px-2">
+      <div className="plasmo-py-2 plasmo-px-3">
         {/* Template Header with Actions */}
         <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-          <div className="plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-flex-1 plasmo-min-w-0">
+          <div className="plasmo-flex plasmo-items-center plasmo-gap-1.5 plasmo-flex-1 plasmo-min-w-0">
             {isFavorite && (
               <span className="plasmo-text-accent-500 plasmo-flex-shrink-0">
-                <svg className="plasmo-w-3.5 plasmo-h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="plasmo-w-4 plasmo-h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
               </span>
@@ -211,30 +211,30 @@ const TemplateItem = memo(({
           </div>
           
           {/* Action Buttons */}
-          <div className="plasmo-flex plasmo-items-center plasmo-ml-1 plasmo-flex-shrink-0">
+          <div className="plasmo-flex plasmo-items-center plasmo-ml-1 plasmo-flex-shrink-0 plasmo-space-x-1">
             <button
               onClick={handleCopyClick}
-              className="plasmo-action-btn-compact"
+              className="plasmo-action-btn-compact plasmo-template-action-btn"
               aria-label="Copy template"
               disabled={isCopying}
             >
               {isCopying ? (
-                <svg className="plasmo-w-3.5 plasmo-h-3.5 plasmo-animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="plasmo-w-4 plasmo-h-4 plasmo-animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="plasmo-opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="plasmo-opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                <svg className="plasmo-w-3.5 plasmo-h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="plasmo-w-4 plasmo-h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
               )}
             </button>
             <button
               onClick={handleFavoriteClick}
-              className={`plasmo-action-btn-compact ${isFavorite ? 'plasmo-text-accent-500' : 'plasmo-text-gray-400'}`}
+              className={`plasmo-action-btn-compact plasmo-template-action-btn ${isFavorite ? 'plasmo-text-accent-500' : 'plasmo-text-gray-400'}`}
               aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
-              <svg className="plasmo-w-3.5 plasmo-h-3.5" viewBox="0 0 20 20">
+              <svg className="plasmo-w-4 plasmo-h-4" viewBox="0 0 20 20">
                 {isFavorite ? (
                   <path fill="currentColor" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 ) : (
@@ -244,19 +244,19 @@ const TemplateItem = memo(({
             </button>
             <button
               onClick={handleEditClick}
-              className="plasmo-action-btn-compact"
+              className="plasmo-action-btn-compact plasmo-template-action-btn"
               aria-label="Edit template"
             >
-              <svg className="plasmo-w-3.5 plasmo-h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="plasmo-w-4 plasmo-h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
             <button
               onClick={handleDeleteClick}
-              className="plasmo-action-btn-compact plasmo-text-error-500 hover:plasmo-text-error-700"
+              className="plasmo-action-btn-compact plasmo-template-action-btn plasmo-text-error-500 hover:plasmo-text-error-700"
               aria-label="Delete template"
             >
-              <svg className="plasmo-w-3.5 plasmo-h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="plasmo-w-4 plasmo-h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
@@ -264,7 +264,7 @@ const TemplateItem = memo(({
         </div>
 
         {/* Template Content Preview */}
-        <div className="plasmo-template-description-compact">
+        <div className="plasmo-template-description-compact plasmo-mt-1.5">
           {contentPreview}
         </div>
       </div>
