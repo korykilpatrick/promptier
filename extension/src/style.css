@@ -15,19 +15,19 @@
   
   /* Better typography scale */
   h1 {
-    @apply plasmo-text-2xl plasmo-font-semibold plasmo-text-gray-900 plasmo-leading-tight;
+    @apply plasmo-text-xl plasmo-font-semibold plasmo-text-gray-900 plasmo-leading-tight;
   }
   
   h2 {
-    @apply plasmo-text-xl plasmo-font-semibold plasmo-text-gray-800 plasmo-leading-tight;
+    @apply plasmo-text-lg plasmo-font-semibold plasmo-text-gray-800 plasmo-leading-tight;
   }
   
   h3 {
-    @apply plasmo-text-lg plasmo-font-medium plasmo-text-gray-800 plasmo-leading-snug;
+    @apply plasmo-text-base plasmo-font-medium plasmo-text-gray-800 plasmo-leading-snug;
   }
   
   h4, h5, h6 {
-    @apply plasmo-text-base plasmo-font-medium plasmo-text-gray-800 plasmo-leading-snug;
+    @apply plasmo-text-sm plasmo-font-medium plasmo-text-gray-800 plasmo-leading-snug;
   }
   
   p {
@@ -46,9 +46,9 @@
 }
 
 @layer components {
-  /* Button variants */
+  /* Button variants - compacted */
   .plasmo-btn-primary {
-    @apply plasmo-bg-primary-600 plasmo-text-white plasmo-px-4 plasmo-py-2
+    @apply plasmo-bg-primary-600 plasmo-text-white plasmo-px-3 plasmo-py-1.5
            plasmo-rounded-md plasmo-font-medium plasmo-text-sm plasmo-shadow
            plasmo-transition-all plasmo-duration-200
            hover:plasmo-bg-primary-700 hover:plasmo-shadow-md
@@ -58,7 +58,7 @@
   }
 
   .plasmo-btn-secondary {
-    @apply plasmo-bg-white plasmo-text-gray-700 plasmo-px-4 plasmo-py-2
+    @apply plasmo-bg-white plasmo-text-gray-700 plasmo-px-3 plasmo-py-1.5
            plasmo-rounded-md plasmo-font-medium plasmo-text-sm
            plasmo-border plasmo-border-gray-300 plasmo-shadow-sm
            plasmo-transition-all plasmo-duration-200
@@ -69,7 +69,7 @@
   }
 
   .plasmo-btn-ghost {
-    @apply plasmo-bg-transparent plasmo-text-gray-600 plasmo-px-3 plasmo-py-1.5
+    @apply plasmo-bg-transparent plasmo-text-gray-600 plasmo-px-2 plasmo-py-1
            plasmo-rounded-md plasmo-font-medium plasmo-text-sm
            plasmo-transition-all plasmo-duration-200
            hover:plasmo-bg-gray-100 hover:plasmo-text-gray-800
@@ -77,10 +77,10 @@
            active:plasmo-bg-gray-200 active:plasmo-scale-[0.98];
   }
 
-  /* Updated section header with better visual hierarchy */
+  /* Compact section header with better visual hierarchy */
   .plasmo-section-header {
     @apply plasmo-flex plasmo-justify-between plasmo-items-center
-           plasmo-py-3 plasmo-px-4 plasmo-cursor-pointer
+           plasmo-py-2 plasmo-px-3 plasmo-cursor-pointer
            plasmo-border-b plasmo-border-gray-200
            plasmo-transition-colors plasmo-duration-150
            hover:plasmo-bg-gray-50;
@@ -92,26 +92,35 @@
            plasmo-shadow-md plasmo-rounded-lg plasmo-overflow-hidden;
   }
   
-  /* Card styles */
+  /* Card styles - reduced padding by 50% */
   .plasmo-card {
-    @apply plasmo-bg-white plasmo-rounded-lg plasmo-border plasmo-border-gray-200
-           plasmo-shadow-card plasmo-p-4 plasmo-transition-all plasmo-duration-200
-           hover:plasmo-shadow-card-hover hover:plasmo-border-gray-300;
+    @apply plasmo-bg-white plasmo-rounded-lg plasmo-border plasmo-border-gray-100
+           plasmo-shadow-card plasmo-p-2 plasmo-transition-all plasmo-duration-200
+           hover:plasmo-shadow-card-hover hover:plasmo-border-gray-200;
   }
 
-  /* Template item styles */
+  /* Template item styles - optimized for density */
   .plasmo-template-item {
-    @apply plasmo-card plasmo-mb-4 plasmo-cursor-pointer
+    @apply plasmo-card plasmo-mb-1.5 plasmo-cursor-pointer
            hover:plasmo-border-primary-200;
   }
   
   .plasmo-template-item-selected {
-    @apply plasmo-border-primary-400 plasmo-ring-2 plasmo-ring-primary-100;
+    @apply plasmo-border-primary-400 plasmo-ring-1 plasmo-ring-primary-100;
+  }
+
+  /* Template item with alternating background colors */
+  .plasmo-template-item-even {
+    @apply plasmo-bg-white;
+  }
+  
+  .plasmo-template-item-odd {
+    @apply plasmo-bg-gray-50;
   }
   
   /* Typography classes */
   .plasmo-text-heading {
-    @apply plasmo-text-xl plasmo-leading-tight plasmo-font-semibold plasmo-text-gray-900;
+    @apply plasmo-text-lg plasmo-leading-tight plasmo-font-semibold plasmo-text-gray-900;
   }
   
   .plasmo-text-subheading {
@@ -126,19 +135,21 @@
     @apply plasmo-text-xs plasmo-leading-normal plasmo-text-gray-500;
   }
   
+  /* Template name - more compact */
   .plasmo-template-name {
-    @apply plasmo-text-base plasmo-leading-snug plasmo-font-medium plasmo-text-gray-800
+    @apply plasmo-text-sm plasmo-leading-snug plasmo-font-medium plasmo-text-gray-800
            plasmo-truncate;
   }
   
+  /* Template description - one line with ellipsis */
   .plasmo-template-description {
-    @apply plasmo-text-sm plasmo-text-gray-600 plasmo-break-words plasmo-line-clamp-2
-           plasmo-leading-relaxed plasmo-mt-1;
+    @apply plasmo-text-xs plasmo-text-gray-600 plasmo-break-words plasmo-line-clamp-1
+           plasmo-leading-relaxed plasmo-mt-0.5;
   }
 
-  /* Badge/chip styles */
+  /* Badge/chip styles - more compact */
   .plasmo-badge {
-    @apply plasmo-inline-flex plasmo-items-center plasmo-px-2 plasmo-py-0.5
+    @apply plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5
            plasmo-rounded-full plasmo-text-xs plasmo-font-medium;
   }
 
@@ -160,7 +171,7 @@
 
   /* Form elements */
   .plasmo-input {
-    @apply plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-bg-white
+    @apply plasmo-w-full plasmo-px-2 plasmo-py-1.5 plasmo-bg-white
            plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-shadow-sm
            plasmo-text-sm plasmo-text-gray-900
            plasmo-transition-colors plasmo-duration-150
@@ -176,11 +187,12 @@
     @apply plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1;
   }
 
-  /* Action button styles */
+  /* Action button styles - increased size by 30% */
   .plasmo-action-btn {
-    @apply plasmo-p-1.5 plasmo-rounded-full
+    @apply plasmo-p-2 plasmo-rounded-full
            plasmo-text-gray-400
-           plasmo-transition-colors plasmo-duration-150;
+           plasmo-transition-colors plasmo-duration-150
+           plasmo-mx-0.5;
     
     &:hover {
       color: theme('colors.gray.700');
@@ -191,6 +203,11 @@
       outline: none;
       box-shadow: 0 0 0 2px theme('colors.primary.500 / 30%');
     }
+  }
+
+  /* Increased icon size by 30% */
+  .plasmo-action-btn svg {
+    @apply plasmo-w-5 plasmo-h-5;
   }
 
   .plasmo-action-btn-danger {
@@ -227,11 +244,27 @@
     @apply plasmo-text-accent-500 hover:plasmo-text-accent-600;
   }
 
-  /* Custom empty state */
+  /* Custom empty state - more compact */
   .plasmo-empty-state {
     @apply plasmo-flex plasmo-flex-col plasmo-items-center plasmo-justify-center
-           plasmo-p-8 plasmo-text-center plasmo-bg-gray-50
+           plasmo-p-4 plasmo-text-center plasmo-bg-gray-50
            plasmo-rounded-lg plasmo-border plasmo-border-gray-200;
+  }
+
+  /* Compact header */
+  .plasmo-compact-header {
+    @apply plasmo-bg-white plasmo-px-3 plasmo-py-2 plasmo-border-b plasmo-border-gray-200
+           plasmo-flex plasmo-justify-between plasmo-items-center;
+  }
+
+  /* Compact section */
+  .plasmo-compact-section {
+    @apply plasmo-mb-3;
+  }
+
+  /* Thin divider between templates */
+  .plasmo-template-divider {
+    @apply plasmo-border-t plasmo-border-gray-100 plasmo-my-1;
   }
 }
 
@@ -254,6 +287,14 @@
   }
   
   /* Text utilities */
+  .plasmo-line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
   .plasmo-line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -276,11 +317,11 @@
 
   /* Divider utilities */
   .plasmo-divider {
-    @apply plasmo-border-b plasmo-border-gray-200 plasmo-my-3;
+    @apply plasmo-border-b plasmo-border-gray-200 plasmo-my-2;
   }
 
   .plasmo-divider-vertical {
-    @apply plasmo-border-r plasmo-border-gray-200 plasmo-mx-3 plasmo-h-8;
+    @apply plasmo-border-r plasmo-border-gray-200 plasmo-mx-2 plasmo-h-6;
   }
 
   /* Scrollbar styling */

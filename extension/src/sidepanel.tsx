@@ -262,12 +262,12 @@ function TemplateDetailsWrapper() {
 
   if (isLoading) {
     return (
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-8 plasmo-h-full">
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-4 plasmo-h-full">
         <div className="plasmo-text-center">
-          <div className="plasmo-animate-spin plasmo-h-10 plasmo-w-10 plasmo-border-4 plasmo-border-primary-200 plasmo-border-t-primary-600 plasmo-rounded-full plasmo-mx-auto plasmo-mb-4"></div>
-          <p className="plasmo-text-gray-700 plasmo-font-medium">Loading template...</p>
+          <div className="plasmo-animate-spin plasmo-h-8 plasmo-w-8 plasmo-border-3 plasmo-border-primary-200 plasmo-border-t-primary-600 plasmo-rounded-full plasmo-mx-auto plasmo-mb-3"></div>
+          <p className="plasmo-text-gray-700 plasmo-text-sm">Loading template...</p>
           {fetchAttempts > 1 && (
-            <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mt-2">
+            <p className="plasmo-text-xs plasmo-text-gray-500 plasmo-mt-1">
               Attempt {fetchAttempts} of {MAX_FETCH_ATTEMPTS}...
             </p>
           )}
@@ -278,15 +278,15 @@ function TemplateDetailsWrapper() {
 
   if (error) {
     return (
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-8 plasmo-h-full">
-        <div className="plasmo-card plasmo-p-6 plasmo-max-w-md plasmo-w-full plasmo-text-center">
-          <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-w-12 plasmo-h-12 plasmo-mx-auto plasmo-rounded-full plasmo-bg-error-100 plasmo-text-error-600 plasmo-mb-4">
-            <svg className="plasmo-w-6 plasmo-h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-4 plasmo-h-full">
+        <div className="plasmo-card plasmo-p-4 plasmo-max-w-md plasmo-w-full plasmo-text-center">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-w-10 plasmo-h-10 plasmo-mx-auto plasmo-rounded-full plasmo-bg-error-100 plasmo-text-error-600 plasmo-mb-3">
+            <svg className="plasmo-w-5 plasmo-h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">{error}</h3>
-          <p className="plasmo-mb-4 plasmo-text-sm plasmo-text-gray-600">
+          <h3 className="plasmo-text-base plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">{error}</h3>
+          <p className="plasmo-mb-3 plasmo-text-sm plasmo-text-gray-600">
             This could be due to a network issue or a problem with the server.
           </p>
           <button
@@ -310,18 +310,18 @@ function TemplateDetailsWrapper() {
   } catch (err) {
     console.error("Error rendering TemplateDetails:", err);
     return (
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-8 plasmo-h-full">
-        <div className="plasmo-card plasmo-p-6 plasmo-max-w-md plasmo-w-full plasmo-text-center">
-          <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-w-12 plasmo-h-12 plasmo-mx-auto plasmo-rounded-full plasmo-bg-error-100 plasmo-text-error-600 plasmo-mb-4">
-            <svg className="plasmo-w-6 plasmo-h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-4 plasmo-h-full">
+        <div className="plasmo-card plasmo-p-4 plasmo-max-w-md plasmo-w-full plasmo-text-center">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-w-10 plasmo-h-10 plasmo-mx-auto plasmo-rounded-full plasmo-bg-error-100 plasmo-text-error-600 plasmo-mb-3">
+            <svg className="plasmo-w-5 plasmo-h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">Failed to load template component</h3>
-          <p className="plasmo-mb-4 plasmo-text-sm plasmo-text-gray-600">
+          <h3 className="plasmo-text-base plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">Failed to load template component</h3>
+          <p className="plasmo-mb-3 plasmo-text-sm plasmo-text-gray-600">
             There was an error loading the template details.
           </p>
-          <pre className="plasmo-bg-gray-100 plasmo-p-2 plasmo-rounded plasmo-text-xs plasmo-mb-4 plasmo-overflow-auto plasmo-max-h-32 plasmo-text-left">
+          <pre className="plasmo-bg-gray-100 plasmo-p-2 plasmo-rounded plasmo-text-xs plasmo-mb-3 plasmo-overflow-auto plasmo-max-h-32 plasmo-text-left">
             {String(err)}
           </pre>
           <button
@@ -346,13 +346,14 @@ function SidePanel() {
       signUpFallbackRedirectUrl={chrome.runtime.getURL("sidepanel.html")}
     >
       <div className="plasmo-h-full plasmo-w-[480px] plasmo-bg-gray-50 plasmo-flex plasmo-flex-col">
-        <header className="plasmo-bg-white plasmo-px-4 plasmo-py-3 plasmo-border-b plasmo-border-gray-200 plasmo-flex plasmo-justify-between plasmo-items-center">
+        {/* More compact header - reduced height by 20% */}
+        <header className="plasmo-compact-header">
           <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
-            <svg className="plasmo-w-7 plasmo-h-7 plasmo-text-primary-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="plasmo-w-6 plasmo-h-6 plasmo-text-primary-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M19.25 11.75L17.25 6.75L14.25 9.75L12.75 4.75L7.75 9.25L4.75 8.75V19.25H19.25V11.75Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M9.75 13.25L11.25 17.25L15.25 13.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h1 className="plasmo-text-xl plasmo-font-semibold plasmo-text-gray-900">Promptier</h1>
+            <h1 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-900">Promptier</h1>
           </div>
           <SignedIn>
             <UserButton afterSignOutUrl={chrome.runtime.getURL("sidepanel.html")} />
@@ -372,15 +373,15 @@ function SidePanel() {
             </Router>
           </SignedIn>
           <SignedOut>
-            <div className="plasmo-p-8 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-h-full">
-              <div className="plasmo-card plasmo-p-6 plasmo-max-w-md plasmo-w-full">
-                <div className="plasmo-text-center plasmo-mb-6">
-                  <svg className="plasmo-w-12 plasmo-h-12 plasmo-mx-auto plasmo-text-primary-600 plasmo-mb-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div className="plasmo-p-6 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-h-full">
+              <div className="plasmo-card plasmo-p-4 plasmo-max-w-md plasmo-w-full">
+                <div className="plasmo-text-center plasmo-mb-4">
+                  <svg className="plasmo-w-10 plasmo-h-10 plasmo-mx-auto plasmo-text-primary-600 plasmo-mb-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M19.25 11.75L17.25 6.75L14.25 9.75L12.75 4.75L7.75 9.25L4.75 8.75V19.25H19.25V11.75Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M9.75 13.25L11.25 17.25L15.25 13.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <h2 className="plasmo-text-xl plasmo-font-semibold plasmo-text-gray-900 plasmo-mb-2">Sign In to Promptier</h2>
-                  <p className="plasmo-text-sm plasmo-text-gray-600">Log in to access your templates and variables</p>
+                  <h2 className="plasmo-text-lg plasmo-font-semibold plasmo-text-gray-900 plasmo-mb-1">Sign In to Promptier</h2>
+                  <p className="plasmo-text-xs plasmo-text-gray-600">Log in to access your templates and variables</p>
                 </div>
                 <SignIn
                   routing="virtual"

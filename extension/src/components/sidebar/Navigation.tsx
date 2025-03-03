@@ -1,66 +1,39 @@
 import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export const Navigation: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const path = location.pathname;
 
-  const navItems = [
-    {
-      path: "/",
-      label: "Templates",
-      icon: (
-        <svg className="plasmo-w-5 plasmo-h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      ),
-    },
-    {
-      path: "/variables",
-      label: "Variables",
-      icon: (
-        <svg className="plasmo-w-5 plasmo-h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-        </svg>
-      ),
-    },
-  ];
-
-  const handleNavClick = (path: string) => {
-    navigate(path);
-  };
-
-  const isActivePath = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/" || location.pathname.startsWith("/templates");
-    }
-    return location.pathname.startsWith(path);
+  const isActive = (route: string) => {
+    return path === route || (route !== "/" && path.startsWith(route));
   };
 
   return (
-    <nav className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-shadow-sm">
+    <nav className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-px-3 plasmo-py-1">
       <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-        {navItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => handleNavClick(item.path)}
-            className={`
-              plasmo-flex plasmo-items-center plasmo-justify-center plasmo-gap-2
-              plasmo-px-4 plasmo-py-3 plasmo-flex-1 plasmo-text-sm plasmo-font-medium
-              plasmo-transition-colors plasmo-duration-200
-              ${isActivePath(item.path) 
-                ? "plasmo-text-primary-700 plasmo-border-b-2 plasmo-border-primary-500 plasmo-bg-primary-50"
-                : "plasmo-text-gray-500 hover:plasmo-text-gray-700 hover:plasmo-bg-gray-50"
-              }
-            `}
-            aria-current={isActivePath(item.path) ? "page" : undefined}
+        <div className="plasmo-flex plasmo-items-center plasmo-space-x-1">
+          <Link
+            to="/"
+            className={`plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
+              ${isActive("/")
+                ? "plasmo-text-primary-700 plasmo-bg-primary-50"
+                : "plasmo-text-gray-600 hover:plasmo-text-gray-800 hover:plasmo-bg-gray-50"
+              }`}
           >
-            <span className={`${isActivePath(item.path) ? "plasmo-text-primary-600" : "plasmo-text-gray-400"}`}>
-              {item.icon}
-            </span>
-            <span>{item.label}</span>
-          </button>
-        ))}
+            Templates
+          </Link>
+          <Link
+            to="/variables"
+            className={`plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
+              ${isActive("/variables")
+                ? "plasmo-text-primary-700 plasmo-bg-primary-50"
+                : "plasmo-text-gray-600 hover:plasmo-text-gray-800 hover:plasmo-bg-gray-50"
+              }`}
+          >
+            Variables
+          </Link>
+        </div>
       </div>
     </nav>
   );

@@ -100,11 +100,11 @@ function TemplateSectionContent({
 
   return (
     React.createElement("section", {
-      className: "plasmo-mb-6 plasmo-animate-fade-in",
+      className: "plasmo-compact-section plasmo-animate-fade-in",
       "aria-expanded": expanded
     },
       expanded && (
-        React.createElement("div", { className: "plasmo-p-4" },
+        React.createElement("div", { className: "plasmo-px-3 plasmo-py-2" },
           isCreating || isEditing ? (
             React.createElement(TemplateForm, { 
               template: isEditing ? editingTemplate : undefined, 
@@ -112,43 +112,28 @@ function TemplateSectionContent({
               onCancel: handleCancel 
             })
           ) : (
-            React.createElement("div", { className: "plasmo-space-y-6" },
-              React.createElement("div", { className: "plasmo-flex plasmo-justify-between plasmo-items-center" },
-                React.createElement("h2", { className: "plasmo-text-heading" }, "Your Templates"),
-                React.createElement("div", { className: "plasmo-flex plasmo-gap-2" },
-                  React.createElement("div", { className: "plasmo-relative plasmo-w-64 plasmo-hidden md:plasmo-block" },
-                    React.createElement("div", { className: "plasmo-absolute plasmo-inset-y-0 plasmo-left-0 plasmo-flex plasmo-items-center plasmo-pl-3 plasmo-pointer-events-none" },
-                      React.createElement("svg", { className: "plasmo-w-4 plasmo-h-4 plasmo-text-gray-400", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
-                        React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "2", d: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" })
-                      )
-                    ),
-                    React.createElement("input", {
-                      type: "search",
-                      className: "plasmo-input plasmo-pl-10 plasmo-pr-2 plasmo-py-1.5 focus:plasmo-border-primary-500",
-                      placeholder: "Search templates...",
-                      disabled: true // Will be implemented in future
+            React.createElement("div", { className: "plasmo-space-y-3" },
+              React.createElement("div", { className: "plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-2" },
+                React.createElement("h2", { className: "plasmo-text-base plasmo-font-medium plasmo-text-gray-900" }, "Your Templates"),
+                React.createElement("button", {
+                  className: "plasmo-btn-primary plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-text-xs",
+                  onClick: handleCreateClick,
+                  "aria-label": "Create new template"
+                },
+                  React.createElement("svg", {
+                    className: "plasmo-w-3.5 plasmo-h-3.5",
+                    fill: "none",
+                    stroke: "currentColor",
+                    viewBox: "0 0 24 24"
+                  },
+                    React.createElement("path", {
+                      strokeLinecap: "round",
+                      strokeLinejoin: "round",
+                      strokeWidth: "2",
+                      d: "M12 6v6m0 0v6m0-6h6m-6 0H6"
                     })
                   ),
-                  React.createElement("button", {
-                    className: "plasmo-btn-secondary plasmo-flex plasmo-items-center plasmo-gap-1",
-                    onClick: handleCreateClick,
-                    "aria-label": "Create new template"
-                  },
-                    React.createElement("svg", {
-                      className: "plasmo-w-4 plasmo-h-4",
-                      fill: "none",
-                      stroke: "currentColor",
-                      viewBox: "0 0 24 24"
-                    },
-                      React.createElement("path", {
-                        strokeLinecap: "round",
-                        strokeLinejoin: "round",
-                        strokeWidth: "2",
-                        d: "M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      })
-                    ),
-                    "New Template"
-                  )
+                  "New"
                 )
               ),
               
@@ -156,16 +141,16 @@ function TemplateSectionContent({
               isLoading ? (
                 React.createElement(LoadingSkeleton, { count: 3, variant: "card", size: "large" })
               ) : (
-                React.createElement("div", { className: "plasmo-mt-4" },
+                React.createElement("div", { className: "plasmo-mt-2" },
                   unifiedTemplates.length === 0 && unifiedFavoriteTemplates.length === 0 ? (
                     React.createElement("div", { className: "plasmo-empty-state" },
-                      React.createElement("div", { className: "plasmo-text-gray-400 plasmo-mb-3" },
-                        React.createElement("svg", { className: "plasmo-w-12 plasmo-h-12 plasmo-mx-auto", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
+                      React.createElement("div", { className: "plasmo-text-gray-400 plasmo-mb-2" },
+                        React.createElement("svg", { className: "plasmo-w-10 plasmo-h-10 plasmo-mx-auto", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
                           React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.5", d: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" })
                         )
                       ),
-                      React.createElement("h3", { className: "plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2" }, "No templates yet"),
-                      React.createElement("p", { className: "plasmo-text-sm plasmo-text-gray-500 plasmo-mb-4" },
+                      React.createElement("h3", { className: "plasmo-text-base plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2" }, "No templates yet"),
+                      React.createElement("p", { className: "plasmo-text-sm plasmo-text-gray-500 plasmo-mb-3" },
                         "Create your first template to get started with reusable prompts."
                       ),
                       React.createElement("button", {
