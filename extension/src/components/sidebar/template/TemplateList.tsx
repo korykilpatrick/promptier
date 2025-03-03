@@ -17,7 +17,7 @@ interface TemplateListProps {
   onCreateTemplate?: () => void
 }
 
-const ITEM_HEIGHT = 72 // Height of each template item in pixels
+const ITEM_HEIGHT = 88 // Height of each template item in pixels (increased to accommodate preview text)
 const CONTAINER_HEIGHT = 400 // Maximum height of the list container
 
 export const TemplateList: React.FC<TemplateListProps> = ({

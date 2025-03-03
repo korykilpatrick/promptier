@@ -182,7 +182,7 @@ const TemplateItem = memo(({
         }
       }}
     >
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+      <div className="plasmo-flex plasmo-items-start plasmo-justify-between">
         <div className="plasmo-flex-1 plasmo-min-w-0">
           <div className="plasmo-flex plasmo-items-center">
             <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900 plasmo-truncate">
@@ -194,14 +194,24 @@ const TemplateItem = memo(({
               </span>
             )}
           </div>
-          <div className="plasmo-mt-1 plasmo-flex plasmo-items-center plasmo-space-x-2">
-            <span className="plasmo-text-xs plasmo-text-gray-400">
-              {new Date(template.createdAt).toLocaleDateString()}
-            </span>
+          <div className="plasmo-mt-1">
+            <p 
+              className="plasmo-text-xs plasmo-text-gray-500 plasmo-break-words"
+              style={{ 
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxHeight: '2.5rem'
+              }}
+            >
+              {template.content}
+            </p>
           </div>
         </div>
         
-        <div className="plasmo-flex plasmo-items-center plasmo-space-x-2 plasmo-opacity-0 group-hover:plasmo-opacity-100 plasmo-transition-opacity">
+        <div className="plasmo-flex plasmo-items-center plasmo-space-x-2 plasmo-opacity-0 group-hover:plasmo-opacity-100 plasmo-transition-opacity plasmo-ml-2">
           <button
             onClick={handleCopyClick}
             className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-gray-500 plasmo-transition-colors"
