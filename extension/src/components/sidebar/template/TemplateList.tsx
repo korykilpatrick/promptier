@@ -34,11 +34,21 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
-  // Memoize the combined templates array
+  // Memoize the combined templates array - favorites first, then regular templates
   const allTemplates = useMemo(() => {
-    const favorites = (favoriteTemplates || []).map(template => ({ ...template }))
-    const regular = (templates || []).map(template => ({ ...template }))
-    return [...favorites, ...regular]
+    // Create a Set of favorite template IDs for quick lookup
+    const favoriteIds = new Set((favoriteTemplates || []).map(t => t.id))
+    
+    // Filter out templates that are already in favorites to avoid duplicates
+    const nonFavoriteTemplates = (templates || [])
+      .filter(template => !favoriteIds.has(template.id))
+      .map(template => ({ ...template }))
+    
+    // Combine favorites (marked as favorite) followed by non-favorites
+    return [
+      ...(favoriteTemplates || []).map(template => ({ ...template, isFavorite: true })),
+      ...nonFavoriteTemplates
+    ]
   }, [templates, favoriteTemplates])
 
   // Find the selected template
@@ -80,7 +90,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   // Memoize the render function for template items
   const renderTemplateItem = useCallback((template: Template, index: number) => {
     const isFirst = index === 0
-    const isLast = index === templates.length - 1
+    const isLast = index === allTemplates.length - 1
 
     return (
       <div 
@@ -107,55 +117,26 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         />
       </div>
     )
-  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
+  }, [allTemplates, selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
-  // Render favorite templates section if there are any
-  const renderFavoriteSection = () => {
-    if (!favoriteTemplates?.length) return null
-
-    return (
-      <div>
-        <h2 className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider plasmo-mb-3">
-          Favorite Templates
-        </h2>
-        <VirtualList
-          items={favoriteTemplates}
-          renderItem={renderTemplateItem}
-          itemHeight={ITEM_HEIGHT}
-          containerHeight={Math.min(CONTAINER_HEIGHT, favoriteTemplates.length * ITEM_HEIGHT)}
-          className="plasmo-mb-6"
-          onItemFocus={(index) => handleItemFocus(favoriteTemplates[index])}
-        />
-      </div>
-    )
-  }
-
-  // Render all templates section
-  const renderAllTemplatesSection = () => {
-    return (
+  return (
+    <div className="plasmo-space-y-6">
       <div>
         <div className="plasmo-flex plasmo-justify-end plasmo-items-center plasmo-mb-3">
           <KeyboardShortcutsHelp shortcuts={shortcuts} />
         </div>
-        {!templates?.length ? (
+        {!allTemplates.length ? (
           <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">No templates yet</p>
         ) : (
           <VirtualList
-            items={templates}
+            items={allTemplates}
             renderItem={renderTemplateItem}
             itemHeight={ITEM_HEIGHT}
-            containerHeight={Math.min(CONTAINER_HEIGHT, templates.length * ITEM_HEIGHT)}
-            onItemFocus={(index) => handleItemFocus(templates[index])}
+            containerHeight={Math.min(CONTAINER_HEIGHT, allTemplates.length * ITEM_HEIGHT)}
+            onItemFocus={(index) => handleItemFocus(allTemplates[index])}
           />
         )}
       </div>
-    )
-  }
-
-  return (
-    <div className="plasmo-space-y-6">
-      {renderFavoriteSection()}
-      {renderAllTemplatesSection()}
     </div>
   )
 } 

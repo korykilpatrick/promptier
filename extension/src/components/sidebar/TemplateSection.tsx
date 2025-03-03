@@ -5,7 +5,6 @@ const { useNavigate } = reactRouterDom;
 
 /** @typedef {import("shared/types/templates").Template} Template */
 
-const { SectionHeader } = require("./common/SectionHeader");
 const { LoadingSkeleton } = require("./common/LoadingSkeleton");
 const { ErrorBoundary } = require("../common/ErrorBoundary");
 const { TemplateList } = require("./template/TemplateList");
@@ -95,11 +94,14 @@ function TemplateSectionContent({
     // This is no longer needed but kept for compatibility
   };
 
+  // Prepare a unified template list with favorited templates at the top
+  const unifiedTemplates = [...templates];
+  const unifiedFavoriteTemplates = [...favoriteTemplates];
+
   return (
-    React.createElement("section", { className: "plasmo-p-4 plasmo-border-b plasmo-border-gray-200", "aria-expanded": expanded },
-      React.createElement(SectionHeader, { title: "Templates", isExpanded: expanded, onToggle: onToggle, id: "templates-header" }),
+    React.createElement("section", { className: "plasmo-p-4", "aria-expanded": expanded },
       expanded && (
-        React.createElement("div", { className: "plasmo-animate-slide-down" },
+        React.createElement("div", null,
           isCreating || isEditing ? (
             React.createElement(TemplateForm, { 
               template: isEditing ? editingTemplate : undefined, 
@@ -117,38 +119,19 @@ function TemplateSectionContent({
               isLoading ? (
                 React.createElement(LoadingSkeleton)
               ) : (
-                React.createElement("div", { className: "plasmo-space-y-2" },
-                  templates.length === 0 && favoriteTemplates.length === 0 ? (
+                React.createElement("div", { className: "plasmo-space-y-2 plasmo-mt-4" },
+                  unifiedTemplates.length === 0 && unifiedFavoriteTemplates.length === 0 ? (
                     React.createElement("div", { className: "plasmo-text-sm plasmo-text-gray-600" }, "No templates yet")
                   ) : (
-                    React.createElement("div", null,
-                      favoriteTemplates.length > 0 && (
-                        React.createElement("div", { className: "plasmo-mb-4" },
-                          React.createElement("h3", { className: "plasmo-text-sm plasmo-font-medium plasmo-mb-2" }, "Pinned Templates"),
-                          React.createElement(TemplateList, {
-                            templates: favoriteTemplates,
-                            onSelectTemplate: onSelectTemplate,
-                            onFavoriteTemplate: onPinTemplate,
-                            onUnfavoriteTemplate: onUnpinTemplate,
-                            onEditTemplate: onEditTemplate,
-                            onDeleteTemplate: onDeleteTemplate
-                          })
-                        )
-                      ),
-                      templates.length > 0 && (
-                        React.createElement("div", null,
-                          React.createElement("h3", { className: "plasmo-text-sm plasmo-font-medium plasmo-mb-2" }, "All Templates"),
-                          React.createElement(TemplateList, {
-                            templates: templates,
-                            onSelectTemplate: onSelectTemplate,
-                            onFavoriteTemplate: onPinTemplate,
-                            onUnfavoriteTemplate: onUnpinTemplate,
-                            onEditTemplate: onEditTemplate,
-                            onDeleteTemplate: onDeleteTemplate
-                          })
-                        )
-                      )
-                    )
+                    React.createElement(TemplateList, {
+                      templates: unifiedTemplates,
+                      favoriteTemplates: unifiedFavoriteTemplates,
+                      onSelectTemplate: onSelectTemplate,
+                      onFavoriteTemplate: onPinTemplate,
+                      onUnfavoriteTemplate: onUnpinTemplate,
+                      onEditTemplate: onEditTemplate,
+                      onDeleteTemplate: onDeleteTemplate
+                    })
                   )
                 )
               )
