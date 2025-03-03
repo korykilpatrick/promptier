@@ -111,7 +111,7 @@ function TemplateSectionContent({
           ) : (
             React.createElement("div", { className: "plasmo-space-y-4" },
               React.createElement("button", {
-                className: "plasmo-flex plasmo-items-center plasmo-justify-center plasmo-px-4 plasmo-py-2 plasmo-rounded-md plasmo-text-sm plasmo-font-medium plasmo-text-white plasmo-bg-blue-500 hover:plasmo-bg-blue-600 plasmo-transition-colors plasmo-shadow-sm",
+                className: "plasmo-flex plasmo-items-center plasmo-justify-center plasmo-px-4 plasmo-py-2 plasmo-w-full plasmo-rounded-md plasmo-text-subheading plasmo-font-medium plasmo-text-white plasmo-bg-blue-500 hover:plasmo-bg-blue-600 plasmo-transition-colors plasmo-shadow-sm",
                 onClick: handleCreateClick,
                 "aria-label": "Create new template"
               }, 

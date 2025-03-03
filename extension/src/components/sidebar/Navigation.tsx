@@ -54,10 +54,10 @@ function Navigation() {
             onClick={() => handleNavClick(item.path)}
             className={`
               plasmo-flex plasmo-items-center plasmo-px-4 plasmo-py-3 plasmo-flex-1
-              plasmo-text-sm plasmo-font-medium plasmo-transition-colors
+              plasmo-text-subheading plasmo-font-medium plasmo-transition-colors
               ${isActivePath(item.path) 
                 ? 'plasmo-text-blue-600 plasmo-border-b-2 plasmo-border-blue-600' 
-                : 'plasmo-text-gray-600 hover:plasmo-text-gray-900 hover:plasmo-bg-gray-50'
+                : 'plasmo-text-gray-700 hover:plasmo-text-gray-900 hover:plasmo-bg-gray-50'
               }
             `}
             aria-current={isActivePath(item.path) ? 'page' : undefined}

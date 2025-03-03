@@ -9,6 +9,28 @@
     font-family: "Inter", sans-serif;
     font-size: 16px;
     line-height: 1.5;
+    color: #111827; /* Improved contrast for accessibility */
+  }
+  
+  h1, h2, h3 {
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 600;
+    color: #111827;
+  }
+  
+  h4, h5, h6 {
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 500;
+    color: #111827;
+  }
+  
+  p {
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 400;
+    color: #374151;
   }
 }
 
@@ -28,6 +50,26 @@
   .plasmo-sidebar {
     @apply plasmo-h-full plasmo-bg-white plasmo-flex plasmo-flex-col plasmo-shadow-sleek plasmo-rounded-lg plasmo-overflow-hidden;
   }
+  
+  .plasmo-text-heading {
+    @apply plasmo-text-[18px] plasmo-leading-[1.4] plasmo-font-semibold plasmo-text-gray-900;
+  }
+  
+  .plasmo-text-subheading {
+    @apply plasmo-text-[16px] plasmo-leading-[1.4] plasmo-font-medium plasmo-text-gray-900;
+  }
+  
+  .plasmo-text-body {
+    @apply plasmo-text-[14px] plasmo-leading-relaxed plasmo-text-gray-700;
+  }
+  
+  .plasmo-template-name {
+    @apply plasmo-text-[16px] plasmo-leading-[1.4] plasmo-font-medium plasmo-text-gray-900 plasmo-capitalize plasmo-truncate;
+  }
+  
+  .plasmo-template-description {
+    @apply plasmo-text-[14px] plasmo-text-gray-600 plasmo-break-words plasmo-line-clamp-2 plasmo-leading-relaxed;
+  }
 }
 
 @layer utilities {
@@ -37,5 +79,17 @@
 
   .plasmo-animate-slide-up {
     animation: slide-up 0.2s ease-out forwards;
+  }
+  
+  .plasmo-line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .plasmo-leading-relaxed {
+    line-height: 1.5;
   }
 }

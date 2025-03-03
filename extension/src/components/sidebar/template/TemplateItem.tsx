@@ -187,7 +187,7 @@ const TemplateItem = memo(({
       <div className="plasmo-flex plasmo-items-start plasmo-justify-between">
         <div className="plasmo-flex-1 plasmo-min-w-0">
           <div className="plasmo-flex plasmo-items-center">
-            <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900 plasmo-truncate">
+            <h4 className="plasmo-template-name">
               {template.name}
             </h4>
             {template.category && (
@@ -197,17 +197,7 @@ const TemplateItem = memo(({
             )}
           </div>
           <div className="plasmo-mt-2">
-            <p 
-              className="plasmo-text-xs plasmo-text-gray-500 plasmo-break-words"
-              style={{ 
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxHeight: '2.5rem'
-              }}
-            >
+            <p className="plasmo-template-description">
               {template.content}
             </p>
           </div>

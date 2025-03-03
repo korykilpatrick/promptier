@@ -17,7 +17,7 @@ interface TemplateListProps {
   onCreateTemplate?: () => void
 }
 
-const ITEM_HEIGHT = 88 // Height of each template item in pixels (increased to accommodate preview text)
+const ITEM_HEIGHT = 96 // Adjusted height for proper line height and spacing
 const CONTAINER_HEIGHT = 400 // Maximum height of the list container
 
 export const TemplateList: React.FC<TemplateListProps> = ({
@@ -90,7 +90,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   // Memoize the render function for template items
   const renderTemplateItem = useCallback((template: Template, index: number) => {
     return (
-      <div className="plasmo-mb-3">
+      <div className="plasmo-mb-4">
         <TemplateItem
           key={template.id}
           template={template}
@@ -107,7 +107,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         />
       </div>
     )
-  }, [allTemplates, selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
+  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
   return (
     <div className="plasmo-space-y-4">
@@ -116,9 +116,9 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           <KeyboardShortcutsHelp shortcuts={shortcuts} />
         </div>
         {!allTemplates.length ? (
-          <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">No templates yet</p>
+          <p className="plasmo-text-body plasmo-text-gray-500 plasmo-italic">No templates yet</p>
         ) : (
-          <div className="plasmo-grid plasmo-grid-cols-1 plasmo-gap-3">
+          <div className="plasmo-grid plasmo-grid-cols-1 plasmo-gap-4">
             {allTemplates.map((template, index) => renderTemplateItem(template, index))}
           </div>
         )}

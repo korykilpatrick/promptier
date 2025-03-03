@@ -75,8 +75,27 @@ const ChainSectionContent: React.FC<ChainSectionProps> = ({
   }, [isExpanded, resetChainFocus, resetStepFocus]);
 
   return (
-    <section className="plasmo-p-4 plasmo-border-b plasmo-border-gray-200" aria-expanded={isExpanded}>
-      <SectionHeader title="Prompt Chains" isExpanded={isExpanded} onToggle={onToggle} id="chains-header" />
+    <section className="plasmo-mb-4" aria-expanded={isExpanded}>
+      <div 
+        className="plasmo-section-header" 
+        onClick={() => onToggle('chains')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle('chains');
+          }
+        }}
+        aria-expanded={isExpanded}
+      >
+        <h3 className="plasmo-text-heading plasmo-font-medium plasmo-text-gray-900 plasmo-flex plasmo-items-center">
+          <svg className="plasmo-w-5 plasmo-h-5 plasmo-mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Prompt Chains
+        </h3>
+      </div>
       {isExpanded && (
         <div className="plasmo-animate-slide-down">
           {/* Chain Creation Button */}
