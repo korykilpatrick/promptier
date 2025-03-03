@@ -89,18 +89,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   // Memoize the render function for template items
   const renderTemplateItem = useCallback((template: Template, index: number) => {
-    const isFirst = index === 0
-    const isLast = index === allTemplates.length - 1
-
     return (
-      <div 
-        className={`
-          plasmo-border-gray-200
-          ${!isFirst ? "plasmo-border-t" : ""}
-          ${isLast ? "plasmo-rounded-b-lg" : ""}
-          ${isFirst ? "plasmo-rounded-t-lg" : ""}
-        `}
-      >
+      <div className="plasmo-mb-3">
         <TemplateItem
           key={template.id}
           template={template}
@@ -120,7 +110,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   }, [allTemplates, selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
   return (
-    <div className="plasmo-space-y-6">
+    <div className="plasmo-space-y-4">
       <div>
         <div className="plasmo-flex plasmo-justify-end plasmo-items-center plasmo-mb-3">
           <KeyboardShortcutsHelp shortcuts={shortcuts} />
@@ -128,13 +118,9 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         {!allTemplates.length ? (
           <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">No templates yet</p>
         ) : (
-          <VirtualList
-            items={allTemplates}
-            renderItem={renderTemplateItem}
-            itemHeight={ITEM_HEIGHT}
-            containerHeight={Math.min(CONTAINER_HEIGHT, allTemplates.length * ITEM_HEIGHT)}
-            onItemFocus={(index) => handleItemFocus(allTemplates[index])}
-          />
+          <div className="plasmo-grid plasmo-grid-cols-1 plasmo-gap-3">
+            {allTemplates.map((template, index) => renderTemplateItem(template, index))}
+          </div>
         )}
       </div>
     </div>

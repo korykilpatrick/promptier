@@ -99,9 +99,9 @@ function TemplateSectionContent({
   const unifiedFavoriteTemplates = [...favoriteTemplates];
 
   return (
-    React.createElement("section", { className: "plasmo-p-4", "aria-expanded": expanded },
+    React.createElement("section", { className: "plasmo-mb-4", "aria-expanded": expanded },
       expanded && (
-        React.createElement("div", null,
+        React.createElement("div", { className: "plasmo-p-0" },
           isCreating || isEditing ? (
             React.createElement(TemplateForm, { 
               template: isEditing ? editingTemplate : undefined, 
@@ -109,19 +109,37 @@ function TemplateSectionContent({
               onCancel: handleCancel 
             })
           ) : (
-            React.createElement("div", { className: "plasmo-mb-4" },
+            React.createElement("div", { className: "plasmo-space-y-4" },
               React.createElement("button", {
-                className: "plasmo-btn-primary plasmo-w-full",
+                className: "plasmo-flex plasmo-items-center plasmo-justify-center plasmo-px-4 plasmo-py-2 plasmo-rounded-md plasmo-text-sm plasmo-font-medium plasmo-text-white plasmo-bg-blue-500 hover:plasmo-bg-blue-600 plasmo-transition-colors plasmo-shadow-sm",
                 onClick: handleCreateClick,
                 "aria-label": "Create new template"
-              }, "Create New Template"),
+              }, 
+                React.createElement("svg", { 
+                  className: "plasmo-w-4 plasmo-h-4 plasmo-mr-2",
+                  fill: "none", 
+                  stroke: "currentColor", 
+                  viewBox: "0 0 24 24"
+                },
+                  React.createElement("path", { 
+                    strokeLinecap: "round", 
+                    strokeLinejoin: "round", 
+                    strokeWidth: "2", 
+                    d: "M12 6v6m0 0v6m0-6h6m-6 0H6" 
+                  })
+                ),
+                "Create New Template"
+              ),
+              
               // Template List
               isLoading ? (
                 React.createElement(LoadingSkeleton)
               ) : (
-                React.createElement("div", { className: "plasmo-space-y-2 plasmo-mt-4" },
+                React.createElement("div", { className: "plasmo-mt-4" },
                   unifiedTemplates.length === 0 && unifiedFavoriteTemplates.length === 0 ? (
-                    React.createElement("div", { className: "plasmo-text-sm plasmo-text-gray-600" }, "No templates yet")
+                    React.createElement("div", { className: "plasmo-text-sm plasmo-text-gray-600 plasmo-p-4 plasmo-bg-gray-50 plasmo-rounded-lg plasmo-text-center" }, 
+                      "No templates yet. Create your first template to get started."
+                    )
                   ) : (
                     React.createElement(TemplateList, {
                       templates: unifiedTemplates,

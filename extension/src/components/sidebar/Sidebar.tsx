@@ -130,7 +130,7 @@ function Sidebar() {
       aria-label="Promptier Sidebar"
       tabIndex={0}
     >
-      <div className="plasmo-flex-1 plasmo-overflow-y-auto">
+      <div className="plasmo-flex-1 plasmo-overflow-y-auto plasmo-p-4">
         <ErrorBoundary>
           <TemplateSection
             expanded={expandedSections.templates}
