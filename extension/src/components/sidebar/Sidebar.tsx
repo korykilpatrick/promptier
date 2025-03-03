@@ -125,12 +125,12 @@ function Sidebar() {
   return (
     <div
       ref={containerRef}
-      className="plasmo-h-full plasmo-w-full plasmo-bg-white plasmo-flex plasmo-flex-col plasmo-overflow-y-auto"
+      className="plasmo-h-full plasmo-w-full plasmo-bg-gray-50 plasmo-flex plasmo-flex-col plasmo-overflow-y-auto plasmo-scrollbar-thin"
       role="complementary"
       aria-label="Promptier Sidebar"
       tabIndex={0}
     >
-      <div className="plasmo-flex-1 plasmo-overflow-y-auto plasmo-p-4">
+      <div className="plasmo-flex-1 plasmo-overflow-y-auto">
         <ErrorBoundary>
           <TemplateSection
             expanded={expandedSections.templates}

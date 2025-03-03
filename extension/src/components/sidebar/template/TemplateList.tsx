@@ -17,9 +17,6 @@ interface TemplateListProps {
   onCreateTemplate?: () => void
 }
 
-const ITEM_HEIGHT = 96 // Adjusted height for proper line height and spacing
-const CONTAINER_HEIGHT = 400 // Maximum height of the list container
-
 export const TemplateList: React.FC<TemplateListProps> = ({
   templates = [],
   favoriteTemplates = [],
@@ -87,7 +84,38 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     isCreating
   })
 
-  // Memoize the render function for template items
+  // Group templates by category
+  const categorizedTemplates = useMemo(() => {
+    const grouped: Record<string, Template[]> = {
+      "Favorites": favoriteTemplates,
+      "Uncategorized": []
+    };
+
+    // Group non-favorite templates by their category
+    templates.forEach(template => {
+      if (!favoriteTemplates.some(ft => ft.id === template.id)) {
+        const category = template.category || "Uncategorized";
+        if (!grouped[category]) {
+          grouped[category] = [];
+        }
+        grouped[category].push(template);
+      }
+    });
+
+    // Filter out empty categories
+    return Object.entries(grouped)
+      .filter(([_, templates]) => templates && templates.length > 0)
+      .sort(([a], [b]) => {
+        // Ensure Favorites is first, Uncategorized is last
+        if (a === "Favorites") return -1;
+        if (b === "Favorites") return 1;
+        if (a === "Uncategorized") return 1;
+        if (b === "Uncategorized") return -1;
+        return a.localeCompare(b);
+      });
+  }, [templates, favoriteTemplates]);
+
+  // Render a template item
   const renderTemplateItem = useCallback((template: Template, index: number) => {
     return (
       <div className="plasmo-mb-4">
@@ -109,20 +137,60 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     )
   }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
-  return (
-    <div className="plasmo-space-y-4">
-      <div>
-        <div className="plasmo-flex plasmo-justify-end plasmo-items-center plasmo-mb-3">
-          <KeyboardShortcutsHelp shortcuts={shortcuts} />
+  // If no templates
+  if (allTemplates.length === 0) {
+    return (
+      <div className="plasmo-empty-state">
+        <div className="plasmo-text-gray-400 plasmo-mb-3">
+          <svg className="plasmo-w-12 plasmo-h-12 plasmo-mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
         </div>
-        {!allTemplates.length ? (
-          <p className="plasmo-text-body plasmo-text-gray-500 plasmo-italic">No templates yet</p>
-        ) : (
-          <div className="plasmo-grid plasmo-grid-cols-1 plasmo-gap-4">
-            {allTemplates.map((template, index) => renderTemplateItem(template, index))}
-          </div>
-        )}
+        <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">No templates yet</h3>
+        <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-4">
+          Create your first template to get started with reusable prompts.
+        </p>
+        <button
+          className="plasmo-btn-primary"
+          onClick={onCreateTemplate}
+        >
+          Create Your First Template
+        </button>
       </div>
+    );
+  }
+
+  return (
+    <div className="plasmo-space-y-6">
+      <div className="plasmo-flex plasmo-justify-between plasmo-items-center">
+        <div className="plasmo-text-sm plasmo-text-gray-500">
+          {allTemplates.length} template{allTemplates.length !== 1 ? 's' : ''}
+        </div>
+        <KeyboardShortcutsHelp shortcuts={shortcuts} />
+      </div>
+
+      {/* Categorized Templates */}
+      {categorizedTemplates.map(([category, templates]) => (
+        <div key={category} className="plasmo-space-y-4">
+          {/* Category Header */}
+          {category !== "Uncategorized" && (
+            <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+              <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                {category}
+              </h3>
+              <div className="plasmo-flex-1 plasmo-h-px plasmo-bg-gray-200"></div>
+              <span className="plasmo-text-xs plasmo-text-gray-500 plasmo-bg-gray-100 plasmo-rounded-full plasmo-px-2 plasmo-py-0.5">
+                {templates.length}
+              </span>
+            </div>
+          )}
+          
+          {/* Templates in this category */}
+          <div className="plasmo-grid plasmo-grid-cols-1 plasmo-gap-4">
+            {templates.map((template, index) => renderTemplateItem(template, index))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 } 
