@@ -105,6 +105,14 @@
            hover:plasmo-border-primary-200;
   }
   
+  /* Ultra-compact template item */
+  .plasmo-template-item-compact {
+    @apply plasmo-bg-white plasmo-border plasmo-border-gray-100 plasmo-rounded-md
+           plasmo-cursor-pointer plasmo-shadow-sm plasmo-overflow-hidden
+           hover:plasmo-border-primary-200 hover:plasmo-shadow
+           plasmo-transition-all plasmo-duration-200;
+  }
+  
   .plasmo-template-item-selected {
     @apply plasmo-border-primary-400 plasmo-ring-1 plasmo-ring-primary-100;
   }
@@ -145,6 +153,12 @@
   .plasmo-template-description {
     @apply plasmo-text-xs plasmo-text-gray-600 plasmo-break-words plasmo-line-clamp-1
            plasmo-leading-relaxed plasmo-mt-0.5;
+  }
+  
+  /* Compact template description */
+  .plasmo-template-description-compact {
+    @apply plasmo-text-xs plasmo-text-gray-500 plasmo-break-words plasmo-leading-snug
+           plasmo-line-clamp-1 plasmo-mt-0.5 plasmo-pr-1;
   }
 
   /* Badge/chip styles - more compact */
@@ -208,6 +222,22 @@
   /* Increased icon size by 30% */
   .plasmo-action-btn svg {
     @apply plasmo-w-5 plasmo-h-5;
+  }
+  
+  /* Ultra-compact action buttons for template list */
+  .plasmo-action-btn-compact {
+    @apply plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400
+           plasmo-transition-colors plasmo-duration-150 plasmo-mx-0.5;
+    
+    &:hover {
+      color: theme('colors.gray.700');
+      background-color: theme('colors.gray.100');
+    }
+    
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px theme('colors.primary.500 / 30%');
+    }
   }
 
   .plasmo-action-btn-danger {

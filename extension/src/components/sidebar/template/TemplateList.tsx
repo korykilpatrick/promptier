@@ -2,7 +2,6 @@ import React, { useCallback, useState, useMemo } from "react"
 import type { Template } from "shared/types/templates"
 import { VirtualList } from "../../common/VirtualList"
 import { TemplateItem } from "./TemplateItem"
-import { KeyboardShortcutsHelp } from "../../common/KeyboardShortcutsHelp"
 import { useTemplateKeyboardShortcuts } from "../../../hooks/useTemplateKeyboardShortcuts"
 
 interface TemplateListProps {
@@ -31,24 +30,24 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
-  // Prepare non-favorites in chronological order
-  const nonFavoriteTemplates = useMemo(() => {
-    // Create a Set of favorite template IDs for quick lookup
-    const favoriteIds = new Set((favoriteTemplates || []).map(t => t.id))
+  // Prepare a unified list with favorites at the top
+  const allTemplates = useMemo(() => {
+    // Mark favorites for display
+    const favs = (favoriteTemplates || []).map(t => ({ ...t, isFavorite: true }));
     
     // Filter out templates that are already in favorites to avoid duplicates
-    return (templates || [])
-      .filter(template => !favoriteIds.has(template.id))
-      .map(template => ({ ...template }))
-      // Sort by created date (newest first)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [templates, favoriteTemplates])
+    const nonFavs = (templates || [])
+      .filter(template => !favs.some(f => f.id === template.id))
+      .map(template => ({ ...template }));
+    
+    // Return unified list with favorites at top
+    return [...favs, ...nonFavs];
+  }, [templates, favoriteTemplates]);
 
   // Find the selected template
   const selectedTemplate = useMemo(() => {
-    const allTemplates = [...favoriteTemplates, ...nonFavoriteTemplates]
-    return allTemplates.find(t => t.id === selectedTemplateId)
-  }, [favoriteTemplates, nonFavoriteTemplates, selectedTemplateId])
+    return allTemplates.find(t => t.id === selectedTemplateId);
+  }, [allTemplates, selectedTemplateId]);
 
   // Handle keyboard navigation
   const handleItemFocus = useCallback((template: Template) => {
@@ -83,7 +82,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   // Render a template item
   const renderTemplateItem = useCallback((template: Template, index: number) => {
     return (
-      <div className="plasmo-mb-1">
+      <div className="plasmo-mb-0.5">
         <TemplateItem
           key={template.id}
           template={template}
@@ -104,7 +103,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
   // If no templates
-  if (favoriteTemplates.length === 0 && nonFavoriteTemplates.length === 0) {
+  if (allTemplates.length === 0) {
     return (
       <div className="plasmo-empty-state">
         <div className="plasmo-text-gray-400 plasmo-mb-2">
@@ -127,53 +126,32 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   }
 
   return (
-    <div className="plasmo-space-y-3">
-      <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-2">
+    <div className="plasmo-space-y-1">
+      <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-1">
         <div className="plasmo-text-xs plasmo-text-gray-500">
-          {favoriteTemplates.length + nonFavoriteTemplates.length} template{favoriteTemplates.length + nonFavoriteTemplates.length !== 1 ? 's' : ''}
+          {allTemplates.length} template{allTemplates.length !== 1 ? 's' : ''}
         </div>
-        <KeyboardShortcutsHelp shortcuts={shortcuts} />
+        <button
+          className="plasmo-btn-primary plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-text-xs"
+          onClick={onCreateTemplate}
+          aria-label="Create new template"
+        >
+          <svg
+            className="plasmo-w-3.5 plasmo-h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          New
+        </button>
       </div>
-
-      {/* Favorites Section (if any) - more compact */}
-      {favoriteTemplates.length > 0 && (
-        <div className="plasmo-mb-2">
-          <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mb-1.5">
-            <h3 className="plasmo-text-xs plasmo-font-medium plasmo-uppercase plasmo-text-gray-500">
-              Favorites
-            </h3>
-            <div className="plasmo-flex-1 plasmo-h-px plasmo-bg-gray-200"></div>
-            <span className="plasmo-text-xs plasmo-text-gray-500 plasmo-bg-gray-100 plasmo-rounded-full plasmo-px-1.5 plasmo-py-0.5">
-              {favoriteTemplates.length}
-            </span>
-          </div>
-          
-          <div className="plasmo-space-y-1">
-            {favoriteTemplates.map((template, index) => renderTemplateItem({...template, isFavorite: true}, index))}
-          </div>
-        </div>
-      )}
       
-      {/* All other templates (chronological) with minimal separation */}
-      {nonFavoriteTemplates.length > 0 && (
-        <div>
-          {favoriteTemplates.length > 0 && (
-            <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mb-1.5 plasmo-mt-2">
-              <h3 className="plasmo-text-xs plasmo-font-medium plasmo-uppercase plasmo-text-gray-500">
-                All Templates
-              </h3>
-              <div className="plasmo-flex-1 plasmo-h-px plasmo-bg-gray-200"></div>
-              <span className="plasmo-text-xs plasmo-text-gray-500 plasmo-bg-gray-100 plasmo-rounded-full plasmo-px-1.5 plasmo-py-0.5">
-                {nonFavoriteTemplates.length}
-              </span>
-            </div>
-          )}
-          
-          <div className="plasmo-space-y-1">
-            {nonFavoriteTemplates.map((template, index) => renderTemplateItem(template, index))}
-          </div>
-        </div>
-      )}
+      {/* Unified template list */}
+      <div className="plasmo-space-y-0.5">
+        {allTemplates.map((template, index) => renderTemplateItem(template, index))}
+      </div>
     </div>
   )
 } 
