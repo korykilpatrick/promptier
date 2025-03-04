@@ -183,7 +183,7 @@ try {
         let processedContent = template.content || ""
         
         // Get valid values for variables
-        const validValues = Object.entries(values).reduce((acc: Record<string, any>, [name, state]) => {
+        const validValues = Object.entries(values).reduce((acc: Record<string, any>, [name, state]: [string, any]) => {
           if (state?.isValid) {
             acc[name] = state
           }
@@ -393,35 +393,24 @@ try {
         {/* Variables Section - Now above the template content */}
         <div className="plasmo-flex plasmo-flex-col plasmo-gap-3">
           {/* Variable Inputs */}
-          {variables.length > 0 ? (
-            <div className="plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-bg-white plasmo-shadow-sm">
-              <div className="plasmo-p-3 plasmo-space-y-3">
+          {variables.length > 0 && (
+            <div 
+              className="plasmo-mt-4 plasmo-space-y-3"
+            >
+              <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">Variables</div>
+              <div className="plasmo-space-y-3">
                 {variables.map((variable: typeof TemplateVariable, index: number) => {
                   const globalVariable = Array.isArray(globalVariables) && globalVariables.find(g => g && typeof g === 'object' && 'name' in g && g.name === variable.name);
                   const state = values[variable.name] || { value: '', isDirty: false, isValid: true, errors: [] };
                   const isGlobalValue = !!globalVariable;
                   
                   return (
-                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-1">
+                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-2">
                       <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
                         <div className="plasmo-flex plasmo-items-center">
                           <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
                             {variable.name}
-                            {variable.isRequired && <span className="plasmo-text-red-500 plasmo-ml-0.5">*</span>}
                           </label>
-                          
-                          {/* Simplified status badges */}
-                          {state.isDirty && (
-                            <span className="plasmo-ml-1 plasmo-inline-flex plasmo-items-center plasmo-px-1 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
-                              ●
-                            </span>
-                          )}
-                          
-                          {isGlobalValue && (
-                            <span className="plasmo-ml-1 plasmo-inline-flex plasmo-items-center plasmo-px-1 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-green-100 plasmo-text-green-800">
-                              ●
-                            </span>
-                          )}
                         </div>
                       </div>
                       
@@ -431,12 +420,7 @@ try {
                           value={state.value}
                           onChange={(e) => setVariableValue(variable.name, e.target.value)}
                           placeholder={variable.defaultValue || ''}
-                          className={`
-                            plasmo-block plasmo-w-full plasmo-rounded-md plasmo-shadow-sm plasmo-px-3 plasmo-py-2 plasmo-text-sm
-                            ${!state.isValid ? 'plasmo-border-red-300 plasmo-bg-red-50' : isGlobalValue ? 'plasmo-border-green-300 plasmo-bg-green-50' : state.isDirty ? 'plasmo-border-blue-300 plasmo-bg-white' : 'plasmo-border-gray-300 plasmo-bg-gray-50'}
-                            plasmo-focus:outline-none plasmo-focus:ring-2 ${!state.isValid ? 'plasmo-focus:ring-red-500 plasmo-focus:ring-opacity-30' : 'plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-30'}
-                            plasmo-transition-colors plasmo-duration-150
-                          `}
+                          className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
                         />
                       </div>
                       
@@ -453,9 +437,13 @@ try {
                 })}
               </div>
             </div>
-          ) : (
-            <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-p-2 plasmo-text-center">
-              No variables
+          )}
+          {variables.length === 0 && (
+            <div className="plasmo-mt-4">
+              <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">Variables</div>
+              <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-gray-500 plasmo-italic">
+                No variables
+              </div>
             </div>
           )}
         </div>
