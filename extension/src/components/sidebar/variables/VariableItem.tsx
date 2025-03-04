@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 import { UserVariable } from '../../../../shared/types/variables';
+import {
+  activeFetchFileContent,
+  activeResolveAllFileContents,
+  reacquireFileHandles
+} from '../../../utils/file-content-resolver';
+import { useToast } from '../../../hooks/useToast';
 
 interface VariableItemProps {
   variable: UserVariable;
@@ -15,6 +21,7 @@ export const VariableItem: React.FC<VariableItemProps> = ({
   onDelete
 }) => {
   const [isCopying, setIsCopying] = useState(false);
+  const { success, error } = useToast();
 
   // Determine if this is a file variable
   const isFileVariable = Array.isArray(variable.value) &&
@@ -51,6 +58,68 @@ export const VariableItem: React.FC<VariableItemProps> = ({
   // Get preview text
   const previewText = getPreviewText();
 
+  // Get file content for a file entry
+  const getFileContent = async (fileEntry: any) => {
+    console.log("[VariableItem] Getting file content for:", fileEntry);
+    
+    // If entry has XML content already (from previous resolution), extract it
+    if (typeof fileEntry.value === 'string' && fileEntry.value.includes('</')) {
+      const tagName = fileEntry.metadata?.tagName;
+      if (tagName) {
+        // Try to extract content between tags
+        const tagPattern = new RegExp(`<${tagName}>[\\s\\S]*?<\\/${tagName}>`);
+        const match = fileEntry.value.match(tagPattern);
+        if (match) {
+          return fileEntry.value;
+        }
+      }
+    }
+    
+    // If we have a handle, try to fetch content directly
+    if (fileEntry.metadata?.handleId || fileEntry.metadata?.handle) {
+      try {
+        console.log("[VariableItem] Attempting to fetch content using the file handle");
+        const fileContent = await activeFetchFileContent(fileEntry);
+        if (fileContent) {
+          console.log("[VariableItem] Successfully fetched file content:",
+            fileContent.substring(0, 100) + (fileContent.length > 100 ? '...' : ''));
+          return fileContent;
+        }
+      } catch (err) {
+        console.error("[VariableItem] Error fetching file content:", err);
+        // We'll fall back to reacquiring handles below
+      }
+    }
+    
+    // If we couldn't get content directly, try reacquiring handles
+    try {
+      console.log("[VariableItem] Reacquiring file handles and resolving content");
+      const variableCopy = {
+        ...variable,
+        value: [fileEntry]
+      };
+      
+      const resolved = await activeResolveAllFileContents([variableCopy], {
+        autoReacquireHandles: true,
+        forceReacquire: true
+      });
+      
+      if (resolved && variableCopy.value[0].value) {
+        const newValue = variableCopy.value[0].value;
+        console.log("[VariableItem] Successfully resolved file content:",
+          typeof newValue === 'string' ?
+          (newValue.substring(0, 100) + (newValue.length > 100 ? '...' : '')) :
+          'Not a string');
+        return newValue;
+      }
+    } catch (err) {
+      console.error("[VariableItem] Error resolving file content:", err);
+    }
+    
+    // If all else fails, return the file path or name
+    return fileEntry.metadata?.path || fileEntry.value || 'Unable to resolve file content';
+  };
+
   // Handle copy to clipboard
   const handleCopyClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,22 +129,34 @@ export const VariableItem: React.FC<VariableItemProps> = ({
       let textToCopy = '';
       
       if (Array.isArray(variable.value)) {
-        // For text variables, join all text entries
-        const textEntries = variable.value.filter(entry => entry && entry.type === 'text');
-        if (textEntries.length > 0) {
-          textToCopy = textEntries.map(entry => entry.value).join('\n');
+        // Check for file entries
+        const fileEntries = variable.value.filter(entry => entry && entry.type === 'file');
+        if (fileEntries.length > 0) {
+          console.log(`[VariableItem] Found ${fileEntries.length} file entries to resolve`);
+          
+          // Create an array to hold all content promises
+          const contentPromises = fileEntries.map(entry => getFileContent(entry));
+          
+          // Resolve all content promises
+          const resolvedContents = await Promise.all(contentPromises);
+          textToCopy = resolvedContents.join('\n\n');
+          
+          console.log(`[VariableItem] Successfully resolved ${resolvedContents.length} file contents`);
         } else {
-          // For file variables, use the preview text
-          textToCopy = previewText;
+          // For text variables, join all text entries
+          const textEntries = variable.value.filter(entry => entry && entry.type === 'text');
+          textToCopy = textEntries.map(entry => entry.value).join('\n');
         }
       } else if (typeof variable.value === 'string') {
         textToCopy = variable.value;
       }
       
       await navigator.clipboard.writeText(textToCopy);
-      console.log(`Copied to clipboard: ${textToCopy.substring(0, 50)}${textToCopy.length > 50 ? '...' : ''}`);
+      console.log(`[VariableItem] Copied to clipboard: ${textToCopy.substring(0, 50)}${textToCopy.length > 50 ? '...' : ''}`);
+      success('Content copied to clipboard');
     } catch (err) {
-      console.error('Failed to copy', err);
+      console.error('[VariableItem] Failed to copy:', err);
+      error(err instanceof Error ? err.message : 'Failed to copy variable content');
     } finally {
       setIsCopying(false);
     }
