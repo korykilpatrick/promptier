@@ -28,7 +28,15 @@ function TemplateDetailsWrapper() {
   const [error, setError] = useState("");
   const [fetchAttempts, setFetchAttempts] = useState(0);
   const [timeoutId, setTimeoutId] = useState(null);
-  const [failedAttemptDetails, setFailedAttemptDetails] = useState([]);
+  
+  // Add interface for attempt details
+  interface AttemptDetail {
+    time: string;
+    error: string;
+    source: string;
+  }
+  
+  const [failedAttemptDetails, setFailedAttemptDetails] = useState<AttemptDetail[]>([]);
   const [isDirectAttempt, setIsDirectAttempt] = useState(false);
 
   // Clear timeout when component unmounts or when id changes

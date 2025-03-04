@@ -1,7 +1,7 @@
 import React, { useEffect } from "react"
 import { createPortal } from "react-dom"
 
-export type ToastType = "success" | "error" | "info"
+export type ToastType = "success" | "error" | "info" | "warning"
 
 export interface Toast {
   id: string

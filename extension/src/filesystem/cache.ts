@@ -225,18 +225,29 @@ export class FilesystemCache {
   }
   
   /**
-   * Cache a file's content
+   * Cache file content for a file handle
    * 
    * @param handle - File handle
    * @param content - File content
    * @param options - Additional options used for key generation
-   * @returns The cached content
+   * @returns The cached content or null if content was invalid
    */
   public cacheFileContent(
     handle: FileSystemFileHandle, 
     content: FileContent,
     options?: Record<string, any>
-  ): FileContent {
+  ): FileContent | null {
+    // Validate content before caching
+    if (!content || content.data === undefined || content.data === null) {
+      console.error(`[FilesystemCache] Cannot cache undefined or null content for ${handle.name}`);
+      return null;
+    }
+    
+    // For string data, validate it's not empty or just whitespace
+    if (typeof content.data === 'string' && content.data.trim() === '') {
+      console.warn(`[FilesystemCache] Caching empty string content for ${handle.name}`);
+    }
+    
     const key = this.generateFileKey(handle, options);
     return this.set(key, content);
   }

@@ -11,8 +11,9 @@ import {
   FileSystemSyncAccessHandle
 } from './types';
 import * as utils from './utils';
-import * as Errors from './errors';
+import * as errors from './errors';
 import { cache, withCache } from './cache';
+import * as permissions from './permissions';
 
 /**
  * Default maximum file size (10MB)
@@ -20,128 +21,289 @@ import { cache, withCache } from './cache';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 /**
- * Read a file and return its contents
- * 
- * @param fileHandle - File handle to read from
- * @param options - Options for reading
- * @returns Promise resolving to the file contents
+ * Options for reading files
+ */
+interface ReadFileOptions {
+  /** Text encoding to use when reading the file */
+  encoding?: string;
+  /** Maximum file size in bytes */
+  maxSize?: number;
+}
+
+/**
+ * Options for writing files
+ */
+interface WriteFileOptions {
+  /** Create file if it doesn't exist */
+  create?: boolean;
+  /** Whether to truncate the file if it exists */
+  truncate?: boolean;
+}
+
+// Add this to fix the globalThis error
+interface ExtendedGlobalThis {
+  rootDirectoryHandle?: FileSystemDirectoryHandle;
+}
+
+/**
+ * Get the parent directory of a file or directory
+ * @param handle Handle to get the parent of
+ * @returns Parent directory handle
+ */
+async function getRoot(handle: FileSystemHandle): Promise<FileSystemDirectoryHandle> {
+  // Try to get the parent directory if available
+  if ('getParent' in handle && typeof (handle as any).getParent === 'function') {
+    try {
+      return await (handle as any).getParent();
+    } catch (error) {
+      console.warn('Could not get parent directory:', error);
+    }
+  }
+  
+  // Fallback: For browsers where getParent is not supported, try to use the root handle
+  // This is implementation-specific and may not work in all browsers
+  const extended = globalThis as unknown as ExtendedGlobalThis;
+  if (extended.rootDirectoryHandle) {
+    return extended.rootDirectoryHandle;
+  }
+  
+  throw new errors.FileSystemError(
+    'Cannot determine parent directory for this file',
+    'PARENT_DIRECTORY_UNKNOWN'
+  );
+}
+
+/**
+ * Read a file and return its contents as a string
+ * @param handle File handle to read from
+ * @param options Read options
+ * @returns File contents as a string
  */
 export async function readFile(
-  fileHandle: FileSystemFileHandle,
-  options: FileSystemOptions = {}
-): Promise<FileContent> {
+  handle: FileSystemFileHandle,
+  options: ReadFileOptions = {}
+): Promise<string> {
+  const {
+    encoding = 'utf-8',
+    maxSize = 10 * 1024 * 1024
+  } = options;
+  
   try {
-    // First check the cache
-    const cachedContent = cache.getCachedFileContent(fileHandle, options);
-    if (cachedContent) {
-      Errors.logError(Errors.LogLevel.DEBUG, `Cache hit for file: ${fileHandle.name}`);
-      return cachedContent;
+    // Log the operation
+    errors.logOperation(
+      errors.LogLevel.DEBUG, 
+      'readFile', 
+      `Starting read operation for file: ${handle.name}`,
+      undefined,
+      { name: handle.name }
+    );
+    
+    // Track performance if enabled
+    const startTime = performance.now();
+    
+    // Get the file
+    const file = await handle.getFile();
+    
+    // Check file size
+    if (maxSize && file.size > maxSize) {
+      throw new errors.FileTooLargeError(
+        `File size (${file.size} bytes) exceeds maximum allowed size (${maxSize} bytes)`
+      );
     }
     
-    // Set default options
-    const { encoding = 'utf-8', maxSize } = options;
+    errors.logOperation(
+      errors.LogLevel.DEBUG, 
+      'readFile', 
+      `Reading file ${file.name} (${file.size} bytes)`,
+      undefined,
+      { name: file.name, size: file.size, type: file.type }
+    );
     
-    // Get file metadata
-    const file = await fileHandle.getFile();
+    // Read as text
+    const content = await file.text();
     
-    // Check file size if maxSize is set
-    if (maxSize !== undefined && file.size > maxSize) {
-      throw new Errors.FileWriteError(`File size ${file.size} exceeds maximum size ${maxSize}`);
+    // Ensure content is never undefined 
+    if (content === undefined || content === null) {
+      errors.logOperation(
+        errors.LogLevel.WARN, 
+        'readFile', 
+        `File ${file.name} read returned ${content === undefined ? 'undefined' : 'null'}, using empty string`,
+        undefined,
+        { name: file.name, size: file.size, type: file.type }
+      );
+      return '';
     }
     
-    // Read file content based on encoding
-    let data: string | ArrayBuffer;
-    if (encoding === 'utf-8' || encoding === 'utf-16' || encoding === 'ascii' || encoding === 'iso-8859-1') {
-      data = await file.text();
-    } else {
-      data = await file.arrayBuffer();
-    }
+    // Log success
+    const duration = Math.round(performance.now() - startTime);
+    errors.logOperation(
+      errors.LogLevel.INFO, 
+      'readFile', 
+      `Successfully read file ${file.name} (${content.length} bytes, ${duration}ms)`,
+      undefined,
+      { name: file.name, size: file.size, duration }
+    );
     
-    // Create file metadata
-    const metadata: FileMetadata = {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: file.lastModified
-    };
-    
-    // Create result object
-    const result: FileContent = { data, metadata };
-    
-    // Cache the result
-    cache.cacheFileContent(fileHandle, result, options);
-    
-    return result;
+    return content;
   } catch (error) {
-    if (error instanceof Errors.FileSystemError) {
+    // Handle specific error types
+    if (error instanceof errors.FileSystemError) {
       throw error;
     }
-    throw new Errors.FileReadError(`Error reading file: ${fileHandle.name}`, error);
+    
+    if ((error as DOMException)?.name === 'NotFoundError') {
+      throw new errors.FileNotFoundError('File not found', error);
+    }
+    
+    if ((error as DOMException)?.name === 'NotAllowedError') {
+      throw new errors.PermissionDeniedError('Permission denied to read file', error);
+    }
+    
+    throw new errors.FileReadError('Failed to read file', error);
   }
 }
 
 /**
  * Write content to a file
- * 
- * @param fileHandle - File handle to write to
- * @param content - Content to write to file (string, ArrayBuffer, or FileContent)
- * @param options - Options for writing file
- * @returns Promise resolving when write is complete
+ * @param handle File handle to write to
+ * @param content Content to write
+ * @param options Write options
  */
 export async function writeFile(
-  fileHandle: FileSystemFileHandle, 
-  content: string | ArrayBuffer | FileContent,
-  options: FileSystemOptions = {}
+  handle: FileSystemFileHandle,
+  content: string | ArrayBuffer | Blob,
+  options: WriteFileOptions = {}
 ): Promise<void> {
   try {
-    // Process content based on type
-    const dataToWrite = typeof content === 'object' && 'data' in content 
-      ? content.data 
-      : content;
+    // Track performance if enabled
+    const startTime = performance.now();
     
-    const writable = await fileHandle.createWritable();
-    await writable.write(dataToWrite);
+    // Log the operation
+    errors.logOperation(
+      errors.LogLevel.INFO, 
+      'writeFile', 
+      `Starting write operation for file: ${handle.name}`,
+      undefined,
+      { name: handle.name }
+    );
+    
+    // Request write permission if needed
+    const writeAllowed = await permissions.verifyPermission(handle, 'readwrite');
+    if (!writeAllowed) {
+      throw new errors.PermissionDeniedError('Permission denied to write to file');
+    }
+    
+    // Get writable stream
+    const writable = await handle.createWritable();
+    
+    // Calculate content size for logging
+    let contentSize: number;
+    if (typeof content === 'string') {
+      contentSize = new Blob([content]).size;
+    } else if (content instanceof ArrayBuffer) {
+      contentSize = content.byteLength;
+    } else {
+      contentSize = content.size;
+    }
+    
+    errors.logOperation(
+      errors.LogLevel.INFO, 
+      'writeFile', 
+      `Writing ${contentSize} bytes to file ${handle.name}`,
+      undefined,
+      { name: handle.name, size: contentSize }
+    );
+    
+    // Write content
+    await writable.write(content);
+    
+    // Close the stream
     await writable.close();
     
-    // Invalidate the cache for this file
-    const cacheKey = cache.generateFileKey(fileHandle, options);
-    cache.delete(cacheKey);
+    // Log success
+    const duration = Math.round(performance.now() - startTime);
+    errors.logOperation(
+      errors.LogLevel.INFO, 
+      'writeFile', 
+      `Successfully wrote ${contentSize} bytes to file ${handle.name} (${duration}ms)`,
+      undefined,
+      { name: handle.name, size: contentSize, duration }
+    );
   } catch (error) {
-    if (error instanceof Errors.FileSystemError) {
+    if (error instanceof errors.FileSystemError) {
       throw error;
     }
-    throw new Errors.FileWriteError(`Error writing to file: ${fileHandle.name}`, error);
+    
+    if ((error as DOMException)?.name === 'NotFoundError') {
+      throw new errors.FileNotFoundError('File not found', error);
+    }
+    
+    if ((error as DOMException)?.name === 'NotAllowedError') {
+      throw new errors.PermissionDeniedError('Permission denied to write to file', error);
+    }
+    
+    throw new errors.FileWriteError('Failed to write to file', error);
   }
 }
 
 /**
  * Delete a file
- * Note: The File System Access API doesn't have a native delete method
- * This implementation is a placeholder and would need to be implemented
- * with the appropriate platform-specific approach
- * 
- * @param fileHandle - File handle to delete
- * @returns Promise resolving when deletion is complete
+ * @param handle File handle to delete
  */
-export async function deleteFile(
-  fileHandle: FileSystemFileHandle
-): Promise<void> {
+export async function deleteFile(handle: FileSystemFileHandle): Promise<void> {
   try {
-    // File System Access API doesn't have a native delete method
-    // This would use a different approach depending on the platform
-    throw new Errors.FileSystemError(
-      `Delete operation not implemented for: ${fileHandle.name}`,
-      'FILE_DELETE_NOT_IMPLEMENTED'
+    // Track performance if enabled
+    const startTime = performance.now();
+    
+    // Log the operation
+    errors.logOperation(
+      errors.LogLevel.WARN, 
+      'deleteFile', 
+      `Starting delete operation for file: ${handle.name}`,
+      undefined,
+      { name: handle.name }
+    );
+    
+    // Get the parent directory
+    const root = await getRoot(handle);
+    
+    // Get file name
+    const name = handle.name;
+    
+    errors.logOperation(
+      errors.LogLevel.WARN, 
+      'deleteFile', 
+      `Deleting file ${name}`,
+      undefined,
+      { name }
+    );
+    
+    // Remove the file
+    await root.removeEntry(name);
+    
+    // Log success
+    const duration = Math.round(performance.now() - startTime);
+    errors.logOperation(
+      errors.LogLevel.INFO, 
+      'deleteFile', 
+      `Successfully deleted file ${name} (${duration}ms)`,
+      undefined,
+      { name, duration }
     );
   } catch (error) {
-    if (error instanceof Errors.FileSystemError) {
+    if (error instanceof errors.FileSystemError) {
       throw error;
     }
     
-    throw new Errors.FileSystemError(
-      `Failed to delete file: ${fileHandle.name}`,
-      'FILE_DELETE_ERROR'
-    );
+    if ((error as DOMException)?.name === 'NotFoundError') {
+      throw new errors.FileNotFoundError('File not found', error);
+    }
+    
+    if ((error as DOMException)?.name === 'NotAllowedError') {
+      throw new errors.PermissionDeniedError('Permission denied to delete file', error);
+    }
+    
+    throw new errors.FileSystemError('Failed to delete file', 'FILE_DELETE_ERROR', error);
   }
 }
 
@@ -248,7 +410,7 @@ export async function listDirectory(
       return entries;
     } catch (fallbackError) {
       console.error("Failed to list directory with either method:", fallbackError);
-      throw new Errors.DirectoryError(
+      throw new errors.DirectoryError(
         `Failed to list directory: ${dirHandle.name}`,
         'DIRECTORY_LIST_ERROR'
       );
@@ -270,7 +432,7 @@ export async function createDirectory(
   try {
     return await parentDirHandle.getDirectoryHandle(name, { create: true });
   } catch (error) {
-    throw new Errors.DirectoryError(
+    throw new errors.DirectoryError(
       `Failed to create directory: ${name}`,
       'DIRECTORY_CREATE_ERROR'
     );
@@ -331,7 +493,7 @@ export async function getFileHandle(
   try {
     return await dirHandle.getFileHandle(fileName, { create });
   } catch (error) {
-    throw new Errors.FileNotFoundError(
+    throw new errors.FileNotFoundError(
       `File not found: ${fileName}`,
     );
   }
@@ -353,7 +515,7 @@ export async function getDirectoryHandle(
   try {
     return await parentDirHandle.getDirectoryHandle(dirName, { create });
   } catch (error) {
-    throw new Errors.DirectoryError(
+    throw new errors.DirectoryError(
       `Directory not found: ${dirName}`,
       'DIRECTORY_NOT_FOUND'
     );
@@ -375,16 +537,16 @@ export async function createSyncAccessHandle(
         typeof fileHandle.createSyncAccessHandle === 'function') {
       return await fileHandle.createSyncAccessHandle();
     } else {
-      throw new Errors.CapabilityError(
+      throw new errors.CapabilityError(
         'createSyncAccessHandle', 
         'Sync access handles are not supported in this browser'
       );
     }
   } catch (error) {
-    if (error instanceof Errors.FileSystemError) {
+    if (error instanceof errors.FileSystemError) {
       throw error;
     }
-    throw new Errors.FileSystemError(
+    throw new errors.FileSystemError(
       `Failed to create sync access handle for file: ${fileHandle.name}`,
       'SYNC_ACCESS_HANDLE_ERROR',
       error
@@ -429,7 +591,7 @@ export async function writeFileWithSyncAccess(
     // Flush to ensure data is written to disk
     accessHandle.flush();
   } catch (error) {
-    throw new Errors.FileWriteError(
+    throw new errors.FileWriteError(
       `Failed to write to file with sync access: ${fileHandle.name}`,
       error
     );
@@ -467,7 +629,7 @@ export async function readFileWithSyncAccess(
     const size = accessHandle.getSize();
     
     if (size > maxSize) {
-      throw new Errors.FileTooLargeError(
+      throw new errors.FileTooLargeError(
         `File exceeds maximum size of ${maxSize} bytes (${size} bytes)`
       );
     }
@@ -480,7 +642,7 @@ export async function readFileWithSyncAccess(
     
     // If we didn't read the entire file, something went wrong
     if (bytesRead !== size) {
-      throw new Errors.FileReadError(
+      throw new errors.FileReadError(
         `Failed to read entire file: expected ${size} bytes, got ${bytesRead} bytes`
       );
     }
@@ -506,11 +668,11 @@ export async function readFileWithSyncAccess(
       }
     };
   } catch (error) {
-    if (error instanceof Errors.FileSystemError) {
+    if (error instanceof errors.FileSystemError) {
       throw error;
     }
     
-    throw new Errors.FileReadError(
+    throw new errors.FileReadError(
       `Failed to read file with sync access: ${fileHandle.name}`,
       error
     );

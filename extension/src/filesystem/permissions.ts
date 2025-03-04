@@ -1,8 +1,9 @@
 /**
  * Permission handling for filesystem operations
  */
-import { FileAccessMode } from './types';
+import { FileAccessMode, FileSystemHandle, FileSystemFileHandle, FileSystemDirectoryHandle } from './types';
 import * as Errors from './errors';
+import { fs } from '../filesystem';
 
 /**
  * Permission state from the File System Access API
@@ -204,10 +205,14 @@ export async function ensureVariablePermissions(
       continue;
     }
     
-    // Check if it has a metadata property with a handle
-    if (variable.metadata && variable.metadata.handle) {
-      const hasPermission = await verifyPermission(variable.metadata.handle, mode);
-      if (!hasPermission) return false;
+    // Check if it has a metadata property with a handleId
+    if (variable.metadata && variable.metadata.handleId) {
+      // Get the handle from the registry
+      const handle = fs.registry.getHandle(variable.metadata.handleId);
+      if (handle) {
+        const hasPermission = await verifyPermission(handle, mode);
+        if (!hasPermission) return false;
+      }
     }
   }
   

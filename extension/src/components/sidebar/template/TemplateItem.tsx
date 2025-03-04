@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { replaceVariables, parseTemplate } from '../../../utils/template-parser';
-import { ensureFilePermissions, activeFetchFileContent, activeResolveAllFileContents, reacquireFileHandles, fileHandleRegistry } from '../../../utils/file-content-resolver';
+import { ensureFilePermissions, activeResolveAllFileContents, diagnoseFileHandles } from '../../../utils/file-content-resolver';
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTemplateVariables } from '../../../hooks/useTemplateVariables';
-import { Template } from 'shared/types/templates';
+// Use require for modules exported as CommonJS
+const { useTemplateVariables } = require('../../../hooks/useTemplateVariables');
 import { useToast } from '../../../hooks/useToast';
+import * as fs from '../../../filesystem';
+import { Template } from 'shared/types/templates';
+import { FileHandleRegistry } from '../../../filesystem/registry';
 
 /**
  * @typedef {Object} TemplateItemProps
@@ -54,7 +57,7 @@ const TemplateItem = memo(({
 }: TemplateItemProps) => {
   const navigate = useNavigate();
   const [isCopying, setIsCopying] = useState(false);
-  const { addToast, success, error } = useToast();
+  const { addToast, success, error, warn } = useToast();
 
   // Add template variables hook
   const {
@@ -90,6 +93,7 @@ const TemplateItem = memo(({
 
   const handleCopyClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
     try {
       setIsCopying(true);
       console.log(`[TemplateItem] Copy clicked for template ID: ${template.id}`);
@@ -103,6 +107,9 @@ const TemplateItem = memo(({
       
       console.log(`[TemplateItem] Template uses these variables:`, Array.from(usedVariableNames));
       
+      let fileResolutionAttempted = false;
+      let fileResolutionSucceeded = true;
+      
       // Identify file variables that are used in this specific template
       if (globalVariables && Array.isArray(globalVariables)) {
         const fileVars = globalVariables.filter((v) => 
@@ -113,6 +120,7 @@ const TemplateItem = memo(({
         );
         
         if (fileVars.length > 0) {
+          fileResolutionAttempted = true;
           console.log(`[TemplateItem] Template contains ${fileVars.length} used file variables - resolving content`);
           
           // Create a filtered global variables array with only the used file variables
@@ -120,46 +128,91 @@ const TemplateItem = memo(({
             v && usedVariableNames.has(v.name)
           );
           
-          // Actively resolve only the file contents for variables used in this template
+          // Log details about file variables for debugging
+          console.log(`[TemplateItem] File variables to resolve:`, usedFileGlobalVariables.map(v => ({
+            name: v.name,
+            fileEntries: v.value.filter((entry: any) => entry && entry.type === 'file').length
+          })));
+          
+          // Ensure file registry is fully loaded and initialized
+          const registry = FileHandleRegistry.getInstance();
+          await registry.ensureRegistryLoaded();
+          
+          // Ensure file permissions are granted
           try {
+            const permissionsGranted = await ensureFilePermissions(usedFileGlobalVariables);
+            if (!permissionsGranted) {
+              console.warn('[TemplateItem] File permissions were not granted');
+              fileResolutionSucceeded = false;
+              throw new Error('Permission denied for accessing files. Please try again.');
+            }
+            console.log('[TemplateItem] File permissions granted successfully');
+          } catch (permErr) {
+            console.error('[TemplateItem] Error checking permissions:', permErr);
+            fileResolutionSucceeded = false;
+            throw new Error('Failed to verify file permissions');
+          }
+          
+          // Actively resolve file contents
+          try {
+            console.log('[TemplateItem] Starting file content resolution');
             const resolved = await activeResolveAllFileContents(usedFileGlobalVariables, { 
-              autoReacquireHandles: true,
-              // Don't force reacquisition on every copy - only if we have missing handles
+              useCache: true,
+              forceReacquire: true,
+              autoReacquireHandles: true
             });
             
-            console.log(`[TemplateItem] File content resolution ${resolved ? 'successful' : 'failed'}`);
-            
             if (!resolved) {
-              console.warn('Some file contents could not be resolved. The template may be incomplete.');
+              console.warn('[TemplateItem] Failed to resolve file contents, template may be incomplete');
               
-              // If resolution failed, try once more with forced reacquisition
-              const forcedResolved = await activeResolveAllFileContents(usedFileGlobalVariables, {
-                autoReacquireHandles: true,
-                forceReacquire: true
-              });
+              // Run diagnostics to get more info about what went wrong
+              const diagnostics = diagnoseFileHandles(usedFileGlobalVariables);
+              console.error('[TemplateItem] File handle diagnostics:', diagnostics);
               
-              if (!forcedResolved) {
-                console.error(`[TemplateItem] Even forced reacquisition failed`);
-                error('Unable to access file contents. Please try again.');
-              }
+              fileResolutionSucceeded = false;
+              throw new Error('Unable to access file contents. Please try again.');
+            } else {
+              console.log('[TemplateItem] File content resolution completed successfully');
             }
           } catch (err) {
             console.error(`[TemplateItem] Error resolving file contents:`, err);
-            error(err instanceof Error ? err.message : 'Unknown error');
+            
+            // Run diagnostics to get more info about what went wrong
+            const diagnostics = diagnoseFileHandles(usedFileGlobalVariables);
+            console.error('[TemplateItem] File handle diagnostics:', diagnostics);
+            
+            fileResolutionSucceeded = false;
+            throw new Error('Error accessing file contents');
           }
         }
       }
       
-      // Process the template with variable replacement
-      processedContent = replaceVariables(processedContent, values, globalVariables);
+      // Process the template with variable replacement - this integrates the resolved file contents
+      try {
+        console.log('[TemplateItem] Replacing variables in template content');
+        processedContent = replaceVariables(processedContent, values, globalVariables);
+        console.log(`[TemplateItem] Template processed successfully (${processedContent.length} characters)`);
+      } catch (replaceErr) {
+        console.error('[TemplateItem] Error during variable replacement:', replaceErr);
+        throw new Error('Error processing template variables');
+      }
       
       // Copy to clipboard
-      await navigator.clipboard.writeText(processedContent);
-      console.log(`[TemplateItem] Successfully copied template to clipboard`);
-      
-      success('Template copied to clipboard with all variables resolved');
+      try {
+        await navigator.clipboard.writeText(processedContent);
+        console.log(`[TemplateItem] Successfully copied template to clipboard`);
+        
+        if (fileResolutionAttempted && !fileResolutionSucceeded) {
+          warn('Template copied to clipboard but file content resolution failed. Some variables may not be fully resolved.');
+        } else {
+          success('Template copied to clipboard with all variables resolved');
+        }
+      } catch (clipboardErr) {
+        console.error('[TemplateItem] Clipboard write error:', clipboardErr);
+        error('Failed to copy to clipboard');
+      }
     } catch (err) {
-      console.error('Failed to copy template:', err);
+      console.error('[TemplateItem] Failed to copy template:', err);
       error(err instanceof Error ? err.message : 'Failed to copy template');
     } finally {
       setIsCopying(false);

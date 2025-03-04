@@ -4,14 +4,49 @@
  * This service resolves file references to their contents during copy operations.
  * It wraps file contents in simple tags with the filename as the tag name.
  * 
+ * Enhanced with:
+ * - Filesystem module integration
+ * - Caching support
+ * - Batch processing
+ * - Recursive directory handling support
+ * 
  * DEBUG MODE: Enhanced diagnostics for file handle issues
  */
+
+// Add File System Access API types
+declare global {
+  interface Window {
+    showOpenFilePicker?: (options?: {
+      multiple?: boolean;
+      types?: Array<{
+        description?: string;
+        accept: Record<string, string[]>;
+      }>;
+    }) => Promise<FileSystemFileHandle[]>;
+    showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+  }
+}
 
 import type { VariableEntry } from 'shared/types/variables';
 import { VARIABLE_ENTRY_TYPES, isFileEntry, isDirectoryEntry } from 'shared/types/variables';
 import { replaceVariables } from './template-parser';
-import * as path from 'path';
+import path from 'path';
 import { fileHandleRegistry } from '../components/sidebar/variables/FilePicker';
+import { fs } from '../filesystem';
+// Import pickers separately since they're not exposed directly on the fs object
+import * as fsPickers from '../filesystem/pickers';
+// Import errors for proper typing
+import * as fsErrors from '../filesystem/errors';
+// Import cache and types for improved performance
+import { FileMetadata, FileEntry, DirectoryEntry } from '../filesystem/types';
+import { cache } from '../filesystem/cache';
+
+// Define error tracking interface
+interface AttemptDetail {
+  time: string;
+  error: string;
+  source: string;
+}
 
 // Very large size limit (equiv to ~200k tokens) in bytes
 // 800KB is approximately 200k tokens at 4 chars per token
@@ -24,6 +59,15 @@ interface FileVariableEntry {
   type: 'file';
   value: string;
   metadata: FileEntryMetadata;
+}
+
+/**
+ * Represents a variable entry for a directory
+ */
+interface DirectoryVariableEntry {
+  type: 'directory';
+  value: string;
+  metadata: DirectoryEntryMetadata;
 }
 
 /**
@@ -56,11 +100,6 @@ interface FileEntryMetadata {
   handleId?: string;
   
   /**
-   * Legacy handle reference (deprecated, use handleId instead)
-   */
-  handle?: any;
-  
-  /**
    * Whether content has been resolved
    */
   contentResolved?: boolean;
@@ -79,6 +118,56 @@ interface FileEntryMetadata {
    * Length of the resolved content
    */
   contentLength?: number;
+}
+
+/**
+ * Directory entry metadata structure
+ */
+interface DirectoryEntryMetadata {
+  /**
+   * Path or name of the directory
+   */
+  path?: string;
+  
+  /**
+   * ID reference to the directory handle in the registry
+   */
+  handleId?: string;
+  
+  /**
+   * Whether content has been resolved
+   */
+  contentResolved?: boolean;
+  
+  /**
+   * When content was last fetched
+   */
+  lastFetchedAt?: number;
+  
+  /**
+   * Recursive processing options
+   */
+  recursive?: {
+    /**
+     * Whether to process recursively
+     */
+    enabled: boolean;
+    
+    /**
+     * Maximum recursion depth 
+     */
+    maxDepth?: number;
+    
+    /**
+     * Include patterns
+     */
+    include?: string[];
+    
+    /**
+     * Exclude patterns
+     */
+    exclude?: string[];
+  };
 }
 
 /**
@@ -102,6 +191,45 @@ interface FileContentResolutionOptions {
    * Default: false
    */
   debug?: boolean;
+  
+  /**
+   * Enable caching for file contents
+   * Default: true
+   */
+  useCache?: boolean;
+  
+  /**
+   * Cache TTL in milliseconds
+   * Default: 5 minutes
+   */
+  cacheTTL?: number;
+  
+  /**
+   * Options for recursive directory processing
+   */
+  recursive?: {
+    /**
+     * Whether to process directories recursively
+     * Default: false
+     */
+    enabled?: boolean;
+    
+    /**
+     * Maximum recursion depth
+     * Default: 5
+     */
+    maxDepth?: number;
+    
+    /**
+     * Include files/directories matching these patterns
+     */
+    include?: string[];
+    
+    /**
+     * Exclude files/directories matching these patterns
+     */
+    exclude?: string[];
+  };
 }
 
 /**
@@ -120,12 +248,8 @@ function getBasename(filePath: string): string {
  * @returns A tag-safe version of the filename
  */
 function createTagFromFilename(filename: string): string {
-  // Remove any path information and get just the filename
-  const basename = getBasename(filename);
-  
-  // Replace characters that would be invalid in XML tag names
-  // XML tag names can't contain spaces, <, >, &, ", ', etc.
-  return basename.replace(/[^\w.-]/g, '_');
+  const baseName = path.basename(filename);
+  return baseName.replace(/[^\w.-]/g, '_');
 }
 
 /**
@@ -134,25 +258,10 @@ function createTagFromFilename(filename: string): string {
  * @returns The file handle or undefined if not available
  */
 function getFileHandleFromMetadata(metadata: FileEntryMetadata): any {
-  // Check if we have a handleId (new approach)
+  // Only check for handleId property - no legacy support
   if (metadata?.handleId) {
     console.log(`[getFileHandleFromMetadata] Retrieving handle from registry with ID: ${metadata.handleId}`);
-    return fileHandleRegistry.getHandle(metadata.handleId);
-  }
-  
-  // Legacy check for direct handle (will be an empty object if serialized/deserialized)
-  if (metadata?.handle) {
-    console.log(`[getFileHandleFromMetadata] Found direct handle reference in metadata`);
-    
-    // Check if it's a valid handle or an empty object
-    if (typeof metadata.handle === 'object' && 
-        Object.keys(metadata.handle).length > 0 && 
-        typeof metadata.handle.getFile === 'function') {
-      console.log(`[getFileHandleFromMetadata] Direct handle appears valid`);
-      return metadata.handle;
-    } else {
-      console.warn(`[getFileHandleFromMetadata] Direct handle is invalid (empty or missing getFile method)`);
-    }
+    return fs.registry.getHandle(metadata.handleId);
   }
   
   console.warn(`[getFileHandleFromMetadata] No valid handle found in metadata`);
@@ -214,6 +323,60 @@ async function validateFileHandle(handle: any): Promise<{isValid: boolean; diagn
 }
 
 /**
+ * Fetches file content using the filesystem module
+ * @param handleId The handle ID to get content from
+ * @param options Options for content resolution
+ * @returns File content as a string or null if retrieval failed
+ */
+async function fetchFileContent(
+  handleId: string | undefined, 
+  options: { maxFileSize?: number; useCache?: boolean } = {}
+): Promise<string | null> {
+  if (!handleId) {
+    console.error('[fetchFileContent] No handle ID provided');
+    return null;
+  }
+
+  try {
+    // Get the handle from the registry
+    const handle = fs.registry.getHandle(handleId);
+    
+    if (!handle) {
+      console.error(`[fetchFileContent] No handle found for ID: ${handleId}`);
+      return null;
+    }
+    
+    // Make sure it's a file handle
+    if (handle.kind !== 'file') {
+      console.error(`[fetchFileContent] Handle is not a file: ${handleId}`);
+      return null;
+    }
+    
+    // Set options for reading
+    const readOptions = {
+      encoding: 'utf-8' as const,
+      maxSize: options.maxFileSize || MAX_FILE_SIZE
+    };
+    
+    // Read the file using the filesystem module
+    try {
+      return await fs.readFile(handle as FileSystemFileHandle, readOptions);
+    } catch (error) {
+      if (error instanceof fs.errors.FileTooLargeError) {
+        console.error(`[fetchFileContent] File too large (${handle.name}), max size: ${readOptions.maxSize} bytes`);
+        throw new Error(`File too large: ${handle.name}. Maximum size: ${Math.round(readOptions.maxSize / 1024)} KB`);
+      } else {
+        console.error(`[fetchFileContent] Error reading file: ${error instanceof Error ? error.message : String(error)}`);
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('[fetchFileContent] Error:', error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
+/**
  * Resolves file references in variables to their actual content
  * @param variables Array of global variables
  * @param options Options for content resolution
@@ -228,11 +391,18 @@ export async function resolveFileContents(
     const resolveOptions: Required<FileContentResolutionOptions> = {
       wrapInTags: options.wrapInTags !== false,
       maxFileSize: options.maxFileSize || MAX_FILE_SIZE,
-      debug: options.debug || true // Enable debug by default for troubleshooting
+      debug: options.debug || false,
+      useCache: options.useCache !== false,
+      cacheTTL: options.cacheTTL || 5 * 60 * 1000, // Default to 5 minutes
+      recursive: {
+        enabled: options.recursive?.enabled || false,
+        maxDepth: options.recursive?.maxDepth || 5,
+        include: options.recursive?.include || [],
+        exclude: options.recursive?.exclude || []
+      }
     };
     
     console.log(`[resolveFileContents] Starting resolution with options:`, resolveOptions);
-    console.log(`[resolveFileContents] FileHandleRegistry has ${fileHandleRegistry.getHandleCount()} registered handles`);
     
     // Filter out variables without values
     if (!Array.isArray(variables) || variables.length === 0) {
@@ -240,217 +410,418 @@ export async function resolveFileContents(
       return variables;
     }
     
-    // Process each variable
-    const fileVariablePromises = variables.map(async (variable) => {
-      // Skip variables without value arrays
+    // First, ensure we have the necessary permissions
+    const hasPermissions = await ensureFilePermissions(variables);
+    if (!hasPermissions) {
+      console.warn(`[resolveFileContents] Failed to ensure file permissions`);
+      return variables;
+    }
+    
+    // If recursive option is enabled, process directories first to find all files
+    if (resolveOptions.recursive.enabled) {
+      variables = await processDirectoriesRecursively(variables, resolveOptions);
+    }
+    
+    // Collect all file entries that need resolution
+    interface FileToResolve {
+      variable: any;
+      entryIndex: number;
+      entry: any;
+      handleId: string;
+    }
+    
+    const filesToResolve: FileToResolve[] = [];
+    
+    // Find all file entries that need resolution
+    for (const variable of variables) {
       if (!variable || !Array.isArray(variable.value) || variable.value.length === 0) {
-      return variable;
-    }
-    
-      // Only process if array contains file or directory entries
-      const containsFileRefs = variable.value.some(
-        (entry: VariableEntry) => isFileEntry(entry) || isDirectoryEntry(entry)
-      );
+        continue;
+      }
       
-      if (!containsFileRefs) {
-      return variable;
-    }
-    
-      // Process each entry in the variable's value array
-      console.log(`[resolveFileContents] Processing variable: ${variable.name}`);
-      const valueArray = variable.value;
-      
-      // Process all entries to resolve file references to their contents
-    const processedEntries = await Promise.all(valueArray.map(async (entry: VariableEntry) => {
-      // Handle file entries
-        if (isFileEntry(entry) && entry.metadata) {
-          try {
-            console.log(`[resolveFileContents] Processing file entry: ${entry.value}`);
-            
-            // Get the file handle from metadata (either direct or from registry)
-            const handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
-            
-            // Debug handle retrieval
-            if (resolveOptions.debug) {
-              console.log(`[resolveFileContents] DEBUG: Handle retrieval result:`, {
-                handleExists: !!handle,
-                handleType: typeof handle,
-                handleIsEmpty: handle ? Object.keys(handle).length === 0 : true,
-                hasGetFileMethod: handle ? typeof handle.getFile === 'function' : false,
-                handleKind: handle?.kind
-              });
-            }
-            
-            // If handle is not available or invalid, return early with error
-            if (!handle || typeof handle !== 'object' || Object.keys(handle).length === 0) {
-              console.error(`[resolveFileContents] Missing or invalid file handle for ${entry.value}`);
-              return {
-                ...entry,
-                value: `Cannot access file: ${entry.value} - File handle is unavailable or invalid`
-              };
-            }
-            
-            // ENHANCED DIAGNOSTICS: Validate file handle
-            console.log(`[resolveFileContents] DEBUG: Checking file handle...`);
-            const handleDiagnostics = await validateFileHandle(handle);
-            console.log(`[resolveFileContents] DEBUG: Handle validation: ${handleDiagnostics.isValid ? 'VALID' : 'INVALID'}`);
-            console.log(`[resolveFileContents] DEBUG: Handle diagnostics: ${handleDiagnostics.diagnostics}`);
-            
-            if (!handleDiagnostics.isValid) {
-              console.error(`[resolveFileContents] File handle validation failed: ${handleDiagnostics.diagnostics}`);
-              return {
-                ...entry,
-                value: `Cannot access file: ${entry.value} - ${handleDiagnostics.diagnostics}`
-              };
-            }
-            
-            // More detailed metadata inspection
-            if (resolveOptions.debug) {
-              console.log(`[resolveFileContents] File metadata details:`, {
-                keys: entry.metadata ? Object.keys(entry.metadata) : [],
-                size: entry.metadata?.size,
-                path: entry.metadata?.path,
-                handleId: entry.metadata?.handleId,
-                lastModified: entry.metadata?.lastModified
-              });
-            }
-            
-            // Try to get a better file path from metadata if available
-            let filePath = entry.value;
-            if (entry.metadata?.path) {
-              filePath = entry.metadata.path;
-              console.log(`[resolveFileContents] Using path from metadata: ${filePath}`);
-            }
-            
-            // Get the basename for tag creation
-            const filename = getBasename(filePath);
-            const tagName = createTagFromFilename(filename);
-            console.log(`[resolveFileContents] Using tag name: ${tagName} for file: ${filename}`);
-            
-            // Check if size is available in metadata and it exceeds limit
-            if (entry.metadata?.size && entry.metadata.size > resolveOptions.maxFileSize) {
-              console.warn(`[resolveFileContents] File exceeds size limit: ${filePath} (${entry.metadata.size} bytes)`);
-              return {
-                ...entry,
-                value: `File too large: ${filePath} (${entry.metadata.size} bytes)`
-              };
-            }
-            
-            // If this is a browser environment, try to access the file using the File System Access API
-            if (handle && typeof window !== 'undefined') {
-              try {
-                console.log(`[resolveFileContents] Attempting to access file directly via handle`);
-                
-                console.log(`[resolveFileContents] DEBUG: About to call getFile() on handle...`);
-                // Try to get the file directly - this may throw if permission was denied
-                // The browser will generally show a permission prompt automatically if needed
-                const file = await handle.getFile();
-                console.log(`[resolveFileContents] File retrieved: ${file.name}, size: ${file.size} bytes, path: ${filePath}`);
-                
-                // Read file content
-                const content = await file.text();
-                console.log(`[resolveFileContents] File content read, length: ${content.length} characters`);
-                console.log(`[resolveFileContents] Content preview: ${content.substring(0, 100)}...`);
-                
-                // Format with simple tags using the filename
-                const formattedContent = resolveOptions.wrapInTags
-                  ? `<${tagName}>\n${content}\n</${tagName}>`
-                  : content;
-                
-                console.log(`[resolveFileContents] Formatted content length: ${formattedContent.length} characters`);
-                console.log(`[resolveFileContents] Formatted content preview: ${formattedContent.substring(0, 100)}...`);
-                
-                // Return entry with content as value and also store raw content for fallback
-                return {
-                  ...entry,
-                  value: formattedContent,
-                  metadata: {
-                    ...entry.metadata,
-                    rawContent: content, // Store raw content in metadata for easy access
-                    tagName, // Store the tag name we used
-                    contentResolved: true
-                  }
-                };
-              } catch (accessError) {
-                console.error('[resolveFileContents] Error accessing file via handle:', accessError);
-                
-                // If access failed, we can still try an alternate approach or return the error
-                // Try to get the file name at least
-                let errorMessage = `Error accessing file: ${filePath}`;
-                let fileName = entry.value;
-                
-                try {
-                  if (handle.name) {
-                    fileName = handle.name;
-                    console.log(`[resolveFileContents] Got file name from handle: ${fileName}`);
-                  }
-                } catch (nameError) {
-                  console.error('[resolveFileContents] Could not get file name from handle:', nameError);
-                }
-                
-            return {
-              ...entry,
-                  value: `${errorMessage} - ${accessError instanceof Error ? accessError.message : 'Permission denied or file not available'}`,
-                  metadata: {
-                    ...entry.metadata,
-                    accessError: accessError instanceof Error ? accessError.message : 'Permission denied',
-                    fileName,
-                    debugInfo: `Handle validation: ${handleDiagnostics.diagnostics}` // Add diagnostic info
-                  }
-                };
-              }
-          } else {
-              // No handle or not in browser environment
-              console.log(`[resolveFileContents] No valid file handle available or not in browser environment`);
-            return {
-              ...entry,
-                value: `Cannot access file: ${filePath} - No valid file handle`
-            };
-          }
-        } catch (error: unknown) {
-            console.error('[resolveFileContents] Error reading file:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          return {
-            ...entry,
-            value: `Error reading file: ${entry.value} - ${errorMessage}`
-          };
+      for (let i = 0; i < variable.value.length; i++) {
+        const entry = variable.value[i];
+        
+        // Only process file entries
+        if (!isFileEntry(entry)) {
+          continue;
         }
+        
+        // Ensure metadata exists
+        if (!entry.metadata) {
+          entry.metadata = {};
+        }
+        
+        // Check if handle exists
+        if (!entry.metadata) {
+          console.warn(`[resolveFileContents] File entry has no metadata: ${entry}`);
+          continue;
+        }
+        
+        // Get handle ID
+        const handleId = entry.metadata.handleId;
+        if (!handleId) {
+          console.warn(`[resolveFileContents] No handle ID for file: ${entry.value}`);
+          continue;
+        }
+        
+        // Add to the list of files to resolve
+        filesToResolve.push({
+          variable,
+          entryIndex: i,
+          entry,
+          handleId
+        });
       }
-      
-      // Handle directory entries (optional future enhancement)
-        else if (isDirectoryEntry(entry) && entry.metadata) {
-          // Get the directory handle (either direct or from registry)
-          const handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
-          
-        // For directories, you might want to list files or process them
-        // This is a placeholder for directory handling
-          console.log(`[resolveFileContents] Processing directory: ${entry.value}`);
-        return {
-          ...entry,
-          value: `Directory: ${entry.value} (directory contents not processed)`
+    }
+    
+    console.log(`[resolveFileContents] Found ${filesToResolve.length} files to resolve`);
+    
+    if (filesToResolve.length === 0) {
+      return variables;
+    }
+    
+    // Process each file to resolve
+    const resolvePromises = filesToResolve.map(async ({ variable, entryIndex, entry, handleId }) => {
+      try {
+        // Get the handle from the registry
+        const handle = fs.registry.getHandle(handleId);
+        if (!handle || handle.kind !== 'file') {
+          console.error(`[resolveFileContents] Invalid handle for file: ${entry.value}`);
+          return false;
+        }
+        
+        // Setup options for reading the file
+        const readOptions = {
+          maxFileSize: resolveOptions.maxFileSize,
+          useCache: resolveOptions.useCache
         };
+        
+        // Try to get the content from cache or read it
+        let content;
+        let readAttemptSucceeded = false;
+        let contentSize = 0;
+        
+        if (resolveOptions.useCache) {
+          // Try to get from cache first
+          const cachedContent = cache.getCachedFileContent(handle as FileSystemFileHandle, {});
+          if (cachedContent && cachedContent.data !== undefined && cachedContent.data !== null) {
+            console.log(`[resolveFileContents] Using cached content for file: ${entry.value}`);
+            content = cachedContent.data as string;
+            readAttemptSucceeded = true;
+            contentSize = typeof content === 'string' ? content.length : 0;
+          } else {
+            console.log(`[resolveFileContents] Cache miss or invalid cached data for file: ${entry.value}, reading from file system`);
+            
+            // Read the file and cache it
+            try {
+              content = await fs.readFile(handle as FileSystemFileHandle, {
+                maxSize: resolveOptions.maxFileSize,
+                encoding: 'utf-8'
+              });
+              
+              // Check logs for successful read even if content is undefined
+              if (content === undefined || content === null) {
+                console.log(`[resolveFileContents] File read operation completed but returned ${content === undefined ? 'undefined' : 'null'} content. Checking for successful read in logs...`);
+                
+                // If we're getting undefined but the logs show a successful read, try to get file content directly
+                try {
+                  const file = await (handle as FileSystemFileHandle).getFile();
+                  // Use direct File API as fallback
+                  const fileContent = await file.text();
+                  if (fileContent) {
+                    console.log(`[resolveFileContents] Successfully retrieved content using direct File API (${fileContent.length} bytes)`);
+                    content = fileContent;
+                    readAttemptSucceeded = true;
+                    contentSize = fileContent.length;
+                  }
+                } catch (directReadError) {
+                  console.error(`[resolveFileContents] Direct file read also failed:`, directReadError);
+                }
+              } else {
+                readAttemptSucceeded = true;
+                contentSize = typeof content === 'string' ? content.length : 0;
+              }
+              
+              // Get file metadata for cache
+              const file = await (handle as FileSystemFileHandle).getFile();
+              const metadata: FileMetadata = {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                lastModified: file.lastModified
+              };
+              
+              // Cache the content with the specified TTL
+              if (content !== undefined && content !== null) {
+                cache.cacheFileContent(handle as FileSystemFileHandle, {
+                  data: content,
+                  metadata
+                });
+                
+                console.log(`[resolveFileContents] Cached content for file: ${entry.value}`);
+              } else {
+                console.error(`[resolveFileContents] Read file returned undefined/null content for ${entry.value}, cannot cache`);
+              }
+            } catch (readError) {
+              console.error(`[resolveFileContents] Error reading file:`, readError);
+              
+              // Check if the error message actually contains a successful read indication
+              // This is a workaround for when the fs module logs success but throws an error
+              if (readError && typeof readError.toString === 'function') {
+                const errorString = readError.toString();
+                if (errorString.includes('Successfully read file') && errorString.includes('bytes')) {
+                  console.log(`[resolveFileContents] Error message indicates successful read, attempting recovery`);
+                  
+                  // Try direct File API as fallback
+                  try {
+                    const file = await (handle as FileSystemFileHandle).getFile();
+                    const fileContent = await file.text();
+                    if (fileContent) {
+                      console.log(`[resolveFileContents] Recovery succeeded, got content directly (${fileContent.length} bytes)`);
+                      content = fileContent;
+                      readAttemptSucceeded = true;
+                      contentSize = fileContent.length;
+                    }
+                  } catch (recoveryError) {
+                    console.error(`[resolveFileContents] Recovery attempt failed:`, recoveryError);
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Read the file directly (no caching)
+          try {
+            content = await fs.readFile(handle as FileSystemFileHandle, {
+              maxSize: resolveOptions.maxFileSize,
+              encoding: 'utf-8'
+            });
+            readAttemptSucceeded = content !== undefined && content !== null;
+            contentSize = typeof content === 'string' ? content.length : 0;
+          } catch (directReadError) {
+            console.error(`[resolveFileContents] Error in direct file read:`, directReadError);
+          }
+        }
+        
+        // Special handling for cases where file was definitely read but content is undefined
+        if (!content && readAttemptSucceeded) {
+          console.warn(`[resolveFileContents] Read attempt succeeded but content is empty or undefined. Using empty string.`);
+          content = '';
+        }
+        
+        // Get the tag name for wrapping
+        const tagName = entry.metadata.tagName || createTagFromFilename(entry.value);
+        
+        // Save the original value
+        const originalValue = entry.value;
+        
+        // If content is undefined or empty, use a placeholder message
+        if (content === undefined || content === null) {
+          const filename = entry.value || (handle as FileSystemFileHandle).name;
+          console.warn(`[resolveFileContents] Content for ${filename} is undefined, using empty string`);
+          
+          // Create placeholder content with a comment explaining the issue
+          const tagName = createTagFromFilename(filename);
+          entry.value = `<${tagName}>\n/* No content available for ${path.basename(filename)} */\n</${tagName}>`;
+          
+          // Mark as resolved with empty content
+          if (resolveOptions.wrapInTags) {
+            // Update the metadata on the entry
+            if (variable.value[entryIndex].metadata) {
+              variable.value[entryIndex].metadata.contentResolved = true;
+              variable.value[entryIndex].metadata.tagName = tagName;
+              variable.value[entryIndex].metadata.lastFetchedAt = Date.now();
+              variable.value[entryIndex].metadata.contentLength = 0;
+            }
+          }
+          
+          // Don't continue processing this entry
+          return true;
+        }
+        
+        // Create an XML tag for the content
+        const xmlTagName = createTagFromFilename(entry.value);
+        const wrapped = `<${xmlTagName}>\n${content}\n</${xmlTagName}>`;
+        
+        // Update the entry's value with the wrapped content
+        entry.value = wrapped;
+        
+        // Update metadata
+        variable.value[entryIndex].metadata.contentResolved = true;
+        variable.value[entryIndex].metadata.lastFetchedAt = Date.now();
+        variable.value[entryIndex].metadata.contentLength = content.length;
+        variable.value[entryIndex].metadata.tagName = tagName;
+        
+        console.log(`[resolveFileContents] Resolved file: ${originalValue} (${content.length} bytes)`);
+        return true;
+      } catch (error) {
+        if (error instanceof fs.errors.FileTooLargeError) {
+          console.error(`[resolveFileContents] File too large: ${entry.value}`);
+        } else if (error instanceof fs.errors.PermissionDeniedError) {
+          console.error(`[resolveFileContents] Permission denied for file: ${entry.value}`);
+        } else {
+          console.error(`[resolveFileContents] Error processing file entry:`, error);
+        }
+        return false;
+      }
+    });
+    
+    // Wait for all files to be resolved
+    await Promise.all(resolvePromises);
+    
+    return variables;
+  } catch (error) {
+    console.error('[resolveFileContents] Error resolving file contents:', error);
+    return variables; // Return original variables on error
+  }
+}
+
+/**
+ * Process directories recursively to gather all contained files
+ * @param variables Array of variables to process
+ * @param options Options for recursive processing
+ * @returns Updated array of variables with expanded file entries
+ */
+async function processDirectoriesRecursively(
+  variables: any[] = [],
+  options: Required<FileContentResolutionOptions>
+): Promise<any[]> {
+  // Variables to be processed
+  const directoriesToProcess: Array<{
+    variable: any;
+    entryIndex: number;
+    entry: DirectoryVariableEntry;
+    handle: FileSystemDirectoryHandle;
+  }> = [];
+  
+  // Find all directory entries that need to be processed
+  for (const variable of variables) {
+    if (!variable || !Array.isArray(variable.value) || variable.value.length === 0) {
+      continue;
+    }
+    
+    for (let i = 0; i < variable.value.length; i++) {
+      const entry = variable.value[i] as DirectoryVariableEntry;
+      
+      // Skip non-directory entries
+      if (!isDirectoryEntry(entry)) {
+        continue;
       }
       
-      // Return other entries unchanged
-        console.log(`[resolveFileContents] Entry is not a file/directory with handle, leaving unchanged:`, JSON.stringify(entry, null, 2));
-      return entry;
-    }));
-    
-      // Update variable with processed entries
-    return {
-      ...variable,
-      value: processedEntries
-    };
-  });
+      // Ensure metadata exists
+      if (!entry.metadata) {
+        entry.metadata = {};
+      }
+      
+      // Check if recursion is enabled for this directory
+      const dirRecursiveOptions = entry.metadata.recursive || { enabled: options.recursive.enabled };
+      if (!dirRecursiveOptions.enabled) {
+        continue;
+      }
+      
+      // Get handle ID
+      const handleId = entry.metadata.handleId;
+      if (!handleId) {
+        console.warn(`[processDirectoriesRecursively] No handle ID for directory: ${entry.value}`);
+        continue;
+      }
+      
+      // Get handle from registry
+      const handle = fs.registry.getHandle(handleId) as FileSystemDirectoryHandle;
+      if (!handle || handle.kind !== 'directory') {
+        console.warn(`[processDirectoriesRecursively] Invalid handle for directory: ${entry.value}`);
+        continue;
+      }
+      
+      // Add to list of directories to process
+      directoriesToProcess.push({
+        variable,
+        entryIndex: i,
+        entry,
+        handle
+      });
+    }
+  }
   
-    // Wait for all file variable promises to complete
-    const processedVariables = await Promise.all(fileVariablePromises);
-    
-    return processedVariables;
-  } catch (error: unknown) {
-    console.error('[resolveFileContents] Error resolving file contents:', error);
+  console.log(`[processDirectoriesRecursively] Found ${directoriesToProcess.length} directories to process recursively`);
+  
+  if (directoriesToProcess.length === 0) {
     return variables;
   }
+  
+  // Process each directory
+  for (const { variable, entryIndex, entry, handle } of directoriesToProcess) {
+    try {
+      console.log(`[processDirectoriesRecursively] Processing directory: ${entry.value}`);
+      
+      // Get recursive options for this directory
+      const recursiveOpts = {
+        maxDepth: entry.metadata.recursive?.maxDepth || options.recursive.maxDepth,
+        include: entry.metadata.recursive?.include || options.recursive.include,
+        exclude: entry.metadata.recursive?.exclude || options.recursive.exclude
+      };
+      
+      // Use the recursive module to list all files in the directory
+      const entries = await fs.recursive.listRecursive(handle, recursiveOpts);
+      
+      console.log(`[processDirectoriesRecursively] Found ${entries.length} entries in ${entry.value}`);
+      
+      // Convert filesystem entries to variable entries
+      const variableEntries: VariableEntry[] = [];
+      
+      for (const fsEntry of entries) {
+        if (fsEntry.kind === 'file') {
+          // Convert file entry
+          const fileEntry = createFileVariableEntry(fsEntry);
+          variableEntries.push(fileEntry);
+        }
+        // Skip directory entries inside the recursive result to avoid nested recursion
+      }
+      
+      // Add the file entries to the variable's value array
+      // Keep the original directory entry and append the file entries
+      if (variableEntries.length > 0) {
+        // Update the directory entry to indicate it's been processed
+        variable.value[entryIndex].metadata.contentResolved = true;
+        variable.value[entryIndex].metadata.lastFetchedAt = Date.now();
+        
+        // Append all found files after the directory entry
+        variable.value.splice(entryIndex + 1, 0, ...variableEntries);
+        
+        console.log(`[processDirectoriesRecursively] Added ${variableEntries.length} file entries from directory: ${entry.value}`);
+      }
+    } catch (error) {
+      console.error(`[processDirectoriesRecursively] Error processing directory ${entry.value}:`, error);
+    }
+  }
+  
+  return variables;
+}
+
+/**
+ * Creates a variable entry for a file from a filesystem entry
+ * @param fsEntry The filesystem entry
+ * @returns A variable entry for the file
+ */
+function createFileVariableEntry(fsEntry: FileEntry): VariableEntry {
+  // Register the handle in the registry
+  const handleId = fs.registry.registerHandle(fsEntry.handle);
+  
+  // Determine the full path if available
+  const filePath = fsEntry.name;
+  
+  // Create a variable entry
+  return {
+    type: VARIABLE_ENTRY_TYPES.FILE,
+    value: filePath,
+    metadata: {
+      path: filePath,
+      size: fsEntry.size,
+      type: fsEntry.type,
+      lastModified: fsEntry.lastModified,
+      handleId: handleId
+    }
+  };
 }
 
 /**
@@ -539,9 +910,9 @@ export async function copyWithResolvedFileContents(
 }
 
 /**
- * Attempts to directly access files, bypassing the permission checking
- * that was previously used. This is a simpler approach that will work with
- * the updated File System Access API.
+ * Ensures that we have the necessary permissions to access the files
+ * referenced in the variables.
+ * 
  * @param variables Array of global variables
  * @returns Whether all files could be accessed
  */
@@ -553,6 +924,10 @@ export async function ensureFilePermissions(variables: any[]): Promise<boolean> 
     
     // For tracking which files we've attempted to access
     const attemptedFiles: string[] = [];
+    
+    // Collect all unique file handles
+    const handles: FileSystemHandle[] = [];
+    const handleIds = new Set<string>();
     
     // Scan variables for file entries
     if (Array.isArray(variables)) {
@@ -571,44 +946,55 @@ export async function ensureFilePermissions(variables: any[]): Promise<boolean> 
               
               attemptedFiles.push(fileName);
               
-              // Get the handle from metadata or registry
-              const handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
-              
-              if (!handle) {
-                console.warn(`[ensureFilePermissions] No valid handle found for ${fileName}`);
+              // Extract handle ID from metadata
+              const handleId = entry.metadata.handleId;
+              if (!handleId) {
+                console.warn(`[ensureFilePermissions] No handle ID for entry: ${entry.name || fileName}`);
                 continue;
               }
               
-              // Try to access one file to verify permissions
-              try {
-                if (handle.kind === 'file') {
-                  console.log(`[ensureFilePermissions] Testing access to file: ${fileName}`);
-                  await handle.getFile();
-                  console.log(`[ensureFilePermissions] Successfully accessed file: ${fileName}`);
-                  accessSuccessful = true;
-                  
-                  // No need to try more files once one succeeds
-                  break;
+              if (!handleIds.has(handleId)) {
+                // Get the handle from the registry
+                const handle = fs.registry.getHandle(handleId);
+                if (handle) {
+                  handleIds.add(handleId);
+                  handles.push(handle);
+                } else {
+                  console.warn(`[ensureFilePermissions] No handle found in registry for ${fileName}`);
                 }
-              } catch (error) {
-                console.warn(`[ensureFilePermissions] Could not access file: ${fileName}`, error);
-                // Continue trying other files even if this one fails
               }
             }
-          }
-          
-          // If we've successfully accessed a file, no need to check more variables
-          if (accessSuccessful) {
-            break;
           }
         }
       }
     }
     
     // If no file entries were found, return true (no permissions needed)
-    if (!hasFileEntries) {
+    if (!hasFileEntries || handles.length === 0) {
       console.log(`[ensureFilePermissions] No file entries found, no permissions needed`);
       return true;
+    }
+    
+    console.log(`[ensureFilePermissions] Found ${handles.length} unique file handles to check permissions for`);
+    
+    // Verify permissions for all handles
+    for (const handle of handles) {
+      try {
+        // Use the filesystem permissions module to verify read permission
+        const hasPermission = await fs.permissions.verifyPermission(handle, 'read');
+        
+        if (hasPermission) {
+          console.log(`[ensureFilePermissions] Permission verified for ${handle.name || 'unnamed'}`);
+          accessSuccessful = true;
+          // We only need one successful permission check to know the user is engaging with the permission prompt
+          break;
+        } else {
+          console.warn(`[ensureFilePermissions] Permission denied for ${handle.name || 'unnamed'}`);
+        }
+      } catch (error) {
+        console.warn(`[ensureFilePermissions] Error checking permission for ${handle.name || 'unnamed'}:`, error);
+        // Continue trying other handles even if this one fails
+      }
     }
     
     // Return true if we successfully accessed at least one file
@@ -631,119 +1017,28 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
- * Actively fetches file content from the filesystem
- * This function should be called whenever fresh file content is needed
- * 
- * @param entry The file entry to fetch content for
- * @returns A promise resolving to the file content (wrapped in tags) or null if unsuccessful
- */
-export async function activeFetchFileContent(entry: any): Promise<string | null> {
-  if (!entry || entry.type !== 'file' || !entry.metadata) {
-    console.log(`[activeFetchFileContent] Invalid entry, cannot fetch content`);
-    return null;
-  }
-  
-  const filePath = entry.metadata?.path || entry.value || 'unknown';
-  console.log(`[activeFetchFileContent] Fetching content for file: ${filePath}`);
-  
-  try {
-    // Get file handle from the registry
-    let handle = null;
-    
-    // Check if handleId is present in metadata
-    const handleId = entry.metadata?.handleId;
-    if (handleId && typeof handleId === 'string') {
-      handle = fileHandleRegistry.getHandle(handleId);
-      console.log(`[activeFetchFileContent] Retrieved handle from registry with ID: ${handleId}`);
-    } else if (entry.metadata?.handle) {
-      // Legacy path for backward compatibility
-      handle = getFileHandleFromMetadata(entry.metadata as FileEntryMetadata);
-    }
-    
-    if (!handle) {
-      console.warn(`[activeFetchFileContent] No valid handle found for ${filePath}`);
-      return null;
-    }
-    
-    // Ensure we have permission to access the file
-    try {
-      // For file handles with verifyPermission method (non-standard but sometimes available)
-      if (typeof (handle as any).verifyPermission === 'function') {
-        await (handle as any).verifyPermission({ mode: 'read' });
-      } 
-      // Standard File System Access API permission check
-      else if (typeof handle.requestPermission === 'function') {
-        const permission = await handle.requestPermission({ mode: 'read' });
-        if (permission !== 'granted') {
-          throw new Error(`Permission not granted for file: ${filePath}`);
-        }
-      }
-    } catch (permError) {
-      console.warn(`[activeFetchFileContent] Permission error for ${filePath}:`, permError);
-      // Continue anyway, the getFile() call will fail if permissions are really missing
-    }
-    
-    // Verify the handle has the getFile method (should be a FileSystemFileHandle)
-    if (handle.kind !== 'file' || typeof (handle as any).getFile !== 'function') {
-      console.error(`[activeFetchFileContent] Handle is not a file handle or missing getFile method`);
-      return null;
-    }
-    
-    // Fetch the file
-    const file = await (handle as any).getFile();
-    
-    if (!file) {
-      console.error(`[activeFetchFileContent] Failed to get file object from handle`);
-      return null;
-    }
-    
-    console.log(`[activeFetchFileContent] File retrieved: ${file.name}, size: ${file.size} bytes`);
-    
-    // Check file size
-    if (file.size > MAX_FILE_SIZE) {
-      console.warn(`[activeFetchFileContent] File too large: ${file.size} bytes (max: ${MAX_FILE_SIZE} bytes)`);
-      return `File too large: ${filePath} (${formatFileSize(file.size)})`;
-    }
-    
-    // Read file content
-    const content = await file.text();
-    console.log(`[activeFetchFileContent] File content read, length: ${content.length} characters`);
-    
-    // Create tag name from file name for consistent wrapping
-    const fileName = file.name || entry.metadata?.path?.split(/[\/\\]/).pop() || 'file';
-    const tagName = fileName.replace(/[^\w.-]/g, '_');
-    
-    // Wrap content in tags
-    const taggedContent = `<${tagName}>\n${content}\n</${tagName}>`;
-    
-    // Update entry metadata
-    if (entry.metadata) {
-      entry.metadata.contentResolved = true;
-      entry.metadata.lastFetchedAt = Date.now();
-      entry.metadata.tagName = tagName;
-      entry.metadata.contentLength = content.length;
-    }
-    
-    return taggedContent;
-  } catch (error) {
-    console.error(`[activeFetchFileContent] Error fetching file content:`, error);
-    return null;
-  }
-}
-
-/**
- * Actively resolves file contents for all file variables
- * This is the main function to call before copying templates with file references
+ * Actively resolves file contents for all variables with file entries
+ * This is a more aggressive approach that ensures file contents are resolved
+ * by explicitly checking and re-requesting permissions if needed
  * 
  * @param variables Array of variables that may contain file entries
- * @param options Optional configuration for file resolution
- * @returns Promise resolving to a boolean indicating success
+ * @param options Options for resolution
+ * @returns Promise resolving to a boolean indicating whether all file contents were successfully resolved
  */
 export async function activeResolveAllFileContents(
-  variables: any[], 
-  options: { 
+  variables: any[],
+  options: {
+    useCache?: boolean,
+    cacheTTL?: number,
+    forceReacquire?: boolean,
+    useParallelProcessing?: boolean,
     autoReacquireHandles?: boolean,
-    forceReacquire?: boolean
+    recursive?: {
+      enabled?: boolean,
+      maxDepth?: number,
+      include?: string[],
+      exclude?: string[]
+    }
   } = {}
 ): Promise<boolean> {
   if (!Array.isArray(variables) || variables.length === 0) {
@@ -759,115 +1054,128 @@ export async function activeResolveAllFileContents(
   // Default options
   const opts = {
     autoReacquireHandles: options.autoReacquireHandles !== false,
-    forceReacquire: options.forceReacquire === true
+    forceReacquire: options.forceReacquire === true,
+    useParallelProcessing: options.useParallelProcessing !== false,
+    useCache: options.useCache !== false,
+    cacheTTL: options.cacheTTL || 5 * 60 * 1000, // Default to 5 minutes
+    recursive: {
+      enabled: options.recursive?.enabled || false,
+      maxDepth: options.recursive?.maxDepth || 5,
+      include: options.recursive?.include || [],
+      exclude: options.recursive?.exclude || []
+    }
   };
   
-  // Check the file handle registry status
-  const registryHandleCount = fileHandleRegistry.getHandleCount();
-  console.log(`[activeResolveAllFileContents] Current registry has ${registryHandleCount} handles`);
+  console.log(`[activeResolveAllFileContents] Options:`, {
+    autoReacquireHandles: opts.autoReacquireHandles,
+    forceReacquire: opts.forceReacquire,
+    useCache: opts.useCache,
+    recursive: opts.recursive.enabled
+  });
   
-  // First identify if there are any missing handles
+  // Ensure registry is loaded before proceeding
+  try {
+    const registry = fs.registry;
+    if (registry && typeof registry.ensureRegistryLoaded === 'function') {
+      console.log(`[activeResolveAllFileContents] Ensuring registry is loaded...`);
+      await registry.ensureRegistryLoaded();
+      console.log(`[activeResolveAllFileContents] Registry loaded successfully`);
+    } else {
+      console.warn(`[activeResolveAllFileContents] Registry not available or missing ensureRegistryLoaded method`);
+    }
+  } catch (err) {
+    console.error(`[activeResolveAllFileContents] Failed to load registry:`, err);
+  }
+  
+  // First check if we need to process directories recursively
+  if (opts.recursive.enabled) {
+    console.log(`[activeResolveAllFileContents] Recursive mode enabled, processing directories first`);
+    
+    // Resolve file contents with recursive option enabled
+    variables = await resolveFileContents(variables, {
+      useCache: opts.useCache,
+      cacheTTL: opts.cacheTTL,
+      recursive: {
+        enabled: true,
+        maxDepth: opts.recursive.maxDepth,
+        include: opts.recursive.include,
+        exclude: opts.recursive.exclude
+      }
+    });
+    
+    // Return early if we processed directories
+    return true;
+  }
+  
+  // Auto-reacquire file handles if needed
   if (opts.autoReacquireHandles) {
+    console.log(`[activeResolveAllFileContents] Auto-reacquire handles enabled, checking for missing handles...`);
+    
+    // Get a count of file entries before attempting to reacquire
+    let fileEntryCount = 0;
+    let missingHandleCount = 0;
+    
+    // Scan variables to count file entries and missing handles
     for (const variable of variables) {
       if (variable?.value && Array.isArray(variable.value)) {
         for (const entry of variable.value) {
           if (entry && entry.type === 'file' && entry.metadata) {
-            fileCount++;
-            const metadata = entry.metadata as FileEntryMetadata;
+            fileEntryCount++;
             
-            // Check for handleId in metadata 
-            if (metadata.handleId) {
-              const handle = fileHandleRegistry.getHandle(metadata.handleId);
-              if (!handle || opts.forceReacquire) {
-                missingHandlesCount++;
-              }
-            } 
-            // Legacy check for direct handle
-            else if (metadata.handle) {
-              const handleId = metadata.handle;
-              const handle = fileHandleRegistry.getHandle(handleId);
-              if (!handle || opts.forceReacquire) {
-                missingHandlesCount++;
-              }
+            // Check if handle exists in registry
+            let handleExists = false;
+            if (entry.metadata.handleId) {
+              const handle = fs.registry.getHandle(entry.metadata.handleId);
+              handleExists = !!handle;
             }
-            // No handle information at all
-            else {
-              missingHandlesCount++;
+            
+            if (!handleExists) {
+              missingHandleCount++;
             }
           }
         }
       }
     }
     
-    // If we found missing handles, try to reacquire them
-    if (missingHandlesCount > 0 || registryHandleCount === 0 || opts.forceReacquire) {
-      console.log(`[activeResolveAllFileContents] Found ${missingHandlesCount}/${fileCount} missing handles, attempting to reacquire`);
+    console.log(`[activeResolveAllFileContents] Found ${fileEntryCount} file entries, ${missingHandleCount} with missing handles`);
+    
+    // If missing handles, try to reacquire them
+    if (missingHandleCount > 0) {
       try {
+        console.log(`[activeResolveAllFileContents] Attempting to reacquire missing handles...`);
         const reacquired = await reacquireFileHandles(variables);
-        console.log(`[activeResolveAllFileContents] Handle reacquisition ${reacquired ? 'successful' : 'failed'}`);
-        
-        // If reacquisition failed completely, return early
-        if (!reacquired) {
-          console.warn(`[activeResolveAllFileContents] Failed to reacquire any file handles, cannot proceed`);
-          return false;
-        }
-      } catch (error) {
-        console.error(`[activeResolveAllFileContents] Error reacquiring file handles:`, error);
-        // Continue anyway, we'll try with whatever handles we have
+        console.log(`[activeResolveAllFileContents] Reacquire result: ${reacquired ? 'successful' : 'failed'}`);
+      } catch (err) {
+        console.error(`[activeResolveAllFileContents] Error reacquiring handles:`, err);
       }
-    } else {
-      console.log(`[activeResolveAllFileContents] All file handles are present in registry, no need to reacquire`);
     }
   }
   
-  // First ensure we have permissions
-  try {
-    const hasPermissions = await ensureFilePermissions(variables);
+  // Process all variables to resolve file contents
+  // Use either parallel or sequential processing based on options
+  if (opts.useParallelProcessing) {
+    console.log(`[activeResolveAllFileContents] Using parallel processing for file content resolution`);
     
-    if (!hasPermissions) {
-      console.warn(`[activeResolveAllFileContents] Failed to ensure file permissions`);
-      return false;
-    }
-  } catch (error) {
-    console.error(`[activeResolveAllFileContents] Error checking file permissions:`, error);
-    return false;
-  }
-  
-  // Process each variable
-  for (const variable of variables) {
-    if (variable?.value && Array.isArray(variable.value)) {
-      console.log(`[activeResolveAllFileContents] Processing variable: ${variable.name || 'unnamed'}`);
-      
-      // Find all file entries in this variable
-      for (let i = 0; i < variable.value.length; i++) {
-        const entry = variable.value[i] as FileVariableEntry;
-        
-        if (entry && entry.type === 'file' && entry.metadata) {
-          fileCount++;
-          const metadata = entry.metadata;
-          const filePath = metadata?.path || entry.value || 'unknown';
-          
-          try {
-            // Use our active fetch function to get fresh content
-            const content = await activeFetchFileContent(entry);
-            
-            if (content) {
-              // Update the entry value with the content
-              variable.value[i].value = content;
-              console.log(`[activeResolveAllFileContents] Successfully updated file content for ${filePath}`);
-              successCount++;
-            } else {
-              console.warn(`[activeResolveAllFileContents] Failed to fetch content for ${filePath}`);
-            }
-          } catch (error) {
-            console.error(`[activeResolveAllFileContents] Error processing file ${filePath}:`, error);
-          }
-        }
+    // Process all variables in parallel
+    const results = await Promise.all(
+      variables.map(variable => resolveFileContents([variable], opts).then(result => result.length > 0))
+    );
+    
+    // Count successful resolutions
+    successCount = results.filter(Boolean).length;
+  } else {
+    console.log(`[activeResolveAllFileContents] Using sequential processing for file content resolution`);
+    
+    // Process variables sequentially
+    for (const variable of variables) {
+      const resolved = await resolveFileContents([variable], opts).then(result => result.length > 0);
+      if (resolved) {
+        successCount++;
       }
     }
   }
   
-  console.log(`[activeResolveAllFileContents] Completed: ${successCount}/${fileCount} files resolved`);
+  console.log(`[activeResolveAllFileContents] Resolution complete. Successfully processed ${successCount}/${variables.length} variables`);
   return successCount > 0;
 }
 
@@ -885,9 +1193,9 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
     return false;
   }
   
-  // Check if we're in a browser environment with File System API support
-  if (typeof window === 'undefined' || !window.showOpenFilePicker) {
-    console.log(`[reacquireFileHandles] Environment does not support File System Access API`);
+  // Check if filesystem module is available
+  if (!fs || !fsPickers) {
+    console.log(`[reacquireFileHandles] Filesystem module unavailable`);
     return false;
   }
   
@@ -923,7 +1231,7 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
           // Check if handle exists in registry
           let handleExists = false;
           if (metadata?.handleId) {
-            const handle = fileHandleRegistry.getHandle(metadata.handleId);
+            const handle = fs.registry.getHandle(metadata.handleId);
             handleExists = !!handle;
           }
           
@@ -955,19 +1263,28 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
       // Prompt user to select the file
       alert(`Please reselect this file that was previously included: ${filePath}`);
       
-      const fileHandles = await window.showOpenFilePicker({
+      // Use the filesystem pickers module
+      const fileEntries = await fsPickers.showFilePicker({
         multiple: false
       });
       
-      if (fileHandles && fileHandles.length > 0) {
-        const handle = fileHandles[0];
+      if (fileEntries && fileEntries.length > 0) {
+        const fileEntry = fileEntries[0];
         
-        // Validate the selected file is similar to what we expect
-        const file = await handle.getFile();
+        // Get file information - need to obtain the native File object
+        // For FileEntry, we need to use the handle's getFile method
+        let file;
+        if (fileEntry.kind === 'file') {
+          file = await fileEntry.handle.getFile();
+        } else {
+          console.warn(`[reacquireFileHandles] Selected entry is not a file: ${fileEntry.name}`);
+          continue;
+        }
+        
         console.log(`[reacquireFileHandles] User selected: ${file.name}, size: ${file.size} bytes`);
         
-        // Register the new handle and update the metadata
-        const handleId = fileHandleRegistry.registerHandle(handle);
+        // Register the handle in the filesystem registry
+        const handleId = fs.registry.registerHandle(fileEntry.handle);
         
         // Update the entry with the new handle
         variable.value[index].metadata.handleId = handleId;
@@ -996,7 +1313,13 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
         console.warn(`[reacquireFileHandles] User cancelled file selection for ${filePath}`);
       }
     } catch (error) {
-      console.error(`[reacquireFileHandles] Error reacquiring handle for ${filePath}:`, error);
+      // UserCancelledError is added to the Errors object in pickers.ts
+      // but we need to check if it's an instance of Errors.FileSystemError with the right code
+      if (error instanceof fsErrors.FileSystemError && error.code === 'USER_CANCELLED') {
+        console.log(`[reacquireFileHandles] User cancelled file selection for ${filePath}`);
+      } else {
+        console.error(`[reacquireFileHandles] Error reacquiring handle for ${filePath}:`, error);
+      }
     }
   }
   
@@ -1005,4 +1328,100 @@ export async function reacquireFileHandles(variables: any[]): Promise<boolean> {
 }
 
 // Export the file handle registry
-export { fileHandleRegistry }; 
+export { fileHandleRegistry };
+
+/**
+ * Diagnoses issues with file handles in variables
+ * This function produces detailed diagnostic information about the state of file handles
+ * 
+ * @param variables Variables that may contain file entries to diagnose
+ * @returns Diagnostic information as a string
+ */
+export function diagnoseFileHandles(variables: any[]): string {
+  if (!Array.isArray(variables) || variables.length === 0) {
+    return 'No variables to diagnose';
+  }
+  
+  const diagnostics: string[] = [];
+  diagnostics.push(`File Handle Diagnostic Report - ${new Date().toISOString()}`);
+  diagnostics.push('-'.repeat(80));
+  
+  // Registry info
+  let registryInfo = 'Registry unavailable';
+  try {
+    const registry = fs.registry;
+    if (registry) {
+      registryInfo = `Registry available`;
+    }
+  } catch (err) {
+    registryInfo = `Registry error: ${err instanceof Error ? err.message : String(err)}`;
+  }
+  diagnostics.push(`Registry Status: ${registryInfo}`);
+  diagnostics.push('-'.repeat(80));
+  
+  // Variable diagnostics
+  let fileVariableCount = 0;
+  let fileEntryCount = 0;
+  let validHandleCount = 0;
+  let invalidHandleCount = 0;
+  
+  for (const variable of variables) {
+    if (!variable || !variable.name) continue;
+    
+    // Count file entries in this variable
+    let varFileEntryCount = 0;
+    
+    if (variable.value && Array.isArray(variable.value)) {
+      for (const entry of variable.value) {
+        if (entry && entry.type === 'file' && entry.metadata) {
+          varFileEntryCount++;
+          fileEntryCount++;
+          
+          // Check handle status
+          const handleId = entry.metadata.handleId;
+          let hasValidHandle = false;
+          
+          if (handleId) {
+            try {
+              const handle = fs.registry.getHandle(handleId);
+              hasValidHandle = !!handle;
+              
+              if (hasValidHandle) {
+                validHandleCount++;
+              } else {
+                invalidHandleCount++;
+              }
+            } catch (err) {
+              invalidHandleCount++;
+            }
+          } else {
+            invalidHandleCount++;
+          }
+          
+          // Add entry diagnostic
+          const filePath = entry.metadata.path || entry.value || 'unknown';
+          const handleStatus = hasValidHandle ? 'VALID' : 'INVALID';
+          diagnostics.push(`File: ${filePath}`);
+          diagnostics.push(`  Handle ID: ${handleId || 'MISSING'}`);
+          diagnostics.push(`  Handle Status: ${handleStatus}`);
+          diagnostics.push(`  Size: ${entry.metadata.size || 'unknown'}`);
+          diagnostics.push('-'.repeat(40));
+        }
+      }
+    }
+    
+    if (varFileEntryCount > 0) {
+      fileVariableCount++;
+    }
+  }
+  
+  // Summary
+  diagnostics.push('-'.repeat(80));
+  diagnostics.push('Summary:');
+  diagnostics.push(`Variables with file entries: ${fileVariableCount}/${variables.length}`);
+  diagnostics.push(`Total file entries: ${fileEntryCount}`);
+  diagnostics.push(`Valid handles: ${validHandleCount}`);
+  diagnostics.push(`Invalid handles: ${invalidHandleCount}`);
+  
+  return diagnostics.join('\n');
+} 

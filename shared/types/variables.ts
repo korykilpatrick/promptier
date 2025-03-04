@@ -22,7 +22,7 @@ export interface VariableEntry {
     size?: number;     // File size in bytes
     type?: string;     // MIME type
     lastModified?: number; // Last modified timestamp
-    handle?: any;      // Optional file system handle reference (serialized)
+    handleId?: string; // File handle ID in the registry
     path?: string;     // Original file path
   };
 }
