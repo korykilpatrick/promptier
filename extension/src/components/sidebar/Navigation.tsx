@@ -11,11 +11,11 @@ export const Navigation: React.FC = () => {
 
   return (
     <nav className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-px-3 plasmo-py-1">
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-        <div className="plasmo-flex plasmo-items-center plasmo-space-x-1">
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-w-full">
+        <div className="plasmo-flex plasmo-items-center plasmo-w-full">
           <Link
             to="/"
-            className={`plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
+            className={`plasmo-flex-1 plasmo-text-center plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
               ${isActive("/")
                 ? "plasmo-text-primary-700 plasmo-bg-primary-50"
                 : "plasmo-text-gray-600 hover:plasmo-text-gray-800 hover:plasmo-bg-gray-50"
@@ -25,7 +25,7 @@ export const Navigation: React.FC = () => {
           </Link>
           <Link
             to="/variables"
-            className={`plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
+            className={`plasmo-flex-1 plasmo-text-center plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
               ${isActive("/variables")
                 ? "plasmo-text-primary-700 plasmo-bg-primary-50"
                 : "plasmo-text-gray-600 hover:plasmo-text-gray-800 hover:plasmo-bg-gray-50"
