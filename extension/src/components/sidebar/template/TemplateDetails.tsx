@@ -516,13 +516,6 @@ try {
             >
               <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">Variables</div>
               <div className="plasmo-space-y-3">
-                {/* Read-only indicator */}
-                <div className="plasmo-text-xs plasmo-text-gray-500 plasmo-italic plasmo-flex plasmo-items-center plasmo-gap-1">
-                  <svg className="plasmo-h-3 plasmo-w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Read-only mode
-                </div>
                 {variables.map((variable: any, index: number) => {
                   const globalVariable = Array.isArray(globalVariables) && globalVariables.find(g => g && typeof g === 'object' && 'name' in g && g.name === variable.name);
                   const state = values[variable.name] || { value: '', isDirty: false, isValid: true, errors: [] };
@@ -548,6 +541,7 @@ try {
                           value={state.value}
                           readOnly={true}
                           placeholder={variable.defaultValue || ''}
+                          title="To edit this variable, please use the Variables tab"
                           className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-bg-gray-50 plasmo-cursor-not-allowed"
                         />
                       </div>
@@ -569,13 +563,6 @@ try {
           {variables.length === 0 && (
             <div className="plasmo-mt-4">
               <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">Variables</div>
-              {/* Read-only indicator */}
-              <div className="plasmo-text-xs plasmo-text-gray-500 plasmo-italic plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-mt-1 plasmo-mb-2">
-                <svg className="plasmo-h-3 plasmo-w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Read-only mode
-              </div>
               <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-gray-500 plasmo-italic">
                 No variables
               </div>
