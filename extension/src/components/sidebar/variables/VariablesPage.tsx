@@ -1,552 +1,592 @@
-const React = require("react");
-const { useState, useCallback, useEffect } = React;
-const { useUserVariables } = require("../../../hooks/useUserVariables");
-const { useToast } = require("../../../hooks/useToast");
-const { createTextEntry, getTextEntries, VARIABLE_ENTRY_TYPES, getFileEntries, getDirectoryEntries } = require("shared/types/variables");
-import type { UserVariable, VariableEntry } from "shared/types/variables";
-import FilePicker from "./FilePicker";
-import VariableTypeSelector from "./VariableTypeSelector";
+import React, { useState, useCallback, useEffect } from "react";
+import { useUserVariables } from "../../../hooks/useUserVariables";
+import { useToast } from "../../../hooks/useToast";
+import { LoadingSkeleton } from "../common/LoadingSkeleton";
+import { VariableTypeSelector } from "./VariableTypeSelector";
+import { FilePicker } from "./FilePicker";
 
-/**
- * Component for managing global user variables
- * @typedef {import("shared/types/variables").UserVariable} UserVariable
- * @typedef {import("shared/types/variables").VariableEntry} VariableEntry
- */
+// Variable entry types
+const VARIABLE_ENTRY_TYPES = {
+  TEXT: 'text',
+  FILE: 'file',
+  DIRECTORY: 'directory'
+};
+
+// Helper to create a text entry
+const createTextEntry = (value) => ({
+  type: VARIABLE_ENTRY_TYPES.TEXT,
+  value
+});
+
+// Helper to get text entries from a variable
+const getTextEntries = (variable) => {
+  if (!variable || !variable.value) return [];
+  return Array.isArray(variable.value)
+    ? variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT)
+    : [];
+};
+
 function VariablesPage() {
-  const { addToast } = useToast();
   const {
     variables,
-    isLoading,
-    fetchVariables,
     createVariable,
     updateVariable,
-    deleteVariable
-  } = useUserVariables();
+    deleteVariable,
+    getVariableByName,
+    isLoading,
+    error
+  } = useUserVariables({ autoFetch: true });
 
-  const [newVariable, setNewVariable] = useState({ name: "", value: "" });
-  const [editingId, setEditingId] = useState<number | null>(null);
-  
-  // Update editForm state to include entries array for all entry types
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    textValue: string;
-    entries: VariableEntry[];
-  }>({ 
-    name: "", 
-    textValue: "", 
-    entries: [] 
+  const { addToast } = useToast();
+
+  // Form state for creating/editing variables
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    id: null,
+    name: '',
+    textValue: '',
+    entries: [],
+    variableType: VARIABLE_ENTRY_TYPES.TEXT
   });
   
-  const [variableType, setVariableType] = useState(VARIABLE_ENTRY_TYPES.TEXT);
-  const [fileEntries, setFileEntries] = useState<VariableEntry[]>([]);
-  
-  // Add state for edit mode
-  const [editVariableType, setEditVariableType] = useState(VARIABLE_ENTRY_TYPES.TEXT);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    textValue: '',
+    variableType: VARIABLE_ENTRY_TYPES.TEXT
+  });
 
-  // Start editing a variable
-  const handleEdit = useCallback((variable: UserVariable) => {
-    setEditingId(variable.id);
-    
-    // Extract text values from variable entries
+  const resetForms = () => {
+    setEditForm({
+      id: null,
+      name: '',
+      textValue: '',
+      entries: [],
+      variableType: VARIABLE_ENTRY_TYPES.TEXT
+    });
+    setCreateForm({
+      name: '',
+      textValue: '',
+      variableType: VARIABLE_ENTRY_TYPES.TEXT
+    });
+    setIsEditing(false);
+  };
+
+  // Handle editing a variable
+  const handleEdit = useCallback((variable) => {
     const textEntries = getTextEntries(variable);
     const textValue = textEntries.length > 0 
-      ? textEntries.map((entry: VariableEntry) => entry.value).join('\n') 
+      ? textEntries.map((entry) => entry.value).join('\n')
       : '';
     
-    // Store all entries in the edit form
     setEditForm({
+      id: variable.id,
       name: variable.name,
-      textValue: textValue,
-      entries: [...variable.value] // Make a copy of all entries
+      textValue,
+      entries: Array.isArray(variable.value) ? variable.value : [],
+      variableType: Array.isArray(variable.value) && variable.value.length > 0
+        ? variable.value[0].type
+        : VARIABLE_ENTRY_TYPES.TEXT
     });
+    setIsEditing(true);
   }, []);
 
-  // Cancel editing
+  // Handle canceling edit
   const handleCancelEdit = useCallback(() => {
-    setEditingId(null);
-    setEditForm({ name: "", textValue: "", entries: [] });
+    resetForms();
   }, []);
 
-  // Handle clearing all file/directory entries
+  // Handle clearing file entries during edit
   const handleClearFileEntries = useCallback(() => {
-    if (confirm("Are you sure you want to remove all file and directory entries?")) {
-      setEditForm({
-        ...editForm,
-        entries: editForm.entries.filter((entry: VariableEntry) => 
-          entry.type === VARIABLE_ENTRY_TYPES.TEXT
-        )
-      });
-    }
-  }, [editForm]);
+    setEditForm(prev => ({
+      ...prev,
+      entries: prev.entries.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT),
+      variableType: VARIABLE_ENTRY_TYPES.TEXT
+    }));
+  }, []);
 
-  // Save edited variable
+  // Handle saving an edit
   const handleSaveEdit = useCallback(async () => {
-    if (!editForm.name.trim()) {
-      addToast({
-        type: "error",
-        title: "Invalid name",
-        message: "Variable name cannot be empty"
-      });
-      return;
-    }
-
     try {
-      // Create updated entries array based on text value
-      // (For now we're preserving the existing behavior, will update later)
+      // Prepare entries based on variable type
       const textValueArray = editForm.textValue.trim()
-        ? editForm.textValue.split('\n').map((value: string) => createTextEntry(value))
+        ? editForm.textValue.split('\n').map((value) => createTextEntry(value))
         : [];
       
-      // Filter out text entries from the existing entries and keep other types
-      const nonTextEntries = editForm.entries.filter((entry: VariableEntry) => 
+      const nonTextEntries = editForm.entries.filter((entry) =>
         entry.type !== VARIABLE_ENTRY_TYPES.TEXT
       );
       
-      // Combine new text entries with existing non-text entries
       const combinedEntries = [...textValueArray, ...nonTextEntries];
-        
-      await updateVariable(editingId as number, {
-        name: editForm.name.trim(),
+      
+      // Update variable
+      await updateVariable(editForm.id, {
+        name: editForm.name,
         value: combinedEntries
       });
       
-      setEditingId(null);
-      setEditForm({ name: "", textValue: "", entries: [] });
-      
       addToast({
         type: "success",
-        title: "Variable updated",
-        message: `Variable "${editForm.name}" has been updated`
+        message: `Variable "${editForm.name}" updated successfully`,
+        duration: 3000
       });
+      
+      resetForms();
     } catch (error) {
-      console.error("Failed to update variable:", error);
+      console.error("Error updating variable:", error);
       addToast({
         type: "error",
-        title: "Update failed",
-        message: "Failed to update the variable"
+        message: `Error updating variable: ${error.message}`,
+        duration: 5000
       });
     }
-  }, [editingId, editForm, updateVariable, addToast]);
+  }, [editForm, updateVariable, addToast]);
 
-  // Delete a variable
-  const handleDelete = useCallback(async (id: number, name: string) => {
-    if (confirm(`Are you sure you want to delete the variable "${name}"?`)) {
-      try {
-        await deleteVariable(id);
-        addToast({
-          type: "success",
-          title: "Variable deleted",
-          message: `Variable "${name}" has been deleted`
-        });
-      } catch (error) {
-        console.error("Failed to delete variable:", error);
-        addToast({
-          type: "error",
-          title: "Delete failed",
-          message: "Failed to delete the variable"
-        });
-      }
+  // Handle variable deletion
+  const handleDelete = useCallback(async (id, name) => {
+    try {
+      await deleteVariable(id);
+      addToast({
+        type: "success",
+        message: `Variable "${name}" deleted successfully`,
+        duration: 3000
+      });
+    } catch (error) {
+      console.error("Error deleting variable:", error);
+      addToast({
+        type: "error",
+        message: `Error deleting variable: ${error.message}`,
+        duration: 5000
+      });
     }
   }, [deleteVariable, addToast]);
 
   // Handle variable type change
-  const handleVariableTypeChange = useCallback((type: string) => {
-    setVariableType(type);
-    // Reset file entries when changing type
-    if (type !== VARIABLE_ENTRY_TYPES.FILE && type !== VARIABLE_ENTRY_TYPES.DIRECTORY) {
-      setFileEntries([]);
+  const handleVariableTypeChange = useCallback((type) => {
+    if (isEditing) {
+      setEditForm(prev => ({
+        ...prev,
+        variableType: type
+      }));
+    } else {
+      setCreateForm(prev => ({
+        ...prev,
+        variableType: type
+      }));
     }
+  }, [isEditing]);
+
+  // Handle file selection for new variable
+  const handleFileSelect = useCallback((entries) => {
+    const entriesArray = Array.isArray(entries) ? entries : [entries];
+    setCreateForm(prev => ({
+      ...prev,
+      entries: entriesArray
+    }));
   }, []);
 
-  // Handle file selection
-  const handleFileSelect = useCallback((entries: VariableEntry | VariableEntry[]) => {
+  // Handle file selection during edit
+  const handleEditFileSelect = useCallback((entries) => {
     const entriesArray = Array.isArray(entries) ? entries : [entries];
-    setFileEntries(entriesArray);
+    setEditForm(prev => ({
+      ...prev,
+      entries: [...prev.entries.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT), ...entriesArray]
+    }));
   }, []);
 
-  // Handle file selection for edit mode
-  const handleEditFileSelect = useCallback((entries: VariableEntry | VariableEntry[]) => {
-    const entriesArray = Array.isArray(entries) ? entries : [entries];
-    
-    // Add new entries to the existing entries
-    setEditForm({
-      ...editForm,
-      entries: [...editForm.entries, ...entriesArray]
-    });
-  }, [editForm]);
-
-  // Create a new variable
-  const handleCreateVariable = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newVariable.name.trim()) {
-      addToast({
-        type: "error",
-        title: "Invalid name",
-        message: "Variable name cannot be empty"
-      });
-      return;
-    }
-
+  // Handle variable creation
+  const handleCreateVariable = useCallback(async () => {
     try {
-      let valueArray: VariableEntry[] = [];
-      
-      // Handle different variable types
-      if (variableType === VARIABLE_ENTRY_TYPES.TEXT) {
-        // Convert the value string to an array of text entries
-        valueArray = newVariable.value.trim()
-          ? newVariable.value.split('\n').map((value: string) => createTextEntry(value))
-          : [];
-      } else if (
-        (variableType === VARIABLE_ENTRY_TYPES.FILE || 
-         variableType === VARIABLE_ENTRY_TYPES.DIRECTORY) && 
-        fileEntries.length > 0
-      ) {
-        // Use the selected file entries
-        valueArray = fileEntries;
-      }
-      
-      if (valueArray.length === 0) {
+      // Validate name
+      if (!createForm.name.trim()) {
         addToast({
           type: "error",
-          title: "Empty value",
-          message: "Please provide a value for the variable"
+          message: "Variable name cannot be empty",
+          duration: 3000
         });
         return;
       }
-        
+
+      // Check for duplicate name
+      const existingVar = await getVariableByName(createForm.name);
+      if (existingVar) {
+        addToast({
+          type: "error",
+          message: `Variable "${createForm.name}" already exists`,
+          duration: 3000
+        });
+        return;
+      }
+
+      // Prepare entries based on variable type
+      let valueArray = [];
+      
+      if (createForm.variableType === VARIABLE_ENTRY_TYPES.TEXT) {
+        valueArray = createForm.textValue.trim()
+          ? createForm.textValue.split('\n').map((value) => createTextEntry(value))
+          : [createTextEntry('')]; // At least one empty entry
+      } else {
+        // For file/directory, use the entries from the file picker
+        valueArray = createForm.entries && createForm.entries.length > 0
+          ? createForm.entries
+          : []; // Empty array if no files selected
+      }
+      
+      // Create the variable
       await createVariable({
-        name: newVariable.name.trim(),
+        name: createForm.name,
         value: valueArray
       });
       
-      // Reset form after successful creation
-      setNewVariable({ name: "", value: "" });
-      setFileEntries([]);
-      setVariableType(VARIABLE_ENTRY_TYPES.TEXT); // Reset to text type
-      
       addToast({
         type: "success",
-        title: "Variable created",
-        message: `Variable "${newVariable.name}" has been created`
+        message: `Variable "${createForm.name}" created successfully`,
+        duration: 3000
       });
+      
+      // Reset form
+      setCreateForm({
+        name: '',
+        textValue: '',
+        variableType: VARIABLE_ENTRY_TYPES.TEXT
+      });
+      
     } catch (error) {
-      console.error("Failed to create variable:", error);
+      console.error("Error creating variable:", error);
       addToast({
         type: "error",
-        title: "Creation failed",
-        message: "Failed to create the variable"
+        message: `Error creating variable: ${error.message}`,
+        duration: 5000
       });
     }
-  }, [newVariable, variableType, fileEntries, createVariable, addToast]);
+  }, [createForm, createVariable, getVariableByName, addToast]);
+
+  // Render content based on loading/error state
+  if (isLoading) {
+    return (
+      <div className="plasmo-p-4">
+        <div className="plasmo-mb-6">
+          <h2 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">Global Variables</h2>
+          <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-4">
+            Create and manage reusable variables for your templates
+          </p>
+        </div>
+        <LoadingSkeleton count={4} variant="card" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="plasmo-p-4">
+        <div className="plasmo-bg-error-50 plasmo-border plasmo-border-error-200 plasmo-rounded-md plasmo-p-4 plasmo-mb-4">
+          <div className="plasmo-flex">
+            <div className="plasmo-flex-shrink-0">
+              <svg className="plasmo-h-5 plasmo-w-5 plasmo-text-error-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="plasmo-ml-3">
+              <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-error-800">Error loading variables</h3>
+              <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-error-700">
+                <p>{error.message || "An unexpected error occurred"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="plasmo-w-full plasmo-bg-white plasmo-p-4">
-      <h1 className="plasmo-text-xl plasmo-font-semibold plasmo-mb-4 plasmo-text-gray-800">Global Variables</h1>
-      
-      {/* Create Variable Form */}
-      <div className="plasmo-bg-gray-50 plasmo-rounded-lg plasmo-p-4 plasmo-mb-6 plasmo-border plasmo-border-gray-200">
-        <h2 className="plasmo-text-sm plasmo-font-medium plasmo-mb-3 plasmo-text-gray-700">Create New Variable</h2>
-        <form onSubmit={handleCreateVariable} className="plasmo-space-y-3">
-          <div>
-            <label htmlFor="variableName" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-              Variable Name
-            </label>
-            <input
-              type="text"
-              id="variableName"
-              value={newVariable.name}
-              onChange={(e) => setNewVariable({...newVariable, name: e.target.value})}
-              className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
-              placeholder="my_variable"
-            />
-          </div>
-          
-          {/* Variable Type Selector */}
-          <VariableTypeSelector 
-            selectedType={variableType} 
-            onChange={handleVariableTypeChange} 
-          />
-          
-          {variableType === VARIABLE_ENTRY_TYPES.TEXT ? (
-            <div>
-              <label htmlFor="variableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                Variable Value
-              </label>
-              <textarea
-                id="variableValue"
-                value={newVariable.value}
-                onChange={(e) => setNewVariable({...newVariable, value: e.target.value})}
-                rows={3}
-                className="plasmo-mt-1 plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
-                placeholder="Enter variable value..."
-              />
-              <p className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
-                Each line will be treated as a separate value.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                Select {variableType === VARIABLE_ENTRY_TYPES.FILE ? "File" : "Directory"}
-              </label>
-              <FilePicker 
-                onFileSelect={handleFileSelect}
-                allowDirectories={variableType === VARIABLE_ENTRY_TYPES.DIRECTORY}
-                allowMultiple={true}
-              />
-              {fileEntries.length === 0 && (
-                <p className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
-                  Please select at least one {variableType === VARIABLE_ENTRY_TYPES.FILE ? "file" : "directory"}.
-                </p>
-              )}
-            </div>
-          )}
-          
-          <div className="plasmo-flex plasmo-justify-end">
-            <button
-              type="submit"
-              className="plasmo-inline-flex plasmo-items-center plasmo-px-4 plasmo-py-2 plasmo-border plasmo-border-transparent plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-shadow-sm plasmo-text-white plasmo-bg-blue-600 plasmo-hover:bg-blue-700 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
-            >
-              Create Variable
-            </button>
-          </div>
-        </form>
+    <div className="plasmo-p-4 plasmo-h-full plasmo-overflow-y-auto">
+      <div className="plasmo-mb-6">
+        <h2 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">Global Variables</h2>
+        <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-4">
+          Create and manage reusable variables for your templates
+        </p>
       </div>
-      
-      {/* Variable List */}
-      <h2 className="plasmo-text-md plasmo-font-medium plasmo-mb-3 plasmo-text-gray-800">Your Variables</h2>
-      
-      {isLoading ? (
-        <div className="plasmo-text-center plasmo-py-4 plasmo-text-gray-500 plasmo-text-sm">Loading variables...</div>
-      ) : variables && variables.length > 0 ? (
-        <div className="plasmo-bg-white plasmo-shadow-sm plasmo-rounded-md plasmo-border plasmo-border-gray-200 plasmo-divide-y plasmo-divide-gray-200">
-          {variables.map(variable => (
-            <div key={variable.id} className="plasmo-p-4">
-              {editingId === variable.id ? (
-                /* Edit Form */
-                <div className="plasmo-space-y-3">
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                    className="plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
+
+      {/* Create Variable Form */}
+      {!isEditing && (
+        <div className="plasmo-mb-6">
+          <div className="plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-shadow-sm plasmo-overflow-hidden">
+            <div className="plasmo-p-4">
+              <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800 plasmo-mb-3">Create New Variable</h3>
+              
+              <div className="plasmo-mb-4">
+                <label htmlFor="variableName" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                  Variable Name
+                </label>
+                <input
+                  type="text"
+                  id="variableName"
+                  className="plasmo-input"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter variable name"
+                />
+              </div>
+              
+              <div className="plasmo-mb-4">
+                <VariableTypeSelector
+                  selectedType={createForm.variableType}
+                  onChange={handleVariableTypeChange}
+                />
+              </div>
+              
+              {createForm.variableType === VARIABLE_ENTRY_TYPES.TEXT ? (
+                <div className="plasmo-mb-4">
+                  <label htmlFor="variableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                    Variable Value
+                  </label>
+                  <textarea
+                    id="variableValue"
+                    className="plasmo-input plasmo-resize-y"
+                    rows={3}
+                    value={createForm.textValue}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, textValue: e.target.value }))}
+                    placeholder="Enter variable value (use multiple lines for multiple values)"
                   />
-                  
-                  {/* Text Entries Section */}
-                  <div>
-                    <label htmlFor="textEntries" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
-                      Text Entries
-                    </label>
-                    <textarea
-                      id="textEntries"
-                      value={editForm.textValue}
-                      onChange={(e) => setEditForm({...editForm, textValue: e.target.value})}
-                      rows={3}
-                      className="plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border-gray-300 plasmo-shadow-sm focus:plasmo-border-blue-500 focus:plasmo-ring-blue-500 plasmo-text-sm"
-                    />
-                    <p className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
-                      Each line will be treated as a separate text entry.
-                    </p>
-                  </div>
-                  
-                  {/* File/Directory Entries Section */}
-                  <div>
-                    <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
-                      File/Directory Entries
-                    </label>
-                    
-                    {/* File entry type selector */}
-                    <div className="plasmo-mb-2">
-                      <VariableTypeSelector
-                        selectedType={editVariableType}
-                        onChange={setEditVariableType}
-                      />
-                    </div>
-                    
-                    {/* File picker for edit mode */}
-                    {(editVariableType === VARIABLE_ENTRY_TYPES.FILE || 
-                      editVariableType === VARIABLE_ENTRY_TYPES.DIRECTORY) && (
-                      <div className="plasmo-mb-3">
-                        <FilePicker
-                          onFileSelect={handleEditFileSelect}
-                          allowDirectories={editVariableType === VARIABLE_ENTRY_TYPES.DIRECTORY}
-                          allowMultiple={true}
-                        />
-                        <p className="plasmo-mt-1 plasmo-text-xs plasmo-text-gray-500">
-                          Select files/directories to add to this variable.
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Display existing file/directory entries */}
-                    {editForm.entries.some(entry => 
-                      entry.type === VARIABLE_ENTRY_TYPES.FILE || 
-                      entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
-                    ) && (
-                      <div>
-                        <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-2">
-                          <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                            Existing Files/Directories
-                          </label>
-                          <button
-                            type="button"
-                            onClick={handleClearFileEntries}
-                            className="plasmo-text-red-500 plasmo-hover:text-red-700 plasmo-text-xs plasmo-font-medium"
-                          >
-                            Clear All
-                          </button>
-                        </div>
-                        
-                        <ul className="plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-divide-y plasmo-divide-gray-200 plasmo-max-h-48 plasmo-overflow-y-auto">
-                          {editForm.entries
-                            .filter(entry => 
-                              entry.type === VARIABLE_ENTRY_TYPES.FILE || 
-                              entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
-                            )
-                            .map((entry, idx) => (
-                              <li key={idx} className="plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-text-gray-800 plasmo-flex plasmo-justify-between plasmo-items-center">
-                                <div className="plasmo-flex plasmo-items-center">
-                                  {entry.type === VARIABLE_ENTRY_TYPES.FILE ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                  ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                    </svg>
-                                  )}
-                                  <div className="plasmo-flex plasmo-flex-col">
-                                    <span className="plasmo-font-medium">{entry.name || entry.value.split('/').pop() || 'Unnamed file'}</span>
-                                    {entry.metadata && (
-                                      <span className="plasmo-text-xs plasmo-text-gray-500">
-                                        {entry.metadata.size 
-                                          ? `${(entry.metadata.size / 1024).toFixed(2)} KB` 
-                                          : ''}
-                                        {entry.metadata.type 
-                                          ? ` · ${entry.metadata.type.split('/').pop()}` 
-                                          : ''}
-                                        {entry.metadata.path 
-                                          ? ` · ${entry.metadata.path.split('/').pop()}` 
-                                          : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Remove this entry from the entries array
-                                    setEditForm({
-                                      ...editForm,
-                                      entries: editForm.entries.filter((_, i) => 
-                                        i !== editForm.entries.findIndex(e => e === entry)
-                                      )
-                                    });
-                                  }}
-                                  className="plasmo-text-red-500 plasmo-hover:text-red-700 plasmo-text-xs"
-                                >
-                                  Remove
-                                </button>
-                              </li>
-                            ))
-                          }
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="plasmo-flex plasmo-justify-end plasmo-space-x-2">
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="plasmo-inline-flex plasmo-items-center plasmo-px-3 plasmo-py-1.5 plasmo-border plasmo-border-gray-300 plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white plasmo-hover:bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveEdit}
-                      className="plasmo-inline-flex plasmo-items-center plasmo-px-3 plasmo-py-1.5 plasmo-border plasmo-border-transparent plasmo-text-sm plasmo-font-medium plasmo-rounded-md plasmo-shadow-sm plasmo-text-white plasmo-bg-blue-600 plasmo-hover:bg-blue-700 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
-                    >
-                      Save
-                    </button>
-                  </div>
                 </div>
               ) : (
-                /* Variable Display */
-                <div>
-                  <div className="plasmo-flex plasmo-justify-between plasmo-items-start">
-                    <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">{variable.name}</h3>
-                    <div className="plasmo-flex plasmo-space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(variable)}
-                        className="plasmo-inline-flex plasmo-items-center plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-text-xs plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white plasmo-hover:bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(variable.id, variable.name)}
-                        className="plasmo-inline-flex plasmo-items-center plasmo-px-2 plasmo-py-1 plasmo-border plasmo-border-gray-300 plasmo-text-xs plasmo-font-medium plasmo-rounded-md plasmo-text-gray-700 plasmo-bg-white plasmo-hover:bg-gray-50 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-offset-2 focus:plasmo-ring-blue-500"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-gray-600">
-                    {variable.value.map((entry, idx) => (
-                      <div key={idx} className="plasmo-py-1">
-                        {entry.type === VARIABLE_ENTRY_TYPES.TEXT ? (
-                          <span>{entry.value}</span>
-                        ) : entry.type === VARIABLE_ENTRY_TYPES.FILE ? (
-                          <div className="plasmo-flex plasmo-items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <div className="plasmo-flex plasmo-flex-col">
-                              <span className="plasmo-font-medium">{entry.name || entry.value.split('/').pop()}</span>
-                              {entry.metadata && (
-                                <span className="plasmo-text-xs plasmo-text-gray-500">
-                                  {entry.metadata.size 
-                                    ? `${(entry.metadata.size / 1024).toFixed(2)} KB` 
-                                    : ''}
-                                  {entry.metadata.type 
-                                    ? ` · ${entry.metadata.type.split('/').pop()}` 
-                                    : ''}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="plasmo-flex plasmo-items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="plasmo-h-4 plasmo-w-4 plasmo-mr-1 plasmo-text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                            </svg>
-                            <div className="plasmo-flex plasmo-flex-col">
-                              <span className="plasmo-font-medium">{entry.name || entry.value.split('/').pop()}</span>
-                              {entry.metadata && (
-                                <span className="plasmo-text-xs plasmo-text-gray-500">
-                                  {entry.metadata.path ? `${entry.metadata.path}` : ''}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                <div className="plasmo-mb-4">
+                  <FilePicker
+                    type={createForm.variableType === VARIABLE_ENTRY_TYPES.DIRECTORY ? 'directory' : 'file'}
+                    onSelect={handleFileSelect}
+                    multiple={true}
+                  />
                 </div>
               )}
+              
+              <div className="plasmo-flex plasmo-justify-end">
+                <button
+                  type="button"
+                  onClick={handleCreateVariable}
+                  className="plasmo-btn-primary"
+                >
+                  Create Variable
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="plasmo-text-center plasmo-py-6 plasmo-bg-gray-50 plasmo-rounded-lg plasmo-border plasmo-border-gray-200">
-          <p className="plasmo-text-sm plasmo-text-gray-500">No variables created yet</p>
+          </div>
         </div>
       )}
+
+      {/* Edit Variable Form */}
+      {isEditing && (
+        <div className="plasmo-mb-6">
+          <div className="plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-shadow-sm plasmo-overflow-hidden">
+            <div className="plasmo-p-4">
+              <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-3">
+                <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">Edit Variable</h3>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="plasmo-text-gray-400 hover:plasmo-text-gray-500"
+                >
+                  <svg className="plasmo-h-5 plasmo-w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="plasmo-mb-4">
+                <label htmlFor="editVariableName" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                  Variable Name
+                </label>
+                <input
+                  type="text"
+                  id="editVariableName"
+                  className="plasmo-input"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+              
+              <div className="plasmo-mb-4">
+                <VariableTypeSelector
+                  selectedType={editForm.variableType}
+                  onChange={handleVariableTypeChange}
+                />
+              </div>
+              
+              {editForm.variableType === VARIABLE_ENTRY_TYPES.TEXT ? (
+                <div className="plasmo-mb-4">
+                  <label htmlFor="editVariableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                    Variable Value
+                  </label>
+                  <textarea
+                    id="editVariableValue"
+                    className="plasmo-input plasmo-resize-y"
+                    rows={3}
+                    value={editForm.textValue}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, textValue: e.target.value }))}
+                  />
+                </div>
+              ) : (
+                <div className="plasmo-mb-4">
+                  {editForm.entries.filter(entry =>
+                    entry.type === VARIABLE_ENTRY_TYPES.FILE ||
+                    entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
+                  ).length > 0 && (
+                    <div className="plasmo-mb-2">
+                      <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-mb-2">
+                        <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+                          Current Files/Directories
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleClearFileEntries}
+                          className="plasmo-text-xs plasmo-text-error-600 hover:plasmo-text-error-800"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                      <ul className="plasmo-max-h-40 plasmo-overflow-y-auto plasmo-text-sm plasmo-mb-3 plasmo-bg-gray-50 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-p-2">
+                        {editForm.entries.filter(entry =>
+                          entry.type === VARIABLE_ENTRY_TYPES.FILE ||
+                          entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
+                        ).map((entry, index) => (
+                          <li key={index} className="plasmo-mb-1 plasmo-flex plasmo-items-center">
+                            <span className="plasmo-mr-1">
+                              {entry.type === VARIABLE_ENTRY_TYPES.FILE ? '📄' : '📁'}
+                            </span>
+                            <span className="plasmo-truncate">{entry.value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <FilePicker
+                    type={editForm.variableType === VARIABLE_ENTRY_TYPES.DIRECTORY ? 'directory' : 'file'}
+                    onSelect={handleEditFileSelect}
+                    multiple={true}
+                  />
+                </div>
+              )}
+              
+              <div className="plasmo-flex plasmo-justify-end plasmo-space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="plasmo-btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  className="plasmo-btn-primary"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Variables List */}
+      <div>
+        <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">
+          Your Variables {variables.length > 0 && `(${variables.length})`}
+        </h3>
+        
+        {variables.length === 0 ? (
+          <div className="plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-shadow-sm plasmo-p-4 plasmo-text-center">
+            <svg className="plasmo-w-8 plasmo-h-8 plasmo-mx-auto plasmo-text-gray-400 plasmo-mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <p className="plasmo-text-sm plasmo-text-gray-500">No variables created yet</p>
+          </div>
+        ) : (
+          <div className="plasmo-space-y-2">
+            {variables.map((variable) => {
+              // Determine variable type and icon
+              const hasFileEntries = Array.isArray(variable.value) && variable.value.some(
+                entry => entry.type === VARIABLE_ENTRY_TYPES.FILE || entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
+              );
+              
+              const valuePreview = Array.isArray(variable.value)
+                ? variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT).map(entry => entry.value).join(', ')
+                : typeof variable.value === 'string' ? variable.value : '';
+              
+              const truncatedPreview = valuePreview.length > 60
+                ? valuePreview.substring(0, 60) + '...'
+                : valuePreview;
+              
+              return (
+                <div
+                  key={variable.id}
+                  className="plasmo-template-item-compact plasmo-relative plasmo-group"
+                >
+                  <div className="plasmo-py-2 plasmo-px-3">
+                    <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+                      <div className="plasmo-flex plasmo-items-center plasmo-gap-1.5 plasmo-flex-1 plasmo-min-w-0">
+                        {hasFileEntries ? (
+                          <span className="plasmo-text-primary-500 plasmo-flex-shrink-0">
+                            <svg className="plasmo-w-4 plasmo-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </span>
+                        ) : (
+                          <span className="plasmo-text-gray-500 plasmo-flex-shrink-0">
+                            <svg className="plasmo-w-4 plasmo-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </span>
+                        )}
+                        
+                        <h3 className="plasmo-template-name">{variable.name}</h3>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="plasmo-flex plasmo-items-center plasmo-ml-1 plasmo-flex-shrink-0 plasmo-space-x-0.5">
+                        <button
+                          onClick={() => handleEdit(variable)}
+                          className="plasmo-action-btn-compact plasmo-template-action-btn"
+                          aria-label="Edit variable"
+                        >
+                          <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(variable.id, variable.name)}
+                          className="plasmo-action-btn-compact plasmo-template-action-btn plasmo-text-error-500 hover:plasmo-text-error-700"
+                          aria-label="Delete variable"
+                        >
+                          <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Variable Value Preview */}
+                    <div className="plasmo-template-description-compact plasmo-mt-1.5">
+                      {hasFileEntries ? (
+                        <div className="plasmo-flex plasmo-items-center plasmo-text-gray-500">
+                          <span className="plasmo-mr-1">
+                            {Array.isArray(variable.value) && variable.value.some(entry => entry.type === VARIABLE_ENTRY_TYPES.FILE) && '📄 '}
+                            {Array.isArray(variable.value) && variable.value.some(entry => entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY) && '📁 '}
+                          </span>
+                          <span>
+                            {Array.isArray(variable.value) ? `${variable.value.length} file/directory entries` : 'File entries'}
+                          </span>
+                        </div>
+                      ) : (
+                        truncatedPreview || <span className="plasmo-italic plasmo-text-gray-400">Empty value</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
