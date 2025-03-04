@@ -14,7 +14,8 @@ const { useToast } = require("../../../hooks/useToast");
  */
 
 /**
- * Form component for creating and editing templates
+ * Form component for creating and editing templates.
+ * Ensures 'category' is included among the fields.
  * @param {TemplateFormProps} props - Component props
  * @returns {JSX.Element} Component JSX
  */
@@ -26,12 +27,12 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
       name: template?.name ?? "",
       category: template?.category ?? "",
       content: template?.content ?? "",
-      isFavorite: template?.isFavorite ?? false,
+      isFavorite: template?.isFavorite ?? false
     });
 
     // Add template variables management
     const {
-      parseResult, // Add parseResult from useTemplateVariables
+      parseResult,
       variables,
       values,
       setVariableValue,
@@ -51,7 +52,7 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
       onSubmit({
         name: formData.name,
         content: formData.content,
-        category: formData.category,
+        category: formData.category,  // Include the category value here
         isFavorite: formData.isFavorite,
         variables: values
       });
@@ -64,14 +65,14 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
         addToast({
           type: "success",
           title: "Variables saved",
-          message: "Variables were saved to your global store",
+          message: "Variables were saved to your global store"
         });
       } catch (error) {
         console.error("Error saving variables:", error);
         addToast({
           type: "error",
           title: "Failed to save variables",
-          message: "There was an error saving your variables to the global store",
+          message: "There was an error saving your variables to the global store"
         });
       }
     };

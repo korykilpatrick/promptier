@@ -450,6 +450,24 @@ try {
           </div>
         </div>
 
+        {/* Category Section */}
+        <div className="plasmo-flex plasmo-flex-col plasmo-gap-2">
+          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+            <div className="plasmo-flex plasmo-items-center">
+              <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">
+                Category <span className="plasmo-text-gray-500 plasmo-text-xs">(optional)</span>
+              </label>
+            </div>
+          </div>
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="e.g., Code Generation, Writing, Research"
+            className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+          />
+        </div>
+
         {/* Variables Section - Now above the template content */}
         <div className="plasmo-flex plasmo-flex-col plasmo-gap-3">
           {/* Variable Inputs */}
