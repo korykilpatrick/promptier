@@ -163,17 +163,37 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
       }
 
       const updatedTemplate = toFrontendTemplate(response.data);
-      
-      // For favorite/unfavorite operations, we'll do a full refresh afterwards
-      // so we don't need to update the lists here
+
+      // For favorite/unfavorite operations, update local state inline:
       if (data.isFavorite !== undefined) {
-        // Don't update lists here - will be refreshed by fetchTemplates after the operation
-      } else {
-        // For other update operations, update the lists as before
+        // We'll define a helper to do targeted replacements
         const updateTemplateList = (list: Template[]) =>
           list.map((t) => (t.id === data.id ? updatedTemplate : t));
-        
-        // Update both lists to ensure consistency
+
+        if (data.isFavorite) {
+          // Remove from templates if present, add/update to favorites
+          setTemplates((prev) => prev.filter((t) => t.id !== data.id));
+          setFavoriteTemplates((prev) => {
+            const alreadyInFavorites = prev.some((t) => t.id === data.id);
+            return alreadyInFavorites
+              ? updateTemplateList(prev)
+              : [...prev, updatedTemplate];
+          });
+        } else {
+          // Remove from favorites if present, add/update to templates
+          setFavoriteTemplates((prev) => prev.filter((t) => t.id !== data.id));
+          setTemplates((prev) => {
+            const alreadyInTemplates = prev.some((t) => t.id === data.id);
+            return alreadyInTemplates
+              ? updateTemplateList(prev)
+              : [...prev, updatedTemplate];
+          });
+        }
+      } else {
+        // For standard edits, update both lists if the template is found
+        const updateTemplateList = (list: Template[]) =>
+          list.map((t) => (t.id === data.id ? updatedTemplate : t));
+
         setTemplates((prev) => updateTemplateList(prev));
         setFavoriteTemplates((prev) => updateTemplateList(prev));
       }
@@ -232,9 +252,8 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
       content: template.content,
       category: template.category
     });
-    // Refresh the entire list after favoriting
-    await fetchTemplates();
-  }, [templates, favoriteTemplates, updateTemplate, fetchTemplates]);
+    // No fetchTemplates() call - rely on local update
+  }, [templates, favoriteTemplates, updateTemplate]);
 
   const unfavoriteTemplate = useCallback(async (id: number) => {
     const template = [...templates, ...favoriteTemplates].find((t) => t.id === id);
@@ -246,9 +265,8 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
       content: template.content,
       category: template.category
     });
-    // Refresh the entire list after unfavoriting
-    await fetchTemplates();
-  }, [templates, favoriteTemplates, updateTemplate, fetchTemplates]);
+    // No fetchTemplates() call - rely on local update
+  }, [templates, favoriteTemplates, updateTemplate]);
 
   return {
     templates,
