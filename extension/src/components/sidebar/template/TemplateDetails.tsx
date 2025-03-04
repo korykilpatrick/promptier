@@ -18,6 +18,7 @@ try {
   const _templateParser = require("../../../utils/template-parser")
   const { TemplateVariable } = require("shared/types/template-variables")
   const { Template } = require("shared/types/templates")
+  const { parseTemplate } = _templateParser
   
   // Try to import potentially missing hooks with fallbacks
   let useGlobalVariables;
@@ -44,7 +45,8 @@ try {
   const { useNavigate } = require("react-router-dom")
 
   // Import file content resolver utilities
-  const { copyWithResolvedFileContents, ensureFilePermissions } = require("../../../utils/file-content-resolver");
+  const { copyWithResolvedFileContents, ensureFilePermissions, activeResolveAllFileContents } = require("../../../utils/file-content-resolver");
+  const { replaceVariables } = require("../../../utils/template-parser");
 
   /**
    * Helper function to conditionally join class names
@@ -197,8 +199,25 @@ try {
           return acc
         }, {})
         
+        // Parse the template to find which variables are actually used
+        const parseResult = parseTemplate(template.content);
+        const usedVariableNames = new Set(parseResult.variables.map((v: any) => v.name));
+        
+        console.log(`[TemplateDetails] Template uses these variables:`, Array.from(usedVariableNames));
+        
+        let fileResolutionAttempted = false;
+        let fileResolutionSucceeded = true;
+        
         // Check if we have any file variables that need permission
         if (globalVariables?.some((v: any) => v?.value?.some?.((entry: any) => entry?.type === 'file' || entry?.type === 'directory'))) {
+          fileResolutionAttempted = true;
+          console.log(`[TemplateDetails] Template contains file variables - resolving content`);
+          
+          // Create a filtered global variables array with only the used file variables
+          const usedFileGlobalVariables = globalVariables.filter((v: any) => 
+            v && usedVariableNames.has(v.name)
+          );
+          
           // Ensure file permissions are granted before proceeding
           const permissionsGranted = await ensureFilePermissions(globalVariables);
           
@@ -208,6 +227,27 @@ try {
               title: "Permission denied",
               message: "Could not access one or more files. Please grant permission when prompted."
             });
+            fileResolutionSucceeded = false;
+          }
+          
+          // Actively resolve file contents
+          try {
+            console.log('[TemplateDetails] Starting file content resolution');
+            const resolved = await activeResolveAllFileContents(usedFileGlobalVariables, { 
+              useCache: true,
+              forceReacquire: true,
+              autoReacquireHandles: true
+            });
+            
+            if (!resolved) {
+              console.warn('[TemplateDetails] Failed to resolve file contents, template may be incomplete');
+              fileResolutionSucceeded = false;
+            } else {
+              console.log('[TemplateDetails] File content resolution completed successfully');
+            }
+          } catch (err) {
+            console.error(`[TemplateDetails] Error resolving file contents:`, err);
+            fileResolutionSucceeded = false;
           }
         }
         
@@ -216,11 +256,19 @@ try {
         const copySuccess = await copyWithResolvedFileContents(processedContent, validValues, globalVariables);
         
         if (copySuccess) {
-          addToast({
-            type: "success",
-            title: "Template copied",
-            message: "Template copied to clipboard with variables filled in"
-          });
+          if (fileResolutionAttempted && !fileResolutionSucceeded) {
+            addToast({
+              type: "warning",
+              title: "Template copied",
+              message: "Template copied but some file variables may not be fully resolved."
+            });
+          } else {
+            addToast({
+              type: "success",
+              title: "Template copied",
+              message: "Template copied to clipboard with variables filled in"
+            });
+          }
         } else {
           throw new Error("Failed to copy with resolved file contents");
         }
