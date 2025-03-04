@@ -253,8 +253,9 @@
   
   /* Ultra-compact action buttons for template list - increased size */
   .plasmo-action-btn-compact {
-    @apply plasmo-p-1.5 plasmo-rounded-full plasmo-text-gray-400
-           plasmo-transition-all plasmo-duration-150 plasmo-mx-0.5;
+    @apply plasmo-p-2 plasmo-rounded-full plasmo-text-gray-400
+           plasmo-transition-all plasmo-duration-150 plasmo-mx-0
+           plasmo-min-w-[32px] plasmo-min-h-[32px] plasmo-flex plasmo-items-center plasmo-justify-center;
     
     &:hover {
       color: theme('colors.gray.700');
