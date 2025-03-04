@@ -9,8 +9,6 @@ const { useNavigate, useLocation } = reactRouterDom;
 
 // Component imports using CommonJS requires
 const { TemplateSection } = require("./TemplateSection");
-const { ChainSection } = require("./ChainSection");
-const { ResponseSection } = require("./ResponseSection");
 const { ErrorBoundary } = require("../common/ErrorBoundary");
 const { useFocusManagement } = require("../../hooks/useFocusManagement");
 const { useKeyboardNavigation } = require("../../hooks/useKeyboardNavigation");
@@ -70,14 +68,13 @@ function Sidebar() {
     return cleanup;
   }, [cleanup]);
 
+  // Always keep Templates section expanded
   const [expandedSections, setExpandedSections] = useState({
-    templates: false,
-    chains: false,
-    response: false
+    templates: true
   });
 
   const containerRef = useRef(null);
-  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({ itemCount: 3 });
+  const { currentFocus, setFocus, focusNext, focusPrevious } = useFocusManagement({ itemCount: 1 });
   useKeyboardNavigation({
     onArrowDown: focusNext,
     onArrowUp: focusPrevious,
@@ -89,12 +86,6 @@ function Sidebar() {
   };
 
   const isTemplatesLoading = operationStates?.fetch?.isLoading ?? false;
-  const [chains, setChains] = useState([]);
-  const [activeChain, setActiveChain] = useState();
-  const [isChainsLoading] = useState(false);
-  const [currentResponse, setCurrentResponse] = useState("");
-  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   
   const handlePinTemplate = (templateId) => {
     console.log(`[Sidebar] Pinning template ID: ${templateId}`);
@@ -131,21 +122,10 @@ function Sidebar() {
     });
   };
 
-  const handleCreateChain = () => {};
-  const handleSelectChain = (chain) => setActiveChain(chain);
-  const handleExecuteStep = (chainId, stepId) => {};
-  const handleResponseChange = (response) => setCurrentResponse(response);
-  const handleToggleAutoSave = () => setIsAutoSaveEnabled(!isAutoSaveEnabled);
-  const handleSaveResponse = async () => {
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-  };
-
   return (
     <div
       ref={containerRef}
-      className="plasmo-h-full plasmo-w-full plasmo-bg-white plasmo-flex plasmo-flex-col plasmo-overflow-y-auto"
+      className="plasmo-h-full plasmo-w-full plasmo-bg-gray-50 plasmo-flex plasmo-flex-col plasmo-overflow-y-auto plasmo-scrollbar-thin"
       role="complementary"
       aria-label="Promptier Sidebar"
       tabIndex={0}
@@ -166,26 +146,6 @@ function Sidebar() {
             onDeleteTemplate={handleDeleteTemplate}
             onEditTemplate={handleEditTemplate}
             onUpdateTemplate={updateTemplate}
-          />
-          <ChainSection
-            isExpanded={expandedSections.chains}
-            onToggle={() => toggleSection("chains")}
-            chains={chains}
-            activeChain={activeChain}
-            isLoading={isChainsLoading}
-            onCreateChain={handleCreateChain}
-            onSelectChain={handleSelectChain}
-            onExecuteStep={handleExecuteStep}
-          />
-          <ResponseSection
-            isExpanded={expandedSections.response}
-            onToggle={() => toggleSection("response")}
-            currentResponse={currentResponse}
-            isAutoSaveEnabled={isAutoSaveEnabled}
-            isSaving={isSaving}
-            onResponseChange={handleResponseChange}
-            onToggleAutoSave={handleToggleAutoSave}
-            onSaveResponse={handleSaveResponse}
           />
         </ErrorBoundary>
       </div>

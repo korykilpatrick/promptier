@@ -1,75 +1,40 @@
-const React = require("react");
-const { useState } = React;
-const { VARIABLE_ENTRY_TYPES } = require("shared/types/variables");
+import React from "react";
 
-/**
- * Props for the VariableTypeSelector component
- */
 interface VariableTypeSelectorProps {
   selectedType: string;
   onChange: (type: string) => void;
-  allowDirectories?: boolean;
 }
 
-/**
- * Component that lets users select the type of variable (text, file, directory)
- */
-function VariableTypeSelector({ 
-  selectedType, 
-  onChange, 
-  allowDirectories = true 
-}: VariableTypeSelectorProps) {
-  
-  const handleTypeChange = (e: any) => {
+export function VariableTypeSelector({ selectedType, onChange }: VariableTypeSelectorProps) {
+  const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
   };
 
   return (
-    <div className="plasmo-mb-4">
-      <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">
-        Variable Type
+    <div className="plasmo-flex plasmo-space-x-4">
+      <label className="plasmo-flex plasmo-items-center">
+        <input
+          type="radio"
+          name="variableType"
+          value="text"
+          checked={selectedType === "text"}
+          onChange={handleTypeChange}
+          className="plasmo-h-4 plasmo-w-4 plasmo-text-primary-600 plasmo-focus:ring-primary-500 plasmo-border-gray-300"
+        />
+        <span className="plasmo-ml-2 plasmo-text-sm plasmo-text-gray-700">Text</span>
       </label>
-      <div className="plasmo-flex plasmo-space-x-4">
-        <label className="plasmo-flex plasmo-items-center">
-          <input
-            type="radio"
-            name="variableType"
-            value={VARIABLE_ENTRY_TYPES.TEXT}
-            checked={selectedType === VARIABLE_ENTRY_TYPES.TEXT}
-            onChange={handleTypeChange}
-            className="plasmo-mr-2 plasmo-h-4 plasmo-w-4 plasmo-text-blue-600"
-          />
-          <span className="plasmo-text-sm plasmo-text-gray-700">Text</span>
-        </label>
-        
-        <label className="plasmo-flex plasmo-items-center">
-          <input
-            type="radio"
-            name="variableType"
-            value={VARIABLE_ENTRY_TYPES.FILE}
-            checked={selectedType === VARIABLE_ENTRY_TYPES.FILE}
-            onChange={handleTypeChange}
-            className="plasmo-mr-2 plasmo-h-4 plasmo-w-4 plasmo-text-blue-600"
-          />
-          <span className="plasmo-text-sm plasmo-text-gray-700">File</span>
-        </label>
-        
-        {allowDirectories && (
-          <label className="plasmo-flex plasmo-items-center">
-            <input
-              type="radio"
-              name="variableType"
-              value={VARIABLE_ENTRY_TYPES.DIRECTORY}
-              checked={selectedType === VARIABLE_ENTRY_TYPES.DIRECTORY}
-              onChange={handleTypeChange}
-              className="plasmo-mr-2 plasmo-h-4 plasmo-w-4 plasmo-text-blue-600"
-            />
-            <span className="plasmo-text-sm plasmo-text-gray-700">Directory</span>
-          </label>
-        )}
-      </div>
+      
+      <label className="plasmo-flex plasmo-items-center">
+        <input
+          type="radio"
+          name="variableType"
+          value="file"
+          checked={selectedType === "file"}
+          onChange={handleTypeChange}
+          className="plasmo-h-4 plasmo-w-4 plasmo-text-primary-600 plasmo-focus:ring-primary-500 plasmo-border-gray-300"
+        />
+        <span className="plasmo-ml-2 plasmo-text-sm plasmo-text-gray-700">File</span>
+      </label>
     </div>
   );
 }
-
-export default VariableTypeSelector; 

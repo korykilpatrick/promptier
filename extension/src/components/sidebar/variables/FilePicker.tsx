@@ -1,164 +1,243 @@
-import { useState, useCallback } from "react";
-import { createFileEntry, createDirectoryEntry, VARIABLE_ENTRY_TYPES } from "shared/types/variables";
-import { useToast } from "../../../hooks/useToast";
-import { fs } from '../../../filesystem';
-import type { FileEntry, DirectoryEntry } from '../../../filesystem/types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
-// Import needed types
-import type { VariableEntry } from "shared/types/variables";
+// Constants for variable types
+const VARIABLE_ENTRY_TYPES = {
+  TEXT: 'text',
+  FILE: 'file'
+};
 
-// Export registry reference for legacy support - points to the filesystem module's registry
-// This allows existing code to keep working while we transition
+// Registry to keep file handles
 export const fileHandleRegistry = {
-  getHandle: (id: string) => fs.registry.getHandle(id),
-  registerHandle: (handle: any) => fs.registry.registerHandle(handle),
-  getHandleCount: async () => {
-    const handles = await fs.registry.getAllHandles();
-    return handles.size;
+  handles: new Map(),
+  
+  getHandle(id) {
+    return this.handles.get(id);
+  },
+  
+  setHandle(id, handle) {
+    this.handles.set(id, handle);
+    return id;
+  },
+  
+  registerHandle(handle, id = null) {
+    const handleId = id || uuidv4();
+    this.setHandle(handleId, handle);
+    return handleId;
+  },
+  
+  removeHandle(id) {
+    if (this.handles.has(id)) {
+      this.handles.delete(id);
+      return true;
+    }
+    return false;
+  },
+  
+  getHandleCount() {
+    return this.handles.size;
   }
 };
 
-/**
- * Props for the FilePicker component
- */
 interface FilePickerProps {
-  onFileSelect: (files: VariableEntry | VariableEntry[]) => void;
-  allowDirectories?: boolean;
-  allowMultiple?: boolean;
-  acceptTypes?: string[];
+  onSelect: (entries: any) => void;
+  selectedEntries?: any[];
+  onClear?: () => void;
 }
 
-/**
- * A component that allows users to pick files or directories from their device
- * Using the enhanced filesystem module for file operations
- */
-function FilePicker({ 
-  onFileSelect, 
-  allowDirectories = false, 
-  allowMultiple = false,
-  acceptTypes = []
-}: FilePickerProps) {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [selectedFiles, setSelectedFiles] = useState<VariableEntry[]>([]);
-  const { addToast } = useToast();
-
-  /**
-   * Converts a filesystem entry to a variable entry
-   */
-  const convertToVariableEntry = useCallback((fsEntry: FileEntry | DirectoryEntry): VariableEntry => {
-    if (fsEntry.kind === 'file') {
-      // Store handle ID
-      const handleId = fs.registry.registerHandle(fsEntry.handle);
+export function FilePicker({ onSelect, selectedEntries = [], onClear }: FilePickerProps) {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  
+  // Update selected files when props change
+  useEffect(() => {
+    setSelectedFiles(selectedEntries || []);
+  }, [selectedEntries]);
+  
+  // Handle file picker open
+  const handleFileSelect = useCallback(async () => {
+    try {
+      // Use showOpenFilePicker API
+      const handles = await window.showOpenFilePicker({
+        multiple: true,
+        types: [
+          {
+            description: 'Text Files',
+            accept: {
+              'text/*': ['.txt', '.md', '.json', '.js', '.ts', '.html', '.css', '.csv']
+            }
+          },
+          {
+            description: 'Images',
+            accept: {
+              'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.svg']
+            }
+          },
+          {
+            description: 'All Files',
+            accept: {
+              '*/*': ['.*']
+            }
+          }
+        ]
+      });
       
-      // Convert file entry to a variable entry
-      return createFileEntry(
-        fsEntry.name,  // path
-        undefined,     // id (optional)
-        fsEntry.name,  // name
-        {             // metadata
-          path: fsEntry.name,
-          size: fsEntry.size,
-          type: fsEntry.type,
-          lastModified: fsEntry.lastModified,
-          handleId: handleId    // Only store handleId, no backward compatibility
-        }
+      // Process selected files
+      const entries = await Promise.all(
+        handles.map(async (handle) => {
+          try {
+            const file = await handle.getFile();
+            const handleId = fileHandleRegistry.registerHandle(handle);
+            
+            return {
+              type: VARIABLE_ENTRY_TYPES.FILE,
+              value: file.name,
+              metadata: {
+                path: file.name,
+                size: file.size,
+                type: file.type,
+                lastModified: file.lastModified,
+                handle,
+                handleId
+              }
+            };
+          } catch (error) {
+            console.error("Error processing file handle:", error);
+            return null;
+          }
+        })
       );
-    } else {
-      // Store handle ID
-      const handleId = fs.registry.registerHandle(fsEntry.handle);
       
-      // Convert directory entry to a variable entry
-      return createDirectoryEntry(
-        fsEntry.name,  // path
-        undefined,     // id (optional)
-        fsEntry.name,  // name
-        {             // metadata
-          path: fsEntry.name,
-          handleId: handleId    // Only store handleId, no backward compatibility
-        }
-      );
+      // Filter out null entries and update state
+      const validEntries = entries.filter(entry => entry !== null);
+      setSelectedFiles(prev => [...prev, ...validEntries]);
+      onSelect(validEntries);
+      
+    } catch (error) {
+      // User cancelled or API not supported
+      if (error.name !== 'AbortError') {
+        console.error("Error selecting files:", error);
+      }
+    }
+  }, [onSelect]);
+  
+  // Handle drag events
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
     }
   }, []);
-
-  /**
-   * Opens the file or directory picker
-   */
-  const openFilePicker = useCallback(async () => {
-    setIsLoading(true);
+  
+  // Handle drop event
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
     
-    try {
-      let entries;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
       
-      if (allowDirectories) {
-        // Use filesystem module to pick a directory
-        const dirEntry = await fs.showDirectoryPicker();
-        entries = [dirEntry];
-      } else {
-        // Use filesystem module to pick files
-        entries = await fs.showFilePicker({
-          multiple: allowMultiple,
-          acceptTypes: acceptTypes,
-          directory: false
-        });
-      }
+      const entries = files.map(file => ({
+        type: VARIABLE_ENTRY_TYPES.FILE,
+        value: file.name,
+        metadata: {
+          path: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        }
+      }));
       
-      if (entries && entries.length > 0) {
-        // Convert filesystem entries to variable entries
-        const variableEntries = entries.map(entry => convertToVariableEntry(entry));
-        
-        // Update state and call the callback
-        setSelectedFiles(variableEntries);
-        onFileSelect(allowMultiple ? variableEntries : variableEntries[0]);
-        
-        // Show success toast
-        addToast(
-          `Selected ${variableEntries.length} ${variableEntries.length === 1 ? 'file' : 'files'}`,
-          "success"
-        );
-      }
-    } catch (error: unknown) {
-      // Handle errors
-      if (error instanceof fs.errors.FileSystemError && error.code === 'USER_CANCELLED') {
-        console.log("User cancelled file selection");
-      } else {
-        // Show error toast
-        addToast(
-          error instanceof Error ? error.message : "An unknown error occurred",
-          "error"
-        );
-      }
-    } finally {
-      setIsLoading(false);
+      setSelectedFiles(prev => [...prev, ...entries]);
+      onSelect(entries);
     }
-  }, [allowMultiple, acceptTypes, allowDirectories, onFileSelect, addToast, convertToVariableEntry]);
-
+  }, [onSelect]);
+  
+  // Handle remove file
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles(prev => {
+      const newFiles = [...prev];
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  }, []);
+  
+  // Handle clear all files
+  const handleClearAll = useCallback(() => {
+    setSelectedFiles([]);
+    if (onClear) onClear();
+  }, [onClear]);
+  
   return (
-    <div className="plasmo-file-picker plasmo-flex plasmo-flex-col plasmo-gap-2">
-      <button
-        className="plasmo-btn plasmo-btn-primary plasmo-w-full"
-        onClick={openFilePicker}
-        disabled={isLoading}
+    <div className="plasmo-space-y-3">
+      <div
+        className={`plasmo-border-2 plasmo-border-dashed plasmo-rounded-md plasmo-p-4 plasmo-text-center ${
+          dragActive ? 'plasmo-border-primary-500 plasmo-bg-primary-50' : 'plasmo-border-gray-300 hover:plasmo-border-primary-300'
+        } plasmo-transition-colors plasmo-duration-200`}
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
       >
-        {isLoading ? (
-          <span className="plasmo-loading plasmo-loading-spinner plasmo-loading-xs"></span>
-        ) : (
-          <>
-            {allowDirectories
-              ? "Choose Directory"
-              : allowMultiple
-              ? "Choose Files"
-              : "Choose File"}
-          </>
-        )}
-      </button>
+        <div className="plasmo-space-y-2">
+          <svg className="plasmo-mx-auto plasmo-h-12 plasmo-w-12 plasmo-text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          </svg>
+          <div className="plasmo-text-sm plasmo-text-gray-600">
+            <button
+              type="button"
+              className="plasmo-font-medium plasmo-text-primary-600 hover:plasmo-text-primary-500 plasmo-focus:outline-none plasmo-focus:underline"
+              onClick={handleFileSelect}
+            >
+              Choose files
+            </button>
+            <span className="plasmo-px-1">or drag and drop</span>
+          </div>
+          <p className="plasmo-text-xs plasmo-text-gray-500">
+            Files will be stored as variables in your prompt templates
+          </p>
+        </div>
+      </div>
       
       {selectedFiles.length > 0 && (
-        <div className="plasmo-selected-files plasmo-mt-2">
-          <h3 className="plasmo-text-sm plasmo-font-semibold plasmo-mb-1">Selected:</h3>
-          <ul className="plasmo-text-xs plasmo-text-gray-300">
-            {selectedFiles.map((file: VariableEntry, index: number) => (
-              <li key={index} className="plasmo-truncate">
-                {file.type === VARIABLE_ENTRY_TYPES.FILE ? "📄" : "📁"} {file.name}
+        <div className="plasmo-mt-3">
+          <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-2">
+            <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
+              Selected Files ({selectedFiles.length})
+            </h4>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="plasmo-text-xs plasmo-text-primary-600 hover:plasmo-text-primary-500 plasmo-focus:outline-none plasmo-focus:underline"
+            >
+              Clear All
+            </button>
+          </div>
+          
+          <ul className="plasmo-space-y-1 plasmo-max-h-40 plasmo-overflow-y-auto plasmo-bg-gray-50 plasmo-rounded-md plasmo-border plasmo-border-gray-200 plasmo-p-2">
+            {selectedFiles.map((file, index) => (
+              <li key={index} className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-py-1 plasmo-px-2 plasmo-text-sm plasmo-text-gray-700 plasmo-rounded hover:plasmo-bg-gray-100">
+                <div className="plasmo-flex plasmo-items-center plasmo-truncate">
+                  <svg className="plasmo-h-4 plasmo-w-4 plasmo-mr-2 plasmo-text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="plasmo-truncate">{file.metadata?.path || file.value}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile(index)}
+                  className="plasmo-ml-2 plasmo-text-gray-400 hover:plasmo-text-error-500"
+                  aria-label="Remove file"
+                >
+                  <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </li>
             ))}
           </ul>
@@ -167,5 +246,3 @@ function FilePicker({
     </div>
   );
 }
-
-export default FilePicker; 

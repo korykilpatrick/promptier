@@ -20,6 +20,7 @@ import { FileHandleRegistry } from '../../../filesystem/registry';
  * @property {Function} onUnfavorite - Function to unfavorite the template
  * @property {Function} onEdit - Function to edit the template
  * @property {Function} onDelete - Function to delete the template
+ * @property {number} index - Index for alternating backgrounds
  */
 
 type MouseEvent = {
@@ -35,6 +36,7 @@ type TemplateItemProps = {
   onUnfavorite: (id: number) => void;
   onEdit: (template: any) => void;
   onDelete: (id: number) => void;
+  index?: number;
 };
 
 /**
@@ -51,6 +53,7 @@ const TemplateItem = memo(({
   onUnfavorite,
   onEdit,
   onDelete,
+  index = 0
 }: TemplateItemProps) => {
   const navigate = useNavigate();
   const [isCopying, setIsCopying] = useState(false);
@@ -216,15 +219,19 @@ const TemplateItem = memo(({
     }
   };
 
+  // Determine background color based on index (for alternating)
+  const bgClass = index % 2 === 0 ? 'plasmo-template-item-even' : 'plasmo-template-item-odd';
+
+  // Extract first 150 characters (increased from 100) of content for preview
+  const contentPreview = template.content.substring(0, 150) + (template.content.length > 150 ? '...' : '');
+
   return (
     <div
       onClick={() => onSelect(template)}
       className={`
-        plasmo-group plasmo-px-4 plasmo-py-3 
-        hover:plasmo-bg-gray-50 
-        plasmo-transition-colors 
-        plasmo-cursor-pointer
-        ${isSelected ? "plasmo-bg-blue-50" : ""}
+        plasmo-template-item-compact ${bgClass}
+        plasmo-group plasmo-relative plasmo-w-full
+        ${isSelected ? "plasmo-template-item-selected" : ""}
       `}
       role="button"
       tabIndex={0}
@@ -235,72 +242,83 @@ const TemplateItem = memo(({
         }
       }}
     >
-      <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-        <div className="plasmo-flex-1 plasmo-min-w-0">
-          <h4 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900 plasmo-truncate">
-            {template.name}
-          </h4>
-          <div className="plasmo-mt-1 plasmo-flex plasmo-items-center plasmo-space-x-2">
+      <div className="plasmo-py-2 plasmo-px-3">
+        {/* Template Header with Actions */}
+        <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+          <div className="plasmo-flex plasmo-items-center plasmo-gap-1.5 plasmo-flex-1 plasmo-min-w-0">
+            {isFavorite && (
+              <span className="plasmo-text-accent-500 plasmo-flex-shrink-0">
+                <svg className="plasmo-w-4 plasmo-h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </span>
+            )}
+            <h3 className="plasmo-template-name plasmo-truncate">
+              {template.name}
+            </h3>
             {template.category && (
-              <span className="plasmo-text-xs plasmo-text-gray-500">
+              <span className="plasmo-badge plasmo-badge-blue plasmo-flex-shrink-0">
                 {template.category}
               </span>
             )}
-            <span className="plasmo-text-xs plasmo-text-gray-400">
-              {new Date(template.createdAt).toLocaleDateString()}
-            </span>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="plasmo-flex plasmo-items-center plasmo-ml-1 plasmo-flex-shrink-0 plasmo-space-x-0.5">
+            <button
+              onClick={handleCopyClick}
+              className="plasmo-action-btn-compact plasmo-template-action-btn"
+              aria-label="Copy template"
+              disabled={isCopying}
+            >
+              {isCopying ? (
+                <svg className="plasmo-w-5 plasmo-h-5 plasmo-animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="plasmo-opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="plasmo-opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={handleFavoriteClick}
+              className={`plasmo-action-btn-compact plasmo-template-action-btn ${isFavorite ? 'plasmo-text-accent-500' : 'plasmo-text-gray-400'}`}
+              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            >
+              <svg className="plasmo-w-5 plasmo-h-5" viewBox="0 0 20 20">
+                {isFavorite ? (
+                  <path fill="currentColor" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                ) : (
+                  <path stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                )}
+              </svg>
+            </button>
+            <button
+              onClick={handleEditClick}
+              className="plasmo-action-btn-compact plasmo-template-action-btn"
+              aria-label="Edit template"
+            >
+              <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              className="plasmo-action-btn-compact plasmo-template-action-btn plasmo-text-error-500 hover:plasmo-text-error-700"
+              aria-label="Delete template"
+            >
+              <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
           </div>
         </div>
-        
-        <div className="plasmo-flex plasmo-items-center plasmo-space-x-2 plasmo-opacity-0 group-hover:plasmo-opacity-100 plasmo-transition-opacity">
-          <button
-            onClick={handleCopyClick}
-            className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-gray-500 plasmo-transition-colors"
-            aria-label="Copy template"
-            disabled={isCopying}
-          >
-            {isCopying ? (
-              <span className="plasmo-animate-pulse">Copying...</span>
-            ) : (
-              <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={handleFavoriteClick}
-            className={`
-              plasmo-p-1 plasmo-rounded-full 
-              ${isFavorite 
-                ? "plasmo-text-yellow-500 hover:plasmo-text-yellow-600" 
-                : "plasmo-text-gray-400 hover:plasmo-text-gray-500"
-              }
-              plasmo-transition-colors
-            `}
-            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-          >
-            <svg className="plasmo-w-5 plasmo-h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          </button>
-          <button
-            onClick={handleEditClick}
-            className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-gray-500 plasmo-transition-colors"
-            aria-label="Edit template"
-          >
-            <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-          <button
-            onClick={handleDeleteClick}
-            className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-red-500 plasmo-transition-colors"
-            aria-label="Delete template"
-          >
-            <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+
+        {/* Template Content Preview */}
+        <div className="plasmo-template-description-compact plasmo-mt-1.5">
+          {contentPreview}
         </div>
       </div>
     </div>

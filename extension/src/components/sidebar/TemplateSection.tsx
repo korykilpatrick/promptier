@@ -5,7 +5,6 @@ const { useNavigate } = reactRouterDom;
 
 /** @typedef {import("shared/types/templates").Template} Template */
 
-const { SectionHeader } = require("./common/SectionHeader");
 const { LoadingSkeleton } = require("./common/LoadingSkeleton");
 const { ErrorBoundary } = require("../common/ErrorBoundary");
 const { TemplateList } = require("./template/TemplateList");
@@ -95,11 +94,17 @@ function TemplateSectionContent({
     // This is no longer needed but kept for compatibility
   };
 
+  // Prepare a unified template list with favorited templates at the top
+  const unifiedTemplates = [...templates];
+  const unifiedFavoriteTemplates = [...favoriteTemplates];
+
   return (
-    React.createElement("section", { className: "plasmo-p-4 plasmo-border-b plasmo-border-gray-200", "aria-expanded": expanded },
-      React.createElement(SectionHeader, { title: "Templates", isExpanded: expanded, onToggle: onToggle, id: "templates-header" }),
+    React.createElement("section", {
+      className: "plasmo-compact-section plasmo-animate-fade-in plasmo-w-full",
+      "aria-expanded": expanded
+    },
       expanded && (
-        React.createElement("div", { className: "plasmo-animate-slide-down" },
+        React.createElement("div", { className: "plasmo-px-3 plasmo-py-2" },
           isCreating || isEditing ? (
             React.createElement(TemplateForm, { 
               template: isEditing ? editingTemplate : undefined, 
@@ -107,47 +112,42 @@ function TemplateSectionContent({
               onCancel: handleCancel 
             })
           ) : (
-            React.createElement("div", { className: "plasmo-mb-4" },
-              React.createElement("button", {
-                className: "plasmo-btn-primary plasmo-w-full",
-                onClick: handleCreateClick,
-                "aria-label": "Create new template"
-              }, "Create New Template"),
-              // Template List
-              isLoading ? (
-                React.createElement(LoadingSkeleton)
-              ) : (
-                React.createElement("div", { className: "plasmo-space-y-2" },
-                  templates.length === 0 && favoriteTemplates.length === 0 ? (
-                    React.createElement("div", { className: "plasmo-text-sm plasmo-text-gray-600" }, "No templates yet")
-                  ) : (
-                    React.createElement("div", null,
-                      favoriteTemplates.length > 0 && (
-                        React.createElement("div", { className: "plasmo-mb-4" },
-                          React.createElement("h3", { className: "plasmo-text-sm plasmo-font-medium plasmo-mb-2" }, "Pinned Templates"),
-                          React.createElement(TemplateList, {
-                            templates: favoriteTemplates,
-                            onSelectTemplate: onSelectTemplate,
-                            onFavoriteTemplate: onPinTemplate,
-                            onUnfavoriteTemplate: onUnpinTemplate,
-                            onEditTemplate: onEditTemplate,
-                            onDeleteTemplate: onDeleteTemplate
-                          })
-                        )
-                      ),
-                      templates.length > 0 && (
-                        React.createElement("div", null,
-                          React.createElement("h3", { className: "plasmo-text-sm plasmo-font-medium plasmo-mb-2" }, "All Templates"),
-                          React.createElement(TemplateList, {
-                            templates: templates,
-                            onSelectTemplate: onSelectTemplate,
-                            onFavoriteTemplate: onPinTemplate,
-                            onUnfavoriteTemplate: onUnpinTemplate,
-                            onEditTemplate: onEditTemplate,
-                            onDeleteTemplate: onDeleteTemplate
-                          })
+            React.createElement("div", { className: "plasmo-space-y-3 plasmo-w-full" },
+              React.createElement("div", null,
+                // Template List
+                isLoading ? (
+                  React.createElement(LoadingSkeleton, { count: 3, variant: "card", size: "large" })
+                ) : (
+                  React.createElement("div", { className: "plasmo-mt-2 plasmo-w-full" },
+                    unifiedTemplates.length === 0 && unifiedFavoriteTemplates.length === 0 ? (
+                      React.createElement("div", { className: "plasmo-empty-state" },
+                        React.createElement("div", { className: "plasmo-text-gray-400 plasmo-mb-2" },
+                          React.createElement("svg", { className: "plasmo-w-10 plasmo-h-10 plasmo-mx-auto", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
+                            React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.5", d: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" })
+                          )
+                        ),
+                        React.createElement("h3", { className: "plasmo-text-base plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2" }, "No templates yet"),
+                        React.createElement("p", { className: "plasmo-text-sm plasmo-text-gray-500 plasmo-mb-3" },
+                          "Create your first template to get started with reusable prompts."
+                        ),
+                        React.createElement("button", {
+                          className: "plasmo-btn-primary",
+                          onClick: handleCreateClick
+                        },
+                          "Create Your First Template"
                         )
                       )
+                    ) : (
+                      React.createElement(TemplateList, {
+                        templates: unifiedTemplates,
+                        favoriteTemplates: unifiedFavoriteTemplates,
+                        onSelectTemplate: onSelectTemplate,
+                        onFavoriteTemplate: onPinTemplate,
+                        onUnfavoriteTemplate: onUnpinTemplate,
+                        onEditTemplate: onEditTemplate,
+                        onDeleteTemplate: onDeleteTemplate,
+                        onCreateTemplate: handleCreateClick
+                      })
                     )
                   )
                 )

@@ -88,16 +88,16 @@ function VariableInput({
 
   // Get appropriate border color based on state
   const getBorderColorClass = () => {
-    if (!state.isValid) return 'plasmo-border-red-300 plasmo-focus:border-red-500 plasmo-focus:ring-red-500 plasmo-focus:ring-opacity-30';
-    if (isFocused) return 'plasmo-border-blue-400 plasmo-ring-2 plasmo-ring-blue-500 plasmo-ring-opacity-20';
-    if (isGlobalValue) return 'plasmo-border-green-300 plasmo-focus:border-green-500 plasmo-focus:ring-green-500 plasmo-focus:ring-opacity-20';
-    return 'plasmo-border-gray-300 plasmo-focus:border-blue-500 plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20';
+    if (!state.isValid) return 'plasmo-border-error-300 plasmo-focus:plasmo-border-error-500 plasmo-focus:plasmo-ring-error-500 plasmo-focus:plasmo-ring-opacity-30';
+    if (isFocused) return 'plasmo-border-primary-400 plasmo-ring-2 plasmo-ring-primary-500 plasmo-ring-opacity-20';
+    if (isGlobalValue) return 'plasmo-border-success-300 plasmo-focus:plasmo-border-success-500 plasmo-focus:plasmo-ring-success-500 plasmo-focus:plasmo-ring-opacity-20';
+    return 'plasmo-border-gray-300 plasmo-focus:plasmo-border-primary-500 plasmo-focus:plasmo-ring-primary-500 plasmo-focus:plasmo-ring-opacity-20';
   };
 
   // Get background color based on state
   const getBackgroundColorClass = () => {
-    if (!state.isValid) return 'plasmo-bg-red-50';
-    if (isGlobalValue) return 'plasmo-bg-green-50';
+    if (!state.isValid) return 'plasmo-bg-error-50';
+    if (isGlobalValue) return 'plasmo-bg-success-50';
     if (state.isDirty) return 'plasmo-bg-white';
     return 'plasmo-bg-gray-50';
   };
@@ -112,12 +112,11 @@ function VariableInput({
     placeholder: variable.defaultValue || '',
     maxLength: validationOptions?.maxLength,
     className: `
-      plasmo-block plasmo-w-full plasmo-rounded-md plasmo-shadow-sm plasmo-text-sm plasmo-transition-colors plasmo-duration-200
+      plasmo-input
       ${getBorderColorClass()}
       ${getBackgroundColorClass()}
       ${isPending ? 'plasmo-italic' : ''}
       ${hasErrors && !multiline ? 'plasmo-pr-8' : ''}
-      ${multiline ? 'plasmo-py-2' : 'plasmo-py-1.5'} plasmo-px-3
     `,
     'aria-invalid': !state.isValid,
     'aria-describedby': [
@@ -132,23 +131,23 @@ function VariableInput({
         <div className="plasmo-flex plasmo-items-center">
           <label
             htmlFor={inputId}
-            className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-flex plasmo-items-center"
+            className="plasmo-label plasmo-flex plasmo-items-center plasmo-mb-0"
           >
             {variable.name}
             {variable.isRequired && (
-              <span className="plasmo-text-red-500 plasmo-ml-1 plasmo-font-bold" aria-label="required">*</span>
+              <span className="plasmo-text-error-500 plasmo-ml-1 plasmo-font-bold" aria-label="required">*</span>
             )}
           </label>
           
           {/* Status badges */}
           {state.isDirty && (
-            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
+            <span className="plasmo-badge plasmo-badge-blue plasmo-ml-2">
               Modified
             </span>
           )}
           
           {isGlobalValue && (
-            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-green-100 plasmo-text-green-800">
+            <span className="plasmo-badge plasmo-badge-green plasmo-ml-2">
               Global
             </span>
           )}
@@ -160,8 +159,8 @@ function VariableInput({
               className={`plasmo-text-xs plasmo-transition-colors plasmo-duration-200 ${
                 localValue.length > (validationOptions.maxLength * 0.9)
                   ? localValue.length >= validationOptions.maxLength 
-                    ? 'plasmo-text-red-500 plasmo-font-medium' 
-                    : 'plasmo-text-amber-500'
+                    ? 'plasmo-text-error-500 plasmo-font-medium'
+                    : 'plasmo-text-accent-500'
                   : 'plasmo-text-gray-500'
               }`}
             >
@@ -197,7 +196,7 @@ function VariableInput({
       </div>
 
       {variable.description && (
-        <p className="plasmo-text-xs plasmo-text-gray-500 plasmo-mb-1.5" id={`desc-${variable.name}`}>
+        <p className="plasmo-text-caption plasmo-mb-1.5" id={`desc-${variable.name}`}>
           {variable.description}
         </p>
       )}
@@ -220,7 +219,7 @@ function VariableInput({
         {hasErrors && !multiline && (
           <div className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-3 plasmo-flex plasmo-items-center plasmo-pointer-events-none">
             <svg
-              className="plasmo-h-5 plasmo-w-5 plasmo-text-red-500"
+              className="plasmo-h-5 plasmo-w-5 plasmo-text-error-500"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -240,7 +239,7 @@ function VariableInput({
             <button
               type="button"
               onClick={handleSaveToGlobal}
-              className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-green-600 plasmo-focus:outline-none"
+              className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-success-600 plasmo-focus:plasmo-outline-none plasmo-transition-colors"
               title="Save to global variables"
             >
               <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,7 +254,7 @@ function VariableInput({
       {hasErrors && (
         <ul
           id={errorId}
-          className="plasmo-mt-1.5 plasmo-text-xs plasmo-text-red-600 plasmo-list-disc plasmo-list-inside"
+          className="plasmo-mt-1.5 plasmo-text-xs plasmo-text-error-600 plasmo-list-disc plasmo-list-inside"
           role="alert"
         >
           {state.errors.map((error, index) => (

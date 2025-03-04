@@ -2,7 +2,6 @@ import React, { useCallback, useState, useMemo } from "react"
 import type { Template } from "shared/types/templates"
 import { VirtualList } from "../../common/VirtualList"
 import { TemplateItem } from "./TemplateItem"
-import { KeyboardShortcutsHelp } from "../../common/KeyboardShortcutsHelp"
 import { useTemplateKeyboardShortcuts } from "../../../hooks/useTemplateKeyboardShortcuts"
 
 interface TemplateListProps {
@@ -16,9 +15,6 @@ interface TemplateListProps {
   isCreating?: boolean
   onCreateTemplate?: () => void
 }
-
-const ITEM_HEIGHT = 72 // Height of each template item in pixels
-const CONTAINER_HEIGHT = 400 // Maximum height of the list container
 
 export const TemplateList: React.FC<TemplateListProps> = ({
   templates = [],
@@ -34,18 +30,24 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
-  // Memoize the combined templates array
+  // Prepare a unified list with favorites at the top
   const allTemplates = useMemo(() => {
-    const favorites = (favoriteTemplates || []).map(template => ({ ...template }))
-    const regular = (templates || []).map(template => ({ ...template }))
-    return [...favorites, ...regular]
-  }, [templates, favoriteTemplates])
+    // Mark favorites for display
+    const favs = (favoriteTemplates || []).map(t => ({ ...t, isFavorite: true }));
+    
+    // Filter out templates that are already in favorites to avoid duplicates
+    const nonFavs = (templates || [])
+      .filter(template => !favs.some(f => f.id === template.id))
+      .map(template => ({ ...template }));
+    
+    // Return unified list with favorites at top
+    return [...favs, ...nonFavs];
+  }, [templates, favoriteTemplates]);
 
   // Find the selected template
-  const selectedTemplate = useMemo(() => 
-    allTemplates.find(t => t.id === selectedTemplateId),
-    [allTemplates, selectedTemplateId]
-  )
+  const selectedTemplate = useMemo(() => {
+    return allTemplates.find(t => t.id === selectedTemplateId);
+  }, [allTemplates, selectedTemplateId]);
 
   // Handle keyboard navigation
   const handleItemFocus = useCallback((template: Template) => {
@@ -77,25 +79,16 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     isCreating
   })
 
-  // Memoize the render function for template items
+  // Render a template item
   const renderTemplateItem = useCallback((template: Template, index: number) => {
-    const isFirst = index === 0
-    const isLast = index === templates.length - 1
-
     return (
-      <div 
-        className={`
-          plasmo-border-gray-200
-          ${!isFirst ? "plasmo-border-t" : ""}
-          ${isLast ? "plasmo-rounded-b-lg" : ""}
-          ${isFirst ? "plasmo-rounded-t-lg" : ""}
-        `}
-      >
+      <div className="plasmo-mb-1">
         <TemplateItem
           key={template.id}
           template={template}
           isFavorite={template.isFavorite}
           isSelected={template.id === selectedTemplateId}
+          index={index}
           onSelect={(template) => {
             setSelectedTemplateId(template.id)
             onSelectTemplate(template)
@@ -109,53 +102,56 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     )
   }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
 
-  // Render favorite templates section if there are any
-  const renderFavoriteSection = () => {
-    if (!favoriteTemplates?.length) return null
-
+  // If no templates
+  if (allTemplates.length === 0) {
     return (
-      <div>
-        <h2 className="plasmo-text-xs plasmo-font-medium plasmo-text-gray-500 plasmo-uppercase plasmo-tracking-wider plasmo-mb-3">
-          Favorite Templates
-        </h2>
-        <VirtualList
-          items={favoriteTemplates}
-          renderItem={renderTemplateItem}
-          itemHeight={ITEM_HEIGHT}
-          containerHeight={Math.min(CONTAINER_HEIGHT, favoriteTemplates.length * ITEM_HEIGHT)}
-          className="plasmo-mb-6"
-          onItemFocus={(index) => handleItemFocus(favoriteTemplates[index])}
-        />
-      </div>
-    )
-  }
-
-  // Render all templates section
-  const renderAllTemplatesSection = () => {
-    return (
-      <div>
-        <div className="plasmo-flex plasmo-justify-end plasmo-items-center plasmo-mb-3">
-          <KeyboardShortcutsHelp shortcuts={shortcuts} />
+      <div className="plasmo-empty-state plasmo-w-full">
+        <div className="plasmo-text-gray-400 plasmo-mb-2">
+          <svg className="plasmo-w-10 plasmo-h-10 plasmo-mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
         </div>
-        {!templates?.length ? (
-          <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic">No templates yet</p>
-        ) : (
-          <VirtualList
-            items={templates}
-            renderItem={renderTemplateItem}
-            itemHeight={ITEM_HEIGHT}
-            containerHeight={Math.min(CONTAINER_HEIGHT, templates.length * ITEM_HEIGHT)}
-            onItemFocus={(index) => handleItemFocus(templates[index])}
-          />
-        )}
+        <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">No templates yet</h3>
+        <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-3">
+          Create your first template to get started with reusable prompts.
+        </p>
+        <button
+          className="plasmo-btn-primary"
+          onClick={onCreateTemplate}
+        >
+          Create Your First Template
+        </button>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="plasmo-space-y-6">
-      {renderFavoriteSection()}
-      {renderAllTemplatesSection()}
+    <div className="plasmo-space-y-1 plasmo-w-full">
+      <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-1">
+        <div className="plasmo-text-xs plasmo-text-gray-500">
+          {allTemplates.length} template{allTemplates.length !== 1 ? 's' : ''}
+        </div>
+        <button
+          className="plasmo-btn-primary plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-text-xs"
+          onClick={onCreateTemplate}
+          aria-label="Create new template"
+        >
+          <svg
+            className="plasmo-w-3.5 plasmo-h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          New
+        </button>
+      </div>
+      
+      {/* Unified template list with full width */}
+      <div className="plasmo-space-y-0.5 plasmo-w-full">
+        {allTemplates.map((template, index) => renderTemplateItem(template, index))}
+      </div>
     </div>
   )
 } 

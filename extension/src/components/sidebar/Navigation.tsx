@@ -1,80 +1,40 @@
-const React = require("react");
-const reactRouterDom = require("react-router-dom");
-const { useNavigate, useLocation } = reactRouterDom;
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
 
-/**
- * @typedef {Object} NavItem
- * @property {string} id - Unique identifier
- * @property {string} label - Display text
- * @property {string} path - Route path
- * @property {string} icon - SVG icon code
- */
-
-/**
- * Navigation component for the sidebar
- * @returns {JSX.Element} Rendered component
- */
-function Navigation() {
-  const navigate = useNavigate();
+export const Navigation: React.FC = () => {
   const location = useLocation();
-  
-  /** @type {NavItem[]} */
-  const navItems = [
-    {
-      id: 'templates',
-      label: 'Templates',
-      path: '/',
-      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />`
-    },
-    {
-      id: 'variables',
-      label: 'Variables',
-      path: '/variables',
-      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />`
-    }
-  ];
-  
-  const handleNavClick = (path) => {
-    navigate(path);
+  const path = location.pathname;
+
+  const isActive = (route: string) => {
+    return path === route || (route !== "/" && path.startsWith(route));
   };
-  
-  const isActivePath = (path) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
-  
+
   return (
-    <nav className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200">
-      <div className="plasmo-flex plasmo-items-center">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => handleNavClick(item.path)}
-            className={`
-              plasmo-flex plasmo-items-center plasmo-px-4 plasmo-py-3 plasmo-flex-1
-              plasmo-text-sm plasmo-font-medium plasmo-transition-colors
-              ${isActivePath(item.path) 
-                ? 'plasmo-text-blue-600 plasmo-border-b-2 plasmo-border-blue-600' 
-                : 'plasmo-text-gray-600 hover:plasmo-text-gray-900 hover:plasmo-bg-gray-50'
-              }
-            `}
-            aria-current={isActivePath(item.path) ? 'page' : undefined}
+    <nav className="plasmo-bg-white plasmo-border-b plasmo-border-gray-200 plasmo-px-3 plasmo-py-1">
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
+        <div className="plasmo-flex plasmo-items-center plasmo-space-x-1">
+          <Link
+            to="/"
+            className={`plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
+              ${isActive("/")
+                ? "plasmo-text-primary-700 plasmo-bg-primary-50"
+                : "plasmo-text-gray-600 hover:plasmo-text-gray-800 hover:plasmo-bg-gray-50"
+              }`}
           >
-            <svg 
-              className="plasmo-w-5 plasmo-h-5 plasmo-mr-2" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-              dangerouslySetInnerHTML={{ __html: item.icon }}
-            />
-            {item.label}
-          </button>
-        ))}
+            Templates
+          </Link>
+          <Link
+            to="/variables"
+            className={`plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-rounded-md plasmo-font-medium plasmo-transition-colors
+              ${isActive("/variables")
+                ? "plasmo-text-primary-700 plasmo-bg-primary-50"
+                : "plasmo-text-gray-600 hover:plasmo-text-gray-800 hover:plasmo-bg-gray-50"
+              }`}
+          >
+            Variables
+          </Link>
+        </div>
       </div>
     </nav>
   );
-}
-
-module.exports = { Navigation }; 
+};

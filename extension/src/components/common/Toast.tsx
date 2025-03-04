@@ -25,33 +25,66 @@ const ToastComponent: React.FC<ToastProps> = ({ toast, onDismiss }) => {
     }
   }, [toast.id, toast.duration, onDismiss])
 
-  const bgColor = {
-    success: "bg-green-500",
-    error: "bg-red-500",
-    info: "bg-blue-500",
-    warning: "bg-yellow-500"
-  }[toast.type]
+  // Get appropriate styling based on toast type
+  const getToastStyles = () => {
+    switch (toast.type) {
+      case "success":
+        return "plasmo-bg-success-500 plasmo-text-white plasmo-border-success-700";
+      case "error":
+        return "plasmo-bg-error-500 plasmo-text-white plasmo-border-error-700";
+      case "info":
+      default:
+        return "plasmo-bg-primary-500 plasmo-text-white plasmo-border-primary-700";
+    }
+  };
 
-  const icon = {
-    success: "✓",
-    error: "✕",
-    info: "ℹ",
-    warning: "⚠"
-  }[toast.type]
+  const getToastIcon = () => {
+    switch (toast.type) {
+      case "success":
+        return (
+          <svg className="plasmo-w-5 plasmo-h-5 plasmo-text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        );
+      case "error":
+        return (
+          <svg className="plasmo-w-5 plasmo-h-5 plasmo-text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+      case "info":
+      default:
+        return (
+          <svg className="plasmo-w-5 plasmo-h-5 plasmo-text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+    }
+  };
 
   return (
     <div
-      className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 animate-slide-in`}
+      className={`
+        ${getToastStyles()}
+        plasmo-flex plasmo-items-center plasmo-shadow-lg plasmo-rounded-lg plasmo-border
+        plasmo-px-4 plasmo-py-3 plasmo-mb-3 plasmo-max-w-sm plasmo-animate-fade-in plasmo-animate-slide-down
+      `}
       role="alert"
     >
-      <span className="font-bold">{icon}</span>
-      <p className="flex-1">{toast.message}</p>
+      <div className="plasmo-flex-shrink-0 plasmo-mr-3">
+        {getToastIcon()}
+      </div>
+      <div className="plasmo-flex-1 plasmo-text-sm plasmo-mr-2">
+        {toast.message}
+      </div>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-white hover:text-gray-200 focus:outline-none"
+        className="plasmo-flex-shrink-0 plasmo-p-1 plasmo-rounded-full plasmo-text-white plasmo-opacity-70 hover:plasmo-opacity-100 focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-white"
         aria-label="Dismiss notification"
       >
-        ✕
+        <svg className="plasmo-w-4 plasmo-h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
     </div>
   )
@@ -67,7 +100,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
 
   return createPortal(
     <div
-      className="fixed top-4 right-4 z-50 space-y-2"
+      className="plasmo-space-y-2"
       role="region"
       aria-label="Notifications"
     >
