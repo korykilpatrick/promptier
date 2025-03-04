@@ -112,6 +112,7 @@ try {
     
     const [isEditingName, setIsEditingName] = useState(false)
     const [isEditingContent, setIsEditingContent] = useState(false)
+    const [isEditingCategory, setIsEditingCategory] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isCopying, setIsCopying] = useState(false)
@@ -178,6 +179,8 @@ try {
     const handleEdit = function(field: string) {
       if (field === "name") {
         setIsEditingName(true)
+      } else if (field === "category") {
+        setIsEditingCategory(true)
       } else {
         setIsEditingContent(true)
       }
@@ -342,6 +345,9 @@ try {
             title: "Template created",
             message: "Template was created successfully"
           })
+          // Navigate back after creation only
+          if (onTemplateChange) onTemplateChange()
+          onBack()
         } else if (template) {
           // Update existing template
           await updateTemplate(template.id, templateData)
@@ -350,10 +356,14 @@ try {
             title: "Template updated",
             message: "Template was updated successfully"
           })
+          // Just notify about the change but stay on the page
+          if (onTemplateChange) onTemplateChange()
+          
+          // Exit editing mode
+          setIsEditingContent(false)
+          setIsEditingName(false)
+          setIsEditingCategory(false)
         }
-
-        if (onTemplateChange) onTemplateChange()
-        onBack()
       } catch (e) {
         console.error("Error saving template:", e)
         addToast({
@@ -369,9 +379,13 @@ try {
     // Cancel editing and reset to original content
     const handleCancelEdit = function() {
       setIsEditingContent(false)
-      // Reset content to original template content
+      setIsEditingName(false)
+      setIsEditingCategory(false)
+      // Reset content and category to original template content
       if (template) {
         setContent(template.content)
+        setCategory(template.category || "")
+        setName(template.name)
       }
     }
 
@@ -467,14 +481,30 @@ try {
                 Category <span className="plasmo-text-gray-500 plasmo-text-xs">(optional)</span>
               </label>
             </div>
+            {!isCreate && !isEditingCategory && (
+              <button
+                onClick={() => handleEdit("category")}
+                className="plasmo-text-gray-500 hover:plasmo-text-gray-700"
+              >
+                <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="e.g., Code Generation, Writing, Research"
-            className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
-          />
+          {isEditingCategory || isCreate ? (
+            <input
+              type="text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="e.g., Code Generation, Writing, Research"
+              className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+            />
+          ) : (
+            <div className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-bg-gray-50">
+              {category || <span className="plasmo-text-gray-400">No category</span>}
+            </div>
+          )}
         </div>
 
         {/* Variables Section - Now above the template content */}
