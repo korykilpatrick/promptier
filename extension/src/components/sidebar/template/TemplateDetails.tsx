@@ -366,6 +366,15 @@ try {
       }
     }
 
+    // Cancel editing and reset to original content
+    const handleCancelEdit = function() {
+      setIsEditingContent(false)
+      // Reset content to original template content
+      if (template) {
+        setContent(template.content)
+      }
+    }
+
     // Delete template logic
     const handleDelete = async function() {
       if (!template) return
@@ -586,6 +595,14 @@ try {
 
         {/* Action buttons */}
         <div className="plasmo-flex plasmo-justify-end plasmo-gap-2 plasmo-mt-4">
+          {isEditingContent && (
+            <button
+              onClick={handleCancelEdit}
+              className="plasmo-px-3 plasmo-py-1.5 plasmo-text-sm plasmo-text-gray-600 hover:plasmo-text-gray-700 plasmo-bg-gray-100 hover:plasmo-bg-gray-200 plasmo-rounded-md plasmo-transition-colors plasmo-duration-150"
+            >
+              Cancel
+            </button>
+          )}
           {!isCreate && (
             <button
               onClick={handleDelete}
