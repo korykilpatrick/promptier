@@ -108,7 +108,9 @@ const TemplateItem = memo(({
   const handleDeleteClick = (e: MouseEvent) => {
     e.stopPropagation();
     console.log(`[TemplateItem] Delete clicked for template ID: ${template.id}`);
-    onDelete(template.id);
+    if (window.confirm(`Are you sure you want to delete the template "${template.name}"?`)) {
+      onDelete(template.id);
+    }
   };
 
   const handleCopyClick = async (e: React.MouseEvent) => {
