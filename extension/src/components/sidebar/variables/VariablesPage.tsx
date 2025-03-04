@@ -1,589 +1,355 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useUserVariables } from "../../../hooks/useUserVariables";
 import { useToast } from "../../../hooks/useToast";
-import { LoadingSkeleton } from "../common/LoadingSkeleton";
+import { UserVariable } from "../../../../shared/types/variables";
 import { VariableTypeSelector } from "./VariableTypeSelector";
 import { FilePicker } from "./FilePicker";
+import { VariableItem } from "./VariableItem";
+import { LoadingState } from "../../common/LoadingState";
+import { ErrorState } from "../../common/ErrorState";
 
-// Variable entry types
 const VARIABLE_ENTRY_TYPES = {
-  TEXT: 'text',
-  FILE: 'file',
-  DIRECTORY: 'directory'
+  TEXT: "text",
+  FILE: "file"
 };
 
-// Helper to create a text entry
-const createTextEntry = (value) => ({
+const getTextEntries = (variable: UserVariable) => {
+  if (!variable || !variable.value || !Array.isArray(variable.value)) {
+    return [];
+  }
+  return variable.value.filter((entry: any) => entry && entry.type === VARIABLE_ENTRY_TYPES.TEXT);
+};
+
+const createTextEntry = (value: string) => ({
   type: VARIABLE_ENTRY_TYPES.TEXT,
   value
 });
 
-// Helper to get text entries from a variable
-const getTextEntries = (variable) => {
-  if (!variable || !variable.value) return [];
-  return Array.isArray(variable.value)
-    ? variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT)
-    : [];
-};
-
 function VariablesPage() {
+  const { addToast } = useToast();
+  
   const {
     variables,
+    isLoading,
+    error,
+    fetchVariables,
     createVariable,
     updateVariable,
-    deleteVariable,
-    getVariableByName,
-    isLoading,
-    error
-  } = useUserVariables({ autoFetch: true });
-
-  const { addToast } = useToast();
-
-  // Form state for creating/editing variables
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    id: null,
-    name: '',
-    textValue: '',
-    entries: [],
-    variableType: VARIABLE_ENTRY_TYPES.TEXT
+    deleteVariable
+  } = useUserVariables({
+    autoFetch: true
   });
+
+  const [showCreationForm, setShowCreationForm] = useState(false);
+  const [editingVariable, setEditingVariable] = useState<UserVariable | null>(null);
   
-  const [createForm, setCreateForm] = useState({
-    name: '',
-    textValue: '',
-    variableType: VARIABLE_ENTRY_TYPES.TEXT
+  const [editForm, setEditForm] = useState({
+    id: null as number | null,
+    name: "",
+    type: VARIABLE_ENTRY_TYPES.TEXT,
+    textValue: "",
+    entries: [] as any[]
   });
 
-  const resetForms = () => {
+  // Reset form when not editing or creating
+  useEffect(() => {
+    if (!editingVariable && !showCreationForm) {
+      setEditForm({
+        id: null,
+        name: "",
+        type: VARIABLE_ENTRY_TYPES.TEXT,
+        textValue: "",
+        entries: []
+      });
+    }
+  }, [editingVariable, showCreationForm]);
+
+  const handleCreateClick = useCallback(() => {
+    setEditingVariable(null);
+    setShowCreationForm(true);
     setEditForm({
       id: null,
-      name: '',
-      textValue: '',
-      entries: [],
-      variableType: VARIABLE_ENTRY_TYPES.TEXT
+      name: "",
+      type: VARIABLE_ENTRY_TYPES.TEXT,
+      textValue: "",
+      entries: []
     });
-    setCreateForm({
-      name: '',
-      textValue: '',
-      variableType: VARIABLE_ENTRY_TYPES.TEXT
-    });
-    setIsEditing(false);
-  };
+  }, []);
 
-  // Handle editing a variable
-  const handleEdit = useCallback((variable) => {
+  const handleEdit = useCallback((variable: UserVariable) => {
     const textEntries = getTextEntries(variable);
     const textValue = textEntries.length > 0 
-      ? textEntries.map((entry) => entry.value).join('\n')
+      ? textEntries.map((entry: any) => entry.value).join('\n')
       : '';
     
+    setEditingVariable(variable);
+    setShowCreationForm(false);
     setEditForm({
       id: variable.id,
       name: variable.name,
+      type: textEntries.length > 0 ? VARIABLE_ENTRY_TYPES.TEXT : VARIABLE_ENTRY_TYPES.FILE,
       textValue,
-      entries: Array.isArray(variable.value) ? variable.value : [],
-      variableType: Array.isArray(variable.value) && variable.value.length > 0
-        ? variable.value[0].type
-        : VARIABLE_ENTRY_TYPES.TEXT
+      entries: Array.isArray(variable.value) ? variable.value : []
     });
-    setIsEditing(true);
   }, []);
 
-  // Handle canceling edit
   const handleCancelEdit = useCallback(() => {
-    resetForms();
+    setEditingVariable(null);
+    setShowCreationForm(false);
   }, []);
 
-  // Handle clearing file entries during edit
   const handleClearFileEntries = useCallback(() => {
     setEditForm(prev => ({
       ...prev,
-      entries: prev.entries.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT),
-      variableType: VARIABLE_ENTRY_TYPES.TEXT
+      entries: prev.entries.filter((entry: any) => entry.type === VARIABLE_ENTRY_TYPES.TEXT)
     }));
   }, []);
 
-  // Handle saving an edit
   const handleSaveEdit = useCallback(async () => {
     try {
-      // Prepare entries based on variable type
       const textValueArray = editForm.textValue.trim()
-        ? editForm.textValue.split('\n').map((value) => createTextEntry(value))
+        ? editForm.textValue.split('\n').map((value: string) => createTextEntry(value))
         : [];
       
-      const nonTextEntries = editForm.entries.filter((entry) =>
+      const nonTextEntries = editForm.entries.filter((entry: any) =>
         entry.type !== VARIABLE_ENTRY_TYPES.TEXT
       );
       
       const combinedEntries = [...textValueArray, ...nonTextEntries];
       
-      // Update variable
-      await updateVariable(editForm.id, {
-        name: editForm.name,
-        value: combinedEntries
-      });
+      if (editForm.id) {
+        await updateVariable(editForm.id, {
+          name: editForm.name,
+          value: combinedEntries
+        });
+        addToast({
+          type: "success",
+          title: "Variable updated",
+          message: `Variable "${editForm.name}" has been updated`
+        });
+      } else {
+        await createVariable({
+          name: editForm.name,
+          value: combinedEntries
+        });
+        addToast({
+          type: "success",
+          title: "Variable created",
+          message: `Variable "${editForm.name}" has been created`
+        });
+      }
       
-      addToast({
-        type: "success",
-        message: `Variable "${editForm.name}" updated successfully`,
-        duration: 3000
-      });
-      
-      resetForms();
+      setEditingVariable(null);
+      setShowCreationForm(false);
     } catch (error) {
-      console.error("Error updating variable:", error);
+      console.error("Failed to save variable:", error);
       addToast({
         type: "error",
-        message: `Error updating variable: ${error.message}`,
-        duration: 5000
+        title: "Error",
+        message: `Failed to save variable: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
-  }, [editForm, updateVariable, addToast]);
+  }, [editForm, updateVariable, createVariable, addToast]);
 
-  // Handle variable deletion
-  const handleDelete = useCallback(async (id, name) => {
+  const handleDelete = useCallback(async (id: number, name: string) => {
     try {
       await deleteVariable(id);
       addToast({
         type: "success",
-        message: `Variable "${name}" deleted successfully`,
-        duration: 3000
+        title: "Variable deleted",
+        message: `Variable "${name}" has been deleted`
       });
     } catch (error) {
-      console.error("Error deleting variable:", error);
+      console.error("Failed to delete variable:", error);
       addToast({
         type: "error",
-        message: `Error deleting variable: ${error.message}`,
-        duration: 5000
+        title: "Error",
+        message: `Failed to delete variable: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
   }, [deleteVariable, addToast]);
 
-  // Handle variable type change
-  const handleVariableTypeChange = useCallback((type) => {
-    if (isEditing) {
-      setEditForm(prev => ({
-        ...prev,
-        variableType: type
-      }));
-    } else {
-      setCreateForm(prev => ({
-        ...prev,
-        variableType: type
-      }));
-    }
-  }, [isEditing]);
-
-  // Handle file selection for new variable
-  const handleFileSelect = useCallback((entries) => {
-    const entriesArray = Array.isArray(entries) ? entries : [entries];
-    setCreateForm(prev => ({
+  const handleVariableTypeChange = useCallback((type: string) => {
+    setEditForm(prev => ({
       ...prev,
-      entries: entriesArray
+      type
     }));
   }, []);
 
-  // Handle file selection during edit
-  const handleEditFileSelect = useCallback((entries) => {
+  const handleFileSelect = useCallback((entries: any) => {
     const entriesArray = Array.isArray(entries) ? entries : [entries];
     setEditForm(prev => ({
       ...prev,
-      entries: [...prev.entries.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT), ...entriesArray]
+      entries: [...prev.entries, ...entriesArray]
     }));
   }, []);
 
-  // Handle variable creation
-  const handleCreateVariable = useCallback(async () => {
-    try {
-      // Validate name
-      if (!createForm.name.trim()) {
-        addToast({
-          type: "error",
-          message: "Variable name cannot be empty",
-          duration: 3000
-        });
-        return;
-      }
+  const handleEditFileSelect = useCallback((entries: any) => {
+    const entriesArray = Array.isArray(entries) ? entries : [entries];
+    setEditForm(prev => ({
+      ...prev,
+      entries: [...prev.entries, ...entriesArray]
+    }));
+  }, []);
 
-      // Check for duplicate name
-      const existingVar = await getVariableByName(createForm.name);
-      if (existingVar) {
-        addToast({
-          type: "error",
-          message: `Variable "${createForm.name}" already exists`,
-          duration: 3000
-        });
-        return;
-      }
+  const isFormValid = !!editForm.name.trim() && (
+    (editForm.type === VARIABLE_ENTRY_TYPES.TEXT && editForm.textValue.trim()) ||
+    (editForm.type === VARIABLE_ENTRY_TYPES.FILE && editForm.entries.some(entry => entry.type === VARIABLE_ENTRY_TYPES.FILE))
+  );
 
-      // Prepare entries based on variable type
-      let valueArray = [];
-      
-      if (createForm.variableType === VARIABLE_ENTRY_TYPES.TEXT) {
-        valueArray = createForm.textValue.trim()
-          ? createForm.textValue.split('\n').map((value) => createTextEntry(value))
-          : [createTextEntry('')]; // At least one empty entry
-      } else {
-        // For file/directory, use the entries from the file picker
-        valueArray = createForm.entries && createForm.entries.length > 0
-          ? createForm.entries
-          : []; // Empty array if no files selected
-      }
-      
-      // Create the variable
-      await createVariable({
-        name: createForm.name,
-        value: valueArray
-      });
-      
-      addToast({
-        type: "success",
-        message: `Variable "${createForm.name}" created successfully`,
-        duration: 3000
-      });
-      
-      // Reset form
-      setCreateForm({
-        name: '',
-        textValue: '',
-        variableType: VARIABLE_ENTRY_TYPES.TEXT
-      });
-      
-    } catch (error) {
-      console.error("Error creating variable:", error);
-      addToast({
-        type: "error",
-        message: `Error creating variable: ${error.message}`,
-        duration: 5000
-      });
-    }
-  }, [createForm, createVariable, getVariableByName, addToast]);
-
-  // Render content based on loading/error state
   if (isLoading) {
-    return (
-      <div className="plasmo-p-4">
-        <div className="plasmo-mb-6">
-          <h2 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">Global Variables</h2>
-          <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-4">
-            Create and manage reusable variables for your templates
-          </p>
-        </div>
-        <LoadingSkeleton count={4} variant="card" />
-      </div>
-    );
+    return <LoadingState message="Loading variables..." />;
   }
 
   if (error) {
     return (
-      <div className="plasmo-p-4">
-        <div className="plasmo-bg-error-50 plasmo-border plasmo-border-error-200 plasmo-rounded-md plasmo-p-4 plasmo-mb-4">
-          <div className="plasmo-flex">
-            <div className="plasmo-flex-shrink-0">
-              <svg className="plasmo-h-5 plasmo-w-5 plasmo-text-error-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="plasmo-ml-3">
-              <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-error-800">Error loading variables</h3>
-              <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-error-700">
-                <p>{error.message || "An unexpected error occurred"}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ErrorState
+        message={`Failed to load variables: ${error instanceof Error ? error.message : 'Unknown error'}`}
+        onRetry={fetchVariables}
+      />
     );
   }
 
   return (
-    <div className="plasmo-p-4 plasmo-h-full plasmo-overflow-y-auto">
-      <div className="plasmo-mb-6">
-        <h2 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">Global Variables</h2>
-        <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-4">
-          Create and manage reusable variables for your templates
-        </p>
-      </div>
-
-      {/* Create Variable Form */}
-      {!isEditing && (
-        <div className="plasmo-mb-6">
-          <div className="plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-shadow-sm plasmo-overflow-hidden">
-            <div className="plasmo-p-4">
-              <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800 plasmo-mb-3">Create New Variable</h3>
-              
-              <div className="plasmo-mb-4">
-                <label htmlFor="variableName" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
-                  Variable Name
+    <div className="plasmo-p-4 plasmo-w-full">
+      {/* Variable Creation/Editing Form */}
+      {(showCreationForm || editingVariable) && (
+        <div className="plasmo-mb-6 plasmo-p-4 plasmo-bg-white plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-shadow-sm plasmo-animate-fade-in">
+          <h2 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-800 plasmo-mb-4">
+            {editingVariable ? "Edit Variable" : "Create New Variable"}
+          </h2>
+          
+          <div className="plasmo-space-y-4">
+            <div>
+              <label htmlFor="variableName" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                Variable Name
+              </label>
+              <input
+                id="variableName"
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                className="plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-shadow-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-primary-500"
+                placeholder="Enter variable name"
+              />
+            </div>
+            
+            <div>
+              <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                Variable Type
+              </label>
+              <VariableTypeSelector
+                selectedType={editForm.type}
+                onChange={handleVariableTypeChange}
+              />
+            </div>
+            
+            {editForm.type === VARIABLE_ENTRY_TYPES.TEXT && (
+              <div>
+                <label htmlFor="variableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                  Text Value
                 </label>
-                <input
-                  type="text"
-                  id="variableName"
-                  className="plasmo-input"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter variable name"
+                <textarea
+                  id="variableValue"
+                  value={editForm.textValue}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, textValue: e.target.value }))}
+                  className="plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-border plasmo-border-gray-300 plasmo-rounded-md plasmo-shadow-sm plasmo-focus:outline-none plasmo-focus:ring-2 plasmo-focus:ring-primary-500 plasmo-h-32 plasmo-resize-y"
+                  placeholder="Enter variable value (one entry per line)"
                 />
               </div>
-              
-              <div className="plasmo-mb-4">
-                <VariableTypeSelector
-                  selectedType={createForm.variableType}
-                  onChange={handleVariableTypeChange}
+            )}
+            
+            {editForm.type === VARIABLE_ENTRY_TYPES.FILE && (
+              <div>
+                <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
+                  File Selection
+                </label>
+                <FilePicker
+                  onSelect={editingVariable ? handleEditFileSelect : handleFileSelect}
+                  selectedEntries={editForm.entries.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.FILE)}
+                  onClear={handleClearFileEntries}
                 />
               </div>
-              
-              {createForm.variableType === VARIABLE_ENTRY_TYPES.TEXT ? (
-                <div className="plasmo-mb-4">
-                  <label htmlFor="variableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
-                    Variable Value
-                  </label>
-                  <textarea
-                    id="variableValue"
-                    className="plasmo-input plasmo-resize-y"
-                    rows={3}
-                    value={createForm.textValue}
-                    onChange={(e) => setCreateForm(prev => ({ ...prev, textValue: e.target.value }))}
-                    placeholder="Enter variable value (use multiple lines for multiple values)"
-                  />
-                </div>
-              ) : (
-                <div className="plasmo-mb-4">
-                  <FilePicker
-                    type={createForm.variableType === VARIABLE_ENTRY_TYPES.DIRECTORY ? 'directory' : 'file'}
-                    onSelect={handleFileSelect}
-                    multiple={true}
-                  />
-                </div>
-              )}
-              
-              <div className="plasmo-flex plasmo-justify-end">
-                <button
-                  type="button"
-                  onClick={handleCreateVariable}
-                  className="plasmo-btn-primary"
-                >
-                  Create Variable
-                </button>
-              </div>
+            )}
+            
+            <div className="plasmo-flex plasmo-justify-end plasmo-space-x-3 plasmo-mt-4">
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="plasmo-px-4 plasmo-py-2 plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-bg-white plasmo-border plasmo-border-gray-300
+                        plasmo-rounded-md plasmo-shadow-sm hover:plasmo-bg-gray-50 plasmo-focus:outline-none plasmo-focus:ring-2
+                        plasmo-focus:ring-offset-2 plasmo-focus:ring-primary-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!isFormValid}
+                className="plasmo-px-4 plasmo-py-2 plasmo-text-sm plasmo-font-medium plasmo-text-white plasmo-bg-primary-600 plasmo-border plasmo-border-transparent
+                        plasmo-rounded-md plasmo-shadow-sm hover:plasmo-bg-primary-700 plasmo-focus:outline-none plasmo-focus:ring-2
+                        plasmo-focus:ring-offset-2 plasmo-focus:ring-primary-500 disabled:plasmo-opacity-50
+                        disabled:plasmo-cursor-not-allowed"
+              >
+                {editingVariable ? "Update" : "Create"}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Variable Form */}
-      {isEditing && (
-        <div className="plasmo-mb-6">
-          <div className="plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-shadow-sm plasmo-overflow-hidden">
-            <div className="plasmo-p-4">
-              <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-3">
-                <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">Edit Variable</h3>
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="plasmo-text-gray-400 hover:plasmo-text-gray-500"
-                >
-                  <svg className="plasmo-h-5 plasmo-w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="plasmo-mb-4">
-                <label htmlFor="editVariableName" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
-                  Variable Name
-                </label>
-                <input
-                  type="text"
-                  id="editVariableName"
-                  className="plasmo-input"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-              
-              <div className="plasmo-mb-4">
-                <VariableTypeSelector
-                  selectedType={editForm.variableType}
-                  onChange={handleVariableTypeChange}
-                />
-              </div>
-              
-              {editForm.variableType === VARIABLE_ENTRY_TYPES.TEXT ? (
-                <div className="plasmo-mb-4">
-                  <label htmlFor="editVariableValue" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-1">
-                    Variable Value
-                  </label>
-                  <textarea
-                    id="editVariableValue"
-                    className="plasmo-input plasmo-resize-y"
-                    rows={3}
-                    value={editForm.textValue}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, textValue: e.target.value }))}
-                  />
-                </div>
-              ) : (
-                <div className="plasmo-mb-4">
-                  {editForm.entries.filter(entry =>
-                    entry.type === VARIABLE_ENTRY_TYPES.FILE ||
-                    entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
-                  ).length > 0 && (
-                    <div className="plasmo-mb-2">
-                      <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-mb-2">
-                        <label className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
-                          Current Files/Directories
-                        </label>
-                        <button
-                          type="button"
-                          onClick={handleClearFileEntries}
-                          className="plasmo-text-xs plasmo-text-error-600 hover:plasmo-text-error-800"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                      <ul className="plasmo-max-h-40 plasmo-overflow-y-auto plasmo-text-sm plasmo-mb-3 plasmo-bg-gray-50 plasmo-border plasmo-border-gray-200 plasmo-rounded plasmo-p-2">
-                        {editForm.entries.filter(entry =>
-                          entry.type === VARIABLE_ENTRY_TYPES.FILE ||
-                          entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
-                        ).map((entry, index) => (
-                          <li key={index} className="plasmo-mb-1 plasmo-flex plasmo-items-center">
-                            <span className="plasmo-mr-1">
-                              {entry.type === VARIABLE_ENTRY_TYPES.FILE ? '📄' : '📁'}
-                            </span>
-                            <span className="plasmo-truncate">{entry.value}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  <FilePicker
-                    type={editForm.variableType === VARIABLE_ENTRY_TYPES.DIRECTORY ? 'directory' : 'file'}
-                    onSelect={handleEditFileSelect}
-                    multiple={true}
-                  />
-                </div>
-              )}
-              
-              <div className="plasmo-flex plasmo-justify-end plasmo-space-x-3">
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="plasmo-btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveEdit}
-                  className="plasmo-btn-primary"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
+      {/* Variables List with Card Design */}
+      <div className="plasmo-space-y-4">
+        <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-4">
+          <div className="plasmo-text-xs plasmo-text-gray-500">
+            {variables.length} variable{variables.length !== 1 ? 's' : ''}
           </div>
+          <button
+            className="plasmo-btn-primary plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-text-xs"
+            onClick={handleCreateClick}
+            aria-label="Create new variable"
+          >
+            <svg
+              className="plasmo-w-3.5 plasmo-h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            New
+          </button>
         </div>
-      )}
-
-      {/* Variables List */}
-      <div>
-        <h3 className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700 plasmo-mb-2">
-          Your Variables {variables.length > 0 && `(${variables.length})`}
-        </h3>
         
         {variables.length === 0 ? (
-          <div className="plasmo-bg-white plasmo-border plasmo-border-gray-200 plasmo-rounded-md plasmo-shadow-sm plasmo-p-4 plasmo-text-center">
-            <svg className="plasmo-w-8 plasmo-h-8 plasmo-mx-auto plasmo-text-gray-400 plasmo-mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <p className="plasmo-text-sm plasmo-text-gray-500">No variables created yet</p>
+          <div className="plasmo-empty-state plasmo-w-full">
+            <div className="plasmo-text-gray-400 plasmo-mb-2">
+              <svg className="plasmo-w-10 plasmo-h-10 plasmo-mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <h3 className="plasmo-text-lg plasmo-font-medium plasmo-text-gray-900 plasmo-mb-2">No variables yet</h3>
+            <p className="plasmo-text-sm plasmo-text-gray-500 plasmo-mb-3">
+              Create your first variable to get started with reusable content.
+            </p>
+            <button
+              className="plasmo-btn-primary"
+              onClick={handleCreateClick}
+            >
+              Create Your First Variable
+            </button>
           </div>
         ) : (
-          <div className="plasmo-space-y-2">
-            {variables.map((variable) => {
-              // Determine variable type and icon
-              const hasFileEntries = Array.isArray(variable.value) && variable.value.some(
-                entry => entry.type === VARIABLE_ENTRY_TYPES.FILE || entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY
-              );
-              
-              const valuePreview = Array.isArray(variable.value)
-                ? variable.value.filter(entry => entry.type === VARIABLE_ENTRY_TYPES.TEXT).map(entry => entry.value).join(', ')
-                : typeof variable.value === 'string' ? variable.value : '';
-              
-              const truncatedPreview = valuePreview.length > 60
-                ? valuePreview.substring(0, 60) + '...'
-                : valuePreview;
-              
-              return (
-                <div
-                  key={variable.id}
-                  className="plasmo-template-item-compact plasmo-relative plasmo-group"
-                >
-                  <div className="plasmo-py-2 plasmo-px-3">
-                    <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-                      <div className="plasmo-flex plasmo-items-center plasmo-gap-1.5 plasmo-flex-1 plasmo-min-w-0">
-                        {hasFileEntries ? (
-                          <span className="plasmo-text-primary-500 plasmo-flex-shrink-0">
-                            <svg className="plasmo-w-4 plasmo-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </span>
-                        ) : (
-                          <span className="plasmo-text-gray-500 plasmo-flex-shrink-0">
-                            <svg className="plasmo-w-4 plasmo-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </span>
-                        )}
-                        
-                        <h3 className="plasmo-template-name">{variable.name}</h3>
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="plasmo-flex plasmo-items-center plasmo-ml-1 plasmo-flex-shrink-0 plasmo-space-x-0.5">
-                        <button
-                          onClick={() => handleEdit(variable)}
-                          className="plasmo-action-btn-compact plasmo-template-action-btn"
-                          aria-label="Edit variable"
-                        >
-                          <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(variable.id, variable.name)}
-                          className="plasmo-action-btn-compact plasmo-template-action-btn plasmo-text-error-500 hover:plasmo-text-error-700"
-                          aria-label="Delete variable"
-                        >
-                          <svg className="plasmo-w-5 plasmo-h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Variable Value Preview */}
-                    <div className="plasmo-template-description-compact plasmo-mt-1.5">
-                      {hasFileEntries ? (
-                        <div className="plasmo-flex plasmo-items-center plasmo-text-gray-500">
-                          <span className="plasmo-mr-1">
-                            {Array.isArray(variable.value) && variable.value.some(entry => entry.type === VARIABLE_ENTRY_TYPES.FILE) && '📄 '}
-                            {Array.isArray(variable.value) && variable.value.some(entry => entry.type === VARIABLE_ENTRY_TYPES.DIRECTORY) && '📁 '}
-                          </span>
-                          <span>
-                            {Array.isArray(variable.value) ? `${variable.value.length} file/directory entries` : 'File entries'}
-                          </span>
-                        </div>
-                      ) : (
-                        truncatedPreview || <span className="plasmo-italic plasmo-text-gray-400">Empty value</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="plasmo-space-y-2 plasmo-w-full">
+            {variables.map((variable, index) => (
+              <VariableItem
+                key={variable.id}
+                variable={variable}
+                index={index}
+                onEdit={() => handleEdit(variable)}
+                onDelete={(id) => handleDelete(id, variable.name)}
+              />
+            ))}
           </div>
         )}
       </div>
