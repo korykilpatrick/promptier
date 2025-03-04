@@ -4,9 +4,67 @@ export default {
   darkMode: 'class', // Changed from 'media' to 'class' for user toggle control
   prefix: 'plasmo-', // Consistent prefix for Shadow DOM compatibility
   safelist: [
+    // Error handling classes
     'hover:plasmo-text-error-600',
     'hover:plasmo-bg-error-50',
-    'focus:plasmo-ring-error-400'
+    'focus:plasmo-ring-error-400',
+    
+    // Category background colors
+    'plasmo-bg-red-100', 'plasmo-bg-red-600',
+    'plasmo-bg-blue-100', 'plasmo-bg-blue-600',
+    'plasmo-bg-green-100', 'plasmo-bg-green-600',
+    'plasmo-bg-purple-100', 'plasmo-bg-purple-600',
+    'plasmo-bg-yellow-100', 'plasmo-bg-yellow-500',
+    'plasmo-bg-pink-100', 'plasmo-bg-pink-600',
+    'plasmo-bg-indigo-100', 'plasmo-bg-indigo-600',
+    'plasmo-bg-teal-100', 'plasmo-bg-teal-600',
+    'plasmo-bg-orange-100', 'plasmo-bg-orange-600',
+    'plasmo-bg-amber-100', 'plasmo-bg-amber-600',
+    'plasmo-bg-lime-100', 'plasmo-bg-lime-600',
+    'plasmo-bg-emerald-100', 'plasmo-bg-emerald-600',
+    'plasmo-bg-cyan-100', 'plasmo-bg-cyan-600',
+    'plasmo-bg-sky-100', 'plasmo-bg-sky-600',
+    'plasmo-bg-violet-100', 'plasmo-bg-violet-600',
+    'plasmo-bg-fuchsia-100', 'plasmo-bg-fuchsia-600',
+    'plasmo-bg-rose-100', 'plasmo-bg-rose-600',
+    
+    // Category text colors
+    'plasmo-text-red-800', 'plasmo-text-white',
+    'plasmo-text-blue-800', 'plasmo-text-white',
+    'plasmo-text-green-800', 'plasmo-text-white',
+    'plasmo-text-purple-800', 'plasmo-text-white',
+    'plasmo-text-yellow-800', 'plasmo-text-white',
+    'plasmo-text-pink-800', 'plasmo-text-white',
+    'plasmo-text-indigo-800', 'plasmo-text-white',
+    'plasmo-text-teal-800', 'plasmo-text-white',
+    'plasmo-text-orange-800', 'plasmo-text-white',
+    'plasmo-text-amber-800', 'plasmo-text-white',
+    'plasmo-text-lime-800', 'plasmo-text-white',
+    'plasmo-text-emerald-800', 'plasmo-text-white',
+    'plasmo-text-cyan-800', 'plasmo-text-white',
+    'plasmo-text-sky-800', 'plasmo-text-white',
+    'plasmo-text-violet-800', 'plasmo-text-white',
+    'plasmo-text-fuchsia-800', 'plasmo-text-white',
+    'plasmo-text-rose-800', 'plasmo-text-white',
+    
+    // Category border colors
+    'plasmo-border-red-300', 'plasmo-border-transparent',
+    'plasmo-border-blue-300', 'plasmo-border-transparent',
+    'plasmo-border-green-300', 'plasmo-border-transparent',
+    'plasmo-border-purple-300', 'plasmo-border-transparent',
+    'plasmo-border-yellow-300', 'plasmo-border-transparent',
+    'plasmo-border-pink-300', 'plasmo-border-transparent',
+    'plasmo-border-indigo-300', 'plasmo-border-transparent',
+    'plasmo-border-teal-300', 'plasmo-border-transparent',
+    'plasmo-border-orange-300', 'plasmo-border-transparent',
+    'plasmo-border-amber-300', 'plasmo-border-transparent',
+    'plasmo-border-lime-300', 'plasmo-border-transparent',
+    'plasmo-border-emerald-300', 'plasmo-border-transparent',
+    'plasmo-border-cyan-300', 'plasmo-border-transparent',
+    'plasmo-border-sky-300', 'plasmo-border-transparent',
+    'plasmo-border-violet-300', 'plasmo-border-transparent',
+    'plasmo-border-fuchsia-300', 'plasmo-border-transparent',
+    'plasmo-border-rose-300', 'plasmo-border-transparent'
   ],
   theme: {
     extend: {

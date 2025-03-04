@@ -3,6 +3,7 @@ import type { Template } from "shared/types/templates"
 import { VirtualList } from "../../common/VirtualList"
 import { TemplateItem } from "./TemplateItem"
 import { useTemplateKeyboardShortcuts } from "../../../hooks/useTemplateKeyboardShortcuts"
+import { getCategoryClasses } from "../../../utils/category-colors"
 
 interface TemplateListProps {
   templates?: Template[]
@@ -15,6 +16,44 @@ interface TemplateListProps {
   isCreating?: boolean
   onCreateTemplate?: () => void
 }
+
+// Enhanced component for category filters
+const CategoryFilter: React.FC<{
+  categories: string[]
+  selectedCategories: string[]
+  onToggleCategory: (category: string) => void
+}> = ({ categories, selectedCategories, onToggleCategory }) => {
+  if (categories.length === 0) return null;
+  
+  return (
+    <div className="plasmo-mb-3">
+      <div className="plasmo-flex plasmo-flex-wrap plasmo-gap-1.5">
+        {categories.map((category) => {
+          const isSelected = selectedCategories.includes(category);
+          
+          return (
+            <button
+              key={category}
+              onClick={() => onToggleCategory(category)}
+              className={`
+                plasmo-px-3 plasmo-py-0.5 plasmo-text-xs plasmo-font-medium 
+                plasmo-rounded-full plasmo-transition-all
+                ${getCategoryClasses(category, isSelected)}
+                ${isSelected 
+                  ? 'plasmo-shadow-sm plasmo-ring-1 plasmo-ring-opacity-50' 
+                  : 'hover:plasmo-opacity-90 hover:plasmo-shadow-sm'
+                }
+              `}
+              aria-pressed={isSelected}
+            >
+              {category}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export const TemplateList: React.FC<TemplateListProps> = ({
   templates = [],
@@ -30,6 +69,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   
   // Prepare a unified list with favorites at the top
   const allTemplates = useMemo(() => {
@@ -44,22 +84,43 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     // Return unified list with favorites at top
     return [...favs, ...nonFavs];
   }, [templates, favoriteTemplates]);
-  
-  // Filter templates based on search query
-  const filteredTemplates = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return allTemplates;
-    }
-    
-    const lowerQuery = searchQuery.toLowerCase();
-    return allTemplates.filter(template => {
-      return (
-        template.name.toLowerCase().includes(lowerQuery) ||
-        template.content.toLowerCase().includes(lowerQuery) ||
-        (template.category && template.category.toLowerCase().includes(lowerQuery))
-      );
+
+  // Extract all unique categories from templates
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    allTemplates.forEach(template => {
+      if (template.category) {
+        categories.add(template.category);
+      }
     });
-  }, [allTemplates, searchQuery]);
+    return Array.from(categories).sort();
+  }, [allTemplates]);
+
+  // Toggle category selection
+  const handleToggleCategory = useCallback((category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  }, []);
+  
+  // Filter templates based on search query and selected categories
+  const filteredTemplates = useMemo(() => {
+    return allTemplates.filter(template => {
+      // Filter by search query
+      const matchesSearch = !searchQuery.trim() || 
+        template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        template.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (template.category && template.category.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Filter by selected categories
+      const matchesCategory = selectedCategories.length === 0 || 
+        (template.category && selectedCategories.includes(template.category));
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [allTemplates, searchQuery, selectedCategories]);
 
   // Find the selected template
   const selectedTemplate = useMemo(() => {
@@ -91,6 +152,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   // Clear search
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
+    setSelectedCategories([]);
   }, []);
 
   // Setup keyboard shortcuts
@@ -172,6 +234,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
       <div className="plasmo-flex plasmo-justify-between plasmo-items-center plasmo-mb-1">
         <div className="plasmo-text-xs plasmo-text-gray-500">
           {allTemplates.length} template{allTemplates.length !== 1 ? 's' : ''}
+          {selectedCategories.length > 0 && ` • ${filteredTemplates.length} filtered`}
         </div>
         <button
           className="plasmo-btn-primary plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-text-xs"
@@ -189,6 +252,13 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           New
         </button>
       </div>
+      
+      {/* Category filter */}
+      <CategoryFilter 
+        categories={availableCategories}
+        selectedCategories={selectedCategories}
+        onToggleCategory={handleToggleCategory}
+      />
       
       {/* Search Bar */}
       <div className="plasmo-relative plasmo-mb-2">
@@ -215,11 +285,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           onChange={handleSearchChange}
           aria-label="Search templates"
         />
-        {searchQuery && (
+        {(searchQuery || selectedCategories.length > 0) && (
           <button
             className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-3 plasmo-flex plasmo-items-center"
             onClick={handleClearSearch}
-            aria-label="Clear search"
+            aria-label="Clear search and filters"
           >
             <svg
               className="plasmo-h-4 plasmo-w-4 plasmo-text-gray-400 hover:plasmo-text-gray-500"
@@ -244,9 +314,10 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         ) : (
           <div className="plasmo-text-center plasmo-py-4 plasmo-text-sm plasmo-text-gray-500">
             No templates match your search
+            {selectedCategories.length > 0 && " and category filters"}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 } 

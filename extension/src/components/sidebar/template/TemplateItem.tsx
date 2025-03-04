@@ -9,6 +9,7 @@ import { useToast } from '../../../hooks/useToast';
 import * as fs from '../../../filesystem';
 import { Template } from 'shared/types/templates';
 import { FileHandleRegistry } from '../../../filesystem/registry';
+import { getCategoryClasses } from '../../../utils/category-colors';
 
 /**
  * @typedef {Object} TemplateItemProps
@@ -277,7 +278,7 @@ const TemplateItem = memo(({
               )}
             </h3>
             {template.category && (
-              <span className="plasmo-badge plasmo-badge-blue plasmo-flex-shrink-0">
+              <span className={`plasmo-badge plasmo-flex-shrink-0 plasmo-font-medium ${getCategoryClasses(template.category)}`}>
                 {searchQuery ? (
                   <HighlightText text={template.category} searchQuery={searchQuery} />
                 ) : (

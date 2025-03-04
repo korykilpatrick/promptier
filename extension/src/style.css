@@ -169,25 +169,11 @@
 
   /* Badge/chip styles - more compact */
   .plasmo-badge {
-    @apply plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5
-           plasmo-rounded-full plasmo-text-xs plasmo-font-medium;
+    @apply plasmo-inline-flex plasmo-items-center plasmo-px-2 plasmo-py-0.5
+           plasmo-rounded-full plasmo-text-xs plasmo-transition-all;
   }
 
-  .plasmo-badge-blue {
-    @apply plasmo-bg-primary-100 plasmo-text-primary-800;
-  }
-
-  .plasmo-badge-green {
-    @apply plasmo-bg-success-50 plasmo-text-success-700;
-  }
-
-  .plasmo-badge-amber {
-    @apply plasmo-bg-accent-100 plasmo-text-accent-800;
-  }
-
-  .plasmo-badge-gray {
-    @apply plasmo-bg-gray-100 plasmo-text-gray-800;
-  }
+  /* Remove predefined badge color classes since we're using dynamic colors */
 
   /* Form elements */
   .plasmo-input {
