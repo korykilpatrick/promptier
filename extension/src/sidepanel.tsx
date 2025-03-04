@@ -38,7 +38,7 @@ function TemplateDetailsWrapper() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
-  const { templates, fetchTemplates } = useTemplates({ toast: toastUtils });
+  const { templates, favoriteTemplates, fetchTemplates } = useTemplates({ toast: toastUtils });
 
   useEffect(() => {
     async function loadTemplate() {
@@ -54,10 +54,12 @@ function TemplateDetailsWrapper() {
           return;
         }
         
-        // Check if templates are already loaded
-        if (templates && templates.length > 0) {
-          const templateId = Number(id);
-          const foundTemplate = templates.find(t => 
+        // Check if templates are already loaded, look in both regular and favorite templates
+        const templateId = Number(id);
+        if ((templates && templates.length > 0) || (favoriteTemplates && favoriteTemplates.length > 0)) {
+          // Look in both regular and favorite templates
+          const allTemplates = [...(templates || []), ...(favoriteTemplates || [])];
+          const foundTemplate = allTemplates.find(t => 
             t.id === templateId || String(t.id) === String(id)
           );
           
@@ -73,7 +75,9 @@ function TemplateDetailsWrapper() {
         
         if (fetchedTemplates && Array.isArray(fetchedTemplates)) {
           const templateId = Number(id);
-          const foundTemplate = fetchedTemplates.find((t: any) => 
+          const fetchedFavoriteTemplates = favoriteTemplates || []; // Use loaded favorites if available
+          const allFetchedTemplates = [...fetchedTemplates, ...fetchedFavoriteTemplates];
+          const foundTemplate = allFetchedTemplates.find((t: any) => 
             t.id === templateId || String(t.id) === String(id)
           );
           
@@ -94,7 +98,7 @@ function TemplateDetailsWrapper() {
     }
     
     loadTemplate();
-  }, [id, templates, fetchTemplates, isLoading]);
+  }, [id, templates, favoriteTemplates, fetchTemplates, isLoading]);
 
   if (isLoading) {
     return (

@@ -229,7 +229,8 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
       id, 
       isFavorite: true, 
       name: template.name,
-      content: template.content 
+      content: template.content,
+      category: template.category
     });
     // Refresh the entire list after favoriting
     await fetchTemplates();
@@ -242,7 +243,8 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
       id, 
       isFavorite: false, 
       name: template.name,
-      content: template.content 
+      content: template.content,
+      category: template.category
     });
     // Refresh the entire list after unfavoriting
     await fetchTemplates();
