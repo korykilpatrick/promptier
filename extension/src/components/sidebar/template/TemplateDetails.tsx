@@ -42,11 +42,14 @@ try {
   const { useTemplateVariables } = require("../../../hooks/useTemplateVariables")
   const { useTemplateParser } = require("../../../hooks/useTemplateParser")
   const { useToast } = require("../../../hooks/useToast")
-  const { useNavigate } = require("react-router-dom")
+  const { useNavigate, useLocation } = require("react-router-dom")
 
   // Import file content resolver utilities
   const { copyWithResolvedFileContents, ensureFilePermissions, activeResolveAllFileContents } = require("../../../utils/file-content-resolver");
   const { replaceVariables } = require("../../../utils/template-parser");
+
+  // Import StyledTemplateText component
+  const { StyledTemplateText } = require('./StyleTemplateVariable');
 
   /**
    * Helper function to conditionally join class names
@@ -631,7 +634,7 @@ try {
             />
           ) : (
             <div className="plasmo-whitespace-pre-wrap plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-bg-gray-50 plasmo-p-4 plasmo-text-sm plasmo-shadow-sm">
-              {content}
+              <StyledTemplateText content={content} />
             </div>
           )}
         </div>

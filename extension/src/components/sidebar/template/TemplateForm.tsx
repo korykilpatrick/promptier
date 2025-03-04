@@ -3,6 +3,7 @@ const { useState, useEffect } = React;
 const { useTemplateVariables } = require("../../../hooks/useTemplateVariables");
 const { VariableMapping } = require("./VariableMapping");
 const { useToast } = require("../../../hooks/useToast");
+const { StyledTemplateEditor } = require("./StyledTemplateEditor");
 
 /**
  * @typedef {import("../../../../shared/types/templates").Template} Template
@@ -121,21 +122,15 @@ const TemplateForm = ({ template, onSubmit, onCancel }) => {
             <label htmlFor="content" className="plasmo-block plasmo-text-sm plasmo-font-medium plasmo-text-gray-800">
               Template Content
             </label>
-            <div className="plasmo-mt-1 plasmo-relative">
-              <textarea
+            <div className="plasmo-mt-1">
+              <StyledTemplateEditor 
                 id="content"
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                onChange={(newContent) => setFormData({ ...formData, content: newContent })}
                 rows={12}
-                className="plasmo-block plasmo-w-full plasmo-rounded-md plasmo-border plasmo-border-gray-300 plasmo-shadow-sm 
-                        plasmo-focus:border-blue-500 plasmo-focus:ring-2 plasmo-focus:ring-blue-500 plasmo-focus:ring-opacity-20
-                        plasmo-font-mono plasmo-text-sm plasmo-p-3 plasmo-resize-y plasmo-transition-all plasmo-duration-150"
                 required
                 placeholder="Write your prompt template here..."
               />
-              <div className="plasmo-absolute plasmo-right-2 plasmo-bottom-2 plasmo-text-xs plasmo-text-gray-500 plasmo-px-1.5 plasmo-py-0.5 plasmo-bg-white plasmo-border plasmo-border-gray-100 plasmo-rounded-md">
-                {formData.content.length} characters
-              </div>
             </div>
             
             <div className="plasmo-mt-3 plasmo-flex plasmo-flex-col plasmo-sm:flex-row plasmo-items-start plasmo-gap-2 plasmo-text-xs plasmo-bg-blue-50 plasmo-p-3 plasmo-rounded-md plasmo-border plasmo-border-blue-100">

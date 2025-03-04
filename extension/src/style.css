@@ -46,6 +46,20 @@
 }
 
 @layer components {
+  /* Template variable styling for better visibility */
+  .plasmo-template-variable {
+    @apply plasmo-inline-flex plasmo-items-center plasmo-rounded-md
+           plasmo-bg-purple-100 plasmo-text-purple-800 plasmo-font-medium plasmo-font-mono
+           plasmo-border plasmo-border-purple-300 plasmo-shadow-sm
+           plasmo-px-2 plasmo-py-0.5 plasmo-m-0.5
+           plasmo-transition-all plasmo-duration-150;
+  }
+
+  /* Hover state for template variables */
+  .plasmo-template-variable:hover {
+    @apply plasmo-bg-purple-200 plasmo-border-purple-400 plasmo-shadow;
+  }
+
   /* Button variants - compacted */
   .plasmo-btn-primary {
     @apply plasmo-bg-primary-600 plasmo-text-white plasmo-px-3 plasmo-py-1.5

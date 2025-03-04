@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { replaceVariables, parseTemplate } from '../../../utils/template-parser';
 import { ensureFilePermissions, activeResolveAllFileContents, diagnoseFileHandles } from '../../../utils/file-content-resolver';
-import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Use require for modules exported as CommonJS
 const { useTemplateVariables } = require('../../../hooks/useTemplateVariables');
@@ -10,6 +9,7 @@ import * as fs from '../../../filesystem';
 import { Template } from 'shared/types/templates';
 import { FileHandleRegistry } from '../../../filesystem/registry';
 import { getCategoryClasses } from '../../../utils/category-colors';
+import { StyledTemplateText } from './StyleTemplateVariable';
 
 /**
  * @typedef {Object} TemplateItemProps
@@ -349,7 +349,7 @@ const TemplateItem = memo(({
               searchQuery={searchQuery}
             />
           ) : (
-            contentPreview
+            <StyledTemplateText content={contentPreview} />
           )}
         </div>
       </div>
