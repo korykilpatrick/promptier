@@ -116,6 +116,7 @@ try {
     const [name, setName] = useState(template?.name || "")
     const [content, setContent] = useState(template?.content || "")
     const [category, setCategory] = useState(template?.category || "")
+    const [editingVariable, setEditingVariable] = useState<string | null>(null)
 
     const isCreate = !template
     const [initialLoad, setInitialLoad] = useState(true)
@@ -132,7 +133,7 @@ try {
     const {
       parseResult,
       values,
-      setVariableValue,
+      setVariableValue: originalSetVariableValue,
       resetValues,
       saveToGlobalVariables,
       globalVariables,
@@ -142,6 +143,12 @@ try {
       initialValues: template?.variables,
       useGlobalVariables: true
     })
+
+    // Override setVariableValue with a no-op function
+    const setVariableValue = (name: string, value: string) => {
+      console.log(`Variables are read-only, cannot set ${name} to ${value}`);
+      // No-op - variables are read-only
+    };
 
     // Extract variables from parse result
     const variables = parseResult?.variables || []
@@ -231,21 +238,15 @@ try {
 
     // Handle saving a variable to global store
     const handleSaveToGlobal = async (variableNames: string[]) => {
-      try {
-        await saveToGlobalVariables(variableNames)
-        addToast({
-          type: "success",
-          title: "Variables saved",
-          message: "Variables were saved to your global store"
-        })
-      } catch (error) {
-        console.error("Error saving variables:", error)
-        addToast({
-          type: "error",
-          title: "Failed to save",
-          message: "There was an error saving variables to global store"
-        })
-      }
+      // No-op since variables are read-only
+      console.log('Variables are read-only, cannot save to global variables');
+      
+      // Show a notification to the user
+      addToast({
+        type: "info",
+        title: "Read-only mode",
+        message: "Variables are in read-only mode and cannot be saved to global variables."
+      });
     }
 
     // Template saving and management logic
@@ -351,6 +352,17 @@ try {
     // Check if any variable has been modified
     const hasModifiedValues = Object.values(values).some(state => state && typeof state === 'object' && 'isDirty' in state && state.isDirty)
 
+    // New function to handle editing a variable
+    const handleEditVariable = (variableName: string) => {
+      // No longer allowing variables to be edited
+      console.log('Variables are read-only');
+    }
+
+    // New function to handle closing the variable edit interface
+    const handleCloseVariableEdit = () => {
+      setEditingVariable(null);
+    }
+
     return (
       <div className="plasmo-flex plasmo-flex-col plasmo-gap-4 plasmo-p-4">
         {/* Template Name Section */}
@@ -399,10 +411,20 @@ try {
             >
               <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">Variables</div>
               <div className="plasmo-space-y-3">
-                {variables.map((variable: typeof TemplateVariable, index: number) => {
+                {/* Read-only indicator */}
+                <div className="plasmo-text-xs plasmo-text-gray-500 plasmo-italic plasmo-flex plasmo-items-center plasmo-gap-1">
+                  <svg className="plasmo-h-3 plasmo-w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Read-only mode
+                </div>
+                {variables.map((variable: any, index: number) => {
                   const globalVariable = Array.isArray(globalVariables) && globalVariables.find(g => g && typeof g === 'object' && 'name' in g && g.name === variable.name);
                   const state = values[variable.name] || { value: '', isDirty: false, isValid: true, errors: [] };
                   const isGlobalValue = !!globalVariable;
+                  
+                  // Check if this variable is currently being edited
+                  const isEditing = false; // Never allow editing
                   
                   return (
                     <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-2">
@@ -412,15 +434,16 @@ try {
                             {variable.name}
                           </label>
                         </div>
+                        {/* Edit button removed - variables are read-only */}
                       </div>
                       
                       <div className="plasmo-relative plasmo-group">
                         <input
                           type="text"
                           value={state.value}
-                          onChange={(e) => setVariableValue(variable.name, e.target.value)}
+                          readOnly={true}
                           placeholder={variable.defaultValue || ''}
-                          className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-focus:outline-none plasmo-focus:ring-1 plasmo-focus:ring-blue-500 plasmo-focus:border-blue-500"
+                          className="plasmo-block plasmo-w-full plasmo-px-3 plasmo-py-2 plasmo-text-sm plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-bg-gray-50 plasmo-cursor-not-allowed"
                         />
                       </div>
                       
@@ -441,6 +464,13 @@ try {
           {variables.length === 0 && (
             <div className="plasmo-mt-4">
               <div className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-900">Variables</div>
+              {/* Read-only indicator */}
+              <div className="plasmo-text-xs plasmo-text-gray-500 plasmo-italic plasmo-flex plasmo-items-center plasmo-gap-1 plasmo-mt-1 plasmo-mb-2">
+                <svg className="plasmo-h-3 plasmo-w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Read-only mode
+              </div>
               <div className="plasmo-mt-2 plasmo-text-sm plasmo-text-gray-500 plasmo-italic">
                 No variables
               </div>
