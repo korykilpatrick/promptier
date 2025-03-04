@@ -144,10 +144,14 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
     try {
       setOperationState("update", { isLoading: true, error: null });
       
+      // Pass isFavorite in the body so the server sets user_templates accordingly:
       const response = await makeApiRequest<TemplateResponse>({
         url: `/templates/${data.id}`,
         method: "PUT",
-        body: toBackendTemplate(data)
+        body: {
+          ...toBackendTemplate(data),
+          isFavorite: data.isFavorite ?? false
+        }
       });
 
       if (response.error) {
@@ -163,12 +167,15 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
         list.map((t) => (t.id === data.id ? updatedTemplate : t));
 
       if (updatedTemplate.isFavorite) {
-        setFavoriteTemplates((prev) => updateTemplateList(prev));
-        setTemplates((prev) => prev.filter((t) => t.id !== data.id));
+        setFavoriteTemplates((prev) => {
+          const exists = prev.some(t => t.id === updatedTemplate.id);
+          return exists ? updateTemplateList(prev) : [...prev, updatedTemplate];
+        });
       } else {
-        setTemplates((prev) => updateTemplateList(prev));
         setFavoriteTemplates((prev) => prev.filter((t) => t.id !== data.id));
       }
+      
+      setTemplates((prev) => updateTemplateList(prev));
 
       setOperationState("update", { isLoading: false, error: null });
       toast.success("Template updated successfully");
@@ -217,13 +224,23 @@ export function useTemplates({ toast, options = {} }: UseTemplatesProps): UseTem
   const favoriteTemplate = useCallback(async (id: number) => {
     const template = [...templates, ...favoriteTemplates].find((t) => t.id === id);
     if (!template) throw new Error("Template not found");
-    await updateTemplate({ id, isFavorite: true });
+    await updateTemplate({ 
+      id, 
+      isFavorite: true, 
+      name: template.name,
+      content: template.content 
+    });
   }, [templates, favoriteTemplates, updateTemplate]);
 
   const unfavoriteTemplate = useCallback(async (id: number) => {
     const template = [...templates, ...favoriteTemplates].find((t) => t.id === id);
     if (!template) throw new Error("Template not found");
-    await updateTemplate({ id, isFavorite: false });
+    await updateTemplate({ 
+      id, 
+      isFavorite: false, 
+      name: template.name,
+      content: template.content 
+    });
   }, [templates, favoriteTemplates, updateTemplate]);
 
   return {
