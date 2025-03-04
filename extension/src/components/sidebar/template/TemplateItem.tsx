@@ -21,6 +21,7 @@ import { FileHandleRegistry } from '../../../filesystem/registry';
  * @property {Function} onEdit - Function to edit the template
  * @property {Function} onDelete - Function to delete the template
  * @property {number} index - Index for alternating backgrounds
+ * @property {string} [searchQuery] - Current search query for highlighting
  */
 
 type MouseEvent = {
@@ -37,6 +38,24 @@ type TemplateItemProps = {
   onEdit: (template: any) => void;
   onDelete: (id: number) => void;
   index?: number;
+  searchQuery?: string;
+};
+
+// Helper function to highlight text based on search query
+const HighlightText = ({ text, searchQuery }: { text: string, searchQuery: string }) => {
+  if (!searchQuery || !text) return <>{text}</>;
+  
+  const parts = text.split(new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+  
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === searchQuery.toLowerCase() ?
+          <span key={i} className="plasmo-bg-yellow-100 plasmo-text-gray-900">{part}</span> :
+          <span key={i}>{part}</span>
+      )}
+    </>
+  );
 };
 
 /**
@@ -53,7 +72,8 @@ const TemplateItem = memo(({
   onUnfavorite,
   onEdit,
   onDelete,
-  index = 0
+  index = 0,
+  searchQuery = ""
 }: TemplateItemProps) => {
   const navigate = useNavigate();
   const [isCopying, setIsCopying] = useState(false);
@@ -254,11 +274,19 @@ const TemplateItem = memo(({
               </span>
             )}
             <h3 className="plasmo-template-name plasmo-truncate">
-              {template.name}
+              {searchQuery ? (
+                <HighlightText text={template.name} searchQuery={searchQuery} />
+              ) : (
+                template.name
+              )}
             </h3>
             {template.category && (
               <span className="plasmo-badge plasmo-badge-blue plasmo-flex-shrink-0">
-                {template.category}
+                {searchQuery ? (
+                  <HighlightText text={template.category} searchQuery={searchQuery} />
+                ) : (
+                  template.category
+                )}
               </span>
             )}
           </div>
@@ -318,7 +346,14 @@ const TemplateItem = memo(({
 
         {/* Template Content Preview */}
         <div className="plasmo-template-description-compact plasmo-mt-1.5">
-          {contentPreview}
+          {searchQuery && template.content ? (
+            <HighlightText
+              text={contentPreview}
+              searchQuery={searchQuery}
+            />
+          ) : (
+            contentPreview
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from "react"
+import React, { useCallback, useState, useMemo, useEffect } from "react"
 import type { Template } from "shared/types/templates"
 import { VirtualList } from "../../common/VirtualList"
 import { TemplateItem } from "./TemplateItem"
@@ -29,7 +29,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-
+  const [searchQuery, setSearchQuery] = useState("")
+  
   // Prepare a unified list with favorites at the top
   const allTemplates = useMemo(() => {
     // Mark favorites for display
@@ -43,6 +44,22 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     // Return unified list with favorites at top
     return [...favs, ...nonFavs];
   }, [templates, favoriteTemplates]);
+  
+  // Filter templates based on search query
+  const filteredTemplates = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allTemplates;
+    }
+    
+    const lowerQuery = searchQuery.toLowerCase();
+    return allTemplates.filter(template => {
+      return (
+        template.name.toLowerCase().includes(lowerQuery) ||
+        template.content.toLowerCase().includes(lowerQuery) ||
+        (template.category && template.category.toLowerCase().includes(lowerQuery))
+      );
+    });
+  }, [allTemplates, searchQuery]);
 
   // Find the selected template
   const selectedTemplate = useMemo(() => {
@@ -65,6 +82,16 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     console.log(`[TemplateList] Deleting template ID: ${templateId}`)
     onDeleteTemplate(templateId)
   }, [onDeleteTemplate])
+  
+  // Handle search input change
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
+  
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+  }, []);
 
   // Setup keyboard shortcuts
   const { shortcuts } = useTemplateKeyboardShortcuts({
@@ -81,11 +108,25 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
   // Render a template item
   const renderTemplateItem = useCallback((template: Template, index: number) => {
+    // Prepare the template to highlight search matches if needed
+    let highlightedTemplate = { ...template };
+    
+    if (searchQuery.trim()) {
+      // Create a version of the name with highlighted matches
+      // This is just metadata; the actual highlighting happens in the TemplateItem component
+      highlightedTemplate._searchHighlight = {
+        query: searchQuery.toLowerCase(),
+        matchesName: template.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        matchesContent: template.content.toLowerCase().includes(searchQuery.toLowerCase()),
+        matchesCategory: template.category?.toLowerCase().includes(searchQuery.toLowerCase()) || false
+      };
+    }
+    
     return (
       <div className="plasmo-mb-1">
         <TemplateItem
           key={template.id}
-          template={template}
+          template={highlightedTemplate}
           isFavorite={template.isFavorite}
           isSelected={template.id === selectedTemplateId}
           index={index}
@@ -97,10 +138,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           onUnfavorite={onUnfavoriteTemplate}
           onEdit={onEditTemplate}
           onDelete={handleDeleteTemplate}
+          searchQuery={searchQuery}
         />
       </div>
     )
-  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate])
+  }, [selectedTemplateId, onSelectTemplate, onFavoriteTemplate, onUnfavoriteTemplate, onEditTemplate, handleDeleteTemplate, searchQuery])
 
   // If no templates
   if (allTemplates.length === 0) {
@@ -148,9 +190,62 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         </button>
       </div>
       
-      {/* Unified template list with full width */}
+      {/* Search Bar */}
+      <div className="plasmo-relative plasmo-mb-2">
+        <div className="plasmo-absolute plasmo-inset-y-0 plasmo-left-0 plasmo-pl-3 plasmo-flex plasmo-items-center plasmo-pointer-events-none">
+          <svg
+            className="plasmo-h-4 plasmo-w-4 plasmo-text-gray-400"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+        <input
+          type="text"
+          className="plasmo-block plasmo-w-full plasmo-pl-10 plasmo-pr-8 plasmo-py-1.5 plasmo-text-sm plasmo-bg-gray-100 plasmo-border plasmo-border-gray-200 plasmo-rounded-md placeholder-gray-400 focus:plasmo-outline-none focus:plasmo-ring-1 focus:plasmo-ring-primary-500 focus:plasmo-border-primary-500"
+          placeholder="Search templates..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          aria-label="Search templates"
+        />
+        {searchQuery && (
+          <button
+            className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-3 plasmo-flex plasmo-items-center"
+            onClick={handleClearSearch}
+            aria-label="Clear search"
+          >
+            <svg
+              className="plasmo-h-4 plasmo-w-4 plasmo-text-gray-400 hover:plasmo-text-gray-500"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+      
+      {/* Template List */}
       <div className="plasmo-space-y-0.5 plasmo-w-full">
-        {allTemplates.map((template, index) => renderTemplateItem(template, index))}
+        {filteredTemplates.length > 0 ? (
+          filteredTemplates.map((template, index) => renderTemplateItem(template, index))
+        ) : (
+          <div className="plasmo-text-center plasmo-py-4 plasmo-text-sm plasmo-text-gray-500">
+            No templates match your search
+          </div>
+        )}
       </div>
     </div>
   )
