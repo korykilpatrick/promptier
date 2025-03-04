@@ -1,13 +1,11 @@
 const React = require('react');
 const { useState, useCallback, useEffect } = React;
 const { useDebounceValue } = require('../../../../hooks/useDebounce');
-
 /**
  * @typedef {import('../../../../types/template-variables').TemplateVariable} TemplateVariable
  * @typedef {import('../../../../types/template-variables').TemplateVariableState} TemplateVariableState
  * @typedef {import('../../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
  */
-
 /**
  * @typedef {Object} VariableInputProps
  * @property {TemplateVariable} variable - The template variable
@@ -19,7 +17,6 @@ const { useDebounceValue } = require('../../../../hooks/useDebounce');
  * @property {boolean} [isGlobalValue=false] - Whether this variable has a value from global variables
  * @property {function(string): void} [onSaveToGlobal] - Function to save this variable to global variables
  */
-
 /**
  * Component for rendering a variable input field
  * @param {VariableInputProps} props - Component props
@@ -38,12 +35,10 @@ function VariableInput({
   const inputId = `var-${variable.name}`;
   const hasErrors = state.errors && state.errors.length > 0;
   const errorId = hasErrors ? `error-${variable.name}` : undefined;
-
   // Local state for immediate feedback
   const [localValue, setLocalValue] = useState(state.value);
   const [isPending, setIsPending] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-
   // Debounce the value changes
   const debouncedValue = useDebounceValue(localValue, {
     delay: 300,
@@ -51,30 +46,25 @@ function VariableInput({
     onPending: () => setIsPending(true),
     onComplete: () => setIsPending(false)
   });
-
   // Update parent when debounced value changes
   useEffect(() => {
     if (debouncedValue !== state.value) {
       onChange(debouncedValue);
     }
   }, [debouncedValue, onChange, state.value]);
-
   // Handle input changes
   const handleChange = useCallback((e) => {
     setLocalValue(e.target.value);
   }, []);
-
   // Handle focus events
   const handleFocus = useCallback(() => setIsFocused(true), []);
   const handleBlur = useCallback(() => setIsFocused(false), []);
-
   // Handle saving to global variables
   const handleSaveToGlobal = useCallback(() => {
     if (onSaveToGlobal) {
       onSaveToGlobal(variable.name);
     }
   }, [onSaveToGlobal, variable.name]);
-
   // Calculate status message
   const getStatusMessage = () => {
     if (isPending) return 'Typing...';
@@ -85,23 +75,18 @@ function VariableInput({
     }
     return '';
   };
-
   // Get appropriate border color based on state
   const getBorderColorClass = () => {
     if (!state.isValid) return 'plasmo-border-error-300 plasmo-focus:plasmo-border-error-500 plasmo-focus:plasmo-ring-error-500 plasmo-focus:plasmo-ring-opacity-30';
     if (isFocused) return 'plasmo-border-primary-400 plasmo-ring-2 plasmo-ring-primary-500 plasmo-ring-opacity-20';
-    if (isGlobalValue) return 'plasmo-border-success-300 plasmo-focus:plasmo-border-success-500 plasmo-focus:plasmo-ring-success-500 plasmo-focus:plasmo-ring-opacity-20';
     return 'plasmo-border-gray-300 plasmo-focus:plasmo-border-primary-500 plasmo-focus:plasmo-ring-primary-500 plasmo-focus:plasmo-ring-opacity-20';
   };
-
   // Get background color based on state
   const getBackgroundColorClass = () => {
     if (!state.isValid) return 'plasmo-bg-error-50';
-    if (isGlobalValue) return 'plasmo-bg-success-50';
     if (state.isDirty) return 'plasmo-bg-white';
     return 'plasmo-bg-gray-50';
   };
-
   // Common input props
   const inputProps = {
     id: inputId,
@@ -124,7 +109,6 @@ function VariableInput({
       errorId
     ].filter(Boolean).join(' ')
   };
-
   return (
     <div className={`plasmo-rounded-md ${className}`}>
       <div className="plasmo-flex plasmo-items-center plasmo-justify-between plasmo-mb-1.5">
@@ -143,12 +127,6 @@ function VariableInput({
           {state.isDirty && (
             <span className="plasmo-badge plasmo-badge-blue plasmo-ml-2">
               Modified
-            </span>
-          )}
-          
-          {isGlobalValue && (
-            <span className="plasmo-badge plasmo-badge-green plasmo-ml-2">
-              Global
             </span>
           )}
         </div>
@@ -194,13 +172,11 @@ function VariableInput({
           )}
         </div>
       </div>
-
       {variable.description && (
         <p className="plasmo-text-caption plasmo-mb-1.5" id={`desc-${variable.name}`}>
           {variable.description}
         </p>
       )}
-
       <div className="plasmo-relative plasmo-group">
         {multiline ? (
           <textarea
@@ -214,7 +190,6 @@ function VariableInput({
             {...inputProps}
           />
         )}
-
         {/* Error icon */}
         {hasErrors && !multiline && (
           <div className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-3 plasmo-flex plasmo-items-center plasmo-pointer-events-none">
@@ -233,14 +208,14 @@ function VariableInput({
           </div>
         )}
         
-        {/* Save to global button for valid variables */}
+        {/* Save to global button for valid variables - keep it hidden but functional */}
         {state.isValid && state.isDirty && onSaveToGlobal && !isGlobalValue && !hasErrors && (
           <div className="plasmo-absolute plasmo-inset-y-0 plasmo-right-0 plasmo-pr-2 plasmo-flex plasmo-items-center plasmo-opacity-0 group-hover:plasmo-opacity-100 plasmo-transition-opacity">
             <button
               type="button"
               onClick={handleSaveToGlobal}
               className="plasmo-p-1 plasmo-rounded-full plasmo-text-gray-400 hover:plasmo-text-success-600 plasmo-focus:plasmo-outline-none plasmo-transition-colors"
-              title="Save to global variables"
+              title="Save to variables"
             >
               <svg className="plasmo-h-4 plasmo-w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -249,7 +224,6 @@ function VariableInput({
           </div>
         )}
       </div>
-
       {/* Error messages */}
       {hasErrors && (
         <ul
@@ -265,5 +239,4 @@ function VariableInput({
     </div>
   );
 }
-
 module.exports = { VariableInput }; 

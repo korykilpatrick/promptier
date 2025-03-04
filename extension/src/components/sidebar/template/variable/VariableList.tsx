@@ -1,13 +1,11 @@
 const React = require('react');
 const { VariableInput } = require('./VariableInput');
-
 /**
  * @typedef {import('../../../../types/template-variables').TemplateVariable} TemplateVariable
  * @typedef {import('../../../../types/template-variables').TemplateVariableValues} TemplateVariableValues
  * @typedef {import('../../../../types/template-variables').VariableValidationOptions} VariableValidationOptions
  * @typedef {import('../../../../shared/types/variables').UserVariable} UserVariable
  */
-
 /**
  * @typedef {Object} VariableListProps
  * @property {TemplateVariable[]} variables - Template variables
@@ -19,7 +17,6 @@ const { VariableInput } = require('./VariableInput');
  * @property {UserVariable[]} [globalVariables] - Global user variables
  * @property {function(string): void} [onSaveToGlobal] - Handler to save a variable to global variables
  */
-
 /**
  * Component for displaying a list of variable inputs
  * @param {VariableListProps} props - Component props
@@ -42,7 +39,6 @@ function VariableList({
       </div>
     );
   }
-
   // Group variables by required status
   const requiredVars = variables.filter(v => v.isRequired);
   const optionalVars = variables.filter(v => !v.isRequired);
@@ -52,7 +48,6 @@ function VariableList({
     acc[v.name] = v;
     return acc;
   }, {});
-
   // Helper function to render variable input
   const renderVariableInput = (variable) => {
     // Check if this variable has a matching global variable
@@ -76,21 +71,8 @@ function VariableList({
       />
     );
   };
-
   return (
     <div className={`${className}`}>
-      {/* Global Variables Information */}
-      {globalVariables.length > 0 && (
-        <div className="plasmo-mb-3 plasmo-p-2 plasmo-bg-gray-50 plasmo-rounded-md plasmo-border plasmo-border-gray-200">
-          <div className="plasmo-flex plasmo-items-center plasmo-text-xs plasmo-text-gray-600">
-            <svg className="plasmo-h-4 plasmo-w-4 plasmo-mr-1.5 plasmo-text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span>Variables with a <span className="plasmo-text-green-600 plasmo-font-medium">green background</span> are using values from your global variables.</span>
-          </div>
-        </div>
-      )}
-      
       {/* Required Variables Section */}
       {requiredVars.length > 0 && (
         <div className="plasmo-mb-5">
@@ -107,7 +89,6 @@ function VariableList({
           </div>
         </div>
       )}
-
       {/* Optional Variables Section */}
       {optionalVars.length > 0 && (
         <div>
@@ -127,5 +108,4 @@ function VariableList({
     </div>
   );
 }
-
 module.exports = { VariableList }; 

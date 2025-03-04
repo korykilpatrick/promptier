@@ -51,7 +51,7 @@ try {
    * @param {...string} classes - CSS class names to conditionally join
    * @returns {string} Joined class names
    */
-  function cn(...classes) {
+  function cn(...classes: string[]) {
     return classes.filter(Boolean).join(" ")
   }
 
@@ -59,7 +59,7 @@ try {
    * Helper function to show a toast notification
    * @param {Object} options - Toast options
    */
-  function toast(options) {
+  function toast(options: { type?: string; message: string }) {
     // Simple toast implementation
     console.log(`TOAST: ${options.type || "info"} - ${options.message}`)
     
@@ -77,11 +77,11 @@ try {
   }
 
   // Success toast shorthand
-  toast.success = function(message) {
+  toast.success = function(message: string) {
     return toast({ type: "success", message })
   }
   // Error toast shorthand
-  toast.error = function(message) {
+  toast.error = function(message: string) {
     return toast({ type: "error", message })
   }
 
@@ -147,7 +147,7 @@ try {
     const variables = parseResult?.variables || []
     console.log("TemplateDetails: Variables parsed:", { 
       variablesCount: variables.length,
-      variableNames: variables.map(v => v.name).join(', ')
+      variableNames: variables.map((v: any) => v.name).join(', ')
     });
 
     useEffect(() => {
@@ -166,7 +166,7 @@ try {
     }, [template, initialLoad])
 
     // Handlers for editing, saving, copying, and deleting templates
-    const handleEdit = function(field) {
+    const handleEdit = function(field: string) {
       if (field === "name") {
         setIsEditingName(true)
       } else {
@@ -183,7 +183,7 @@ try {
         let processedContent = template.content || ""
         
         // Get valid values for variables
-        const validValues = Object.entries(values).reduce((acc, [name, state]) => {
+        const validValues = Object.entries(values).reduce((acc: Record<string, any>, [name, state]) => {
           if (state?.isValid) {
             acc[name] = state
           }
@@ -191,7 +191,7 @@ try {
         }, {})
         
         // Check if we have any file variables that need permission
-        if (globalVariables?.some(v => v?.value?.some?.(entry => entry?.type === 'file' || entry?.type === 'directory'))) {
+        if (globalVariables?.some((v: any) => v?.value?.some?.((entry: any) => entry?.type === 'file' || entry?.type === 'directory'))) {
           // Ensure file permissions are granted before proceeding
           const permissionsGranted = await ensureFilePermissions(globalVariables);
           
@@ -230,7 +230,7 @@ try {
     }
 
     // Handle saving a variable to global store
-    const handleSaveToGlobal = async (variableNames) => {
+    const handleSaveToGlobal = async (variableNames: string[]) => {
       try {
         await saveToGlobalVariables(variableNames)
         addToast({
@@ -277,7 +277,7 @@ try {
           name,
           content,
           category,
-          variables: Object.entries(values).reduce((acc, [varName, varState]) => {
+          variables: Object.entries(values).reduce((acc: Record<string, any>, [varName, varState]) => {
             if (varState && typeof varState === 'object' && 'value' in varState) {
               acc[varName] = varState.value;
             }
@@ -392,87 +392,17 @@ try {
 
         {/* Variables Section - Now above the template content */}
         <div className="plasmo-flex plasmo-flex-col plasmo-gap-3">
-          <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-            <div className="plasmo-flex plasmo-items-center">
-              <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">Template Variables</label>
-              
-              {/* Show count of variables */}
-              {variables.length > 0 && (
-                <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-gray-100 plasmo-text-gray-700 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-full">
-                  {variables.length} {variables.length === 1 ? 'variable' : 'variables'}
-                </span>
-              )}
-              
-              {/* Show indicator if using global values */}
-              {hasGlobalValues && (
-                <span className="plasmo-ml-2 plasmo-text-xs plasmo-bg-green-100 plasmo-text-green-700 plasmo-px-2 plasmo-py-0.5 plasmo-rounded-full plasmo-flex plasmo-items-center">
-                  <span className="plasmo-h-1.5 plasmo-w-1.5 plasmo-rounded-full plasmo-bg-green-500 plasmo-mr-1"></span>
-                  Using global values
-                </span>
-              )}
-            </div>
-
-            {/* Variable actions */}
-            {variables.length > 0 && (
-              <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
-                {hasModifiedValues && (
-                  <button
-                    onClick={() => handleSaveToGlobal(Object.keys(values).filter(name => values[name].isDirty))}
-                    className="plasmo-text-xs plasmo-text-green-600 hover:plasmo-text-green-800 plasmo-flex plasmo-items-center"
-                  >
-                    <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    Save to Global
-                  </button>
-                )}
-                
-                <button
-                  onClick={() => navigate("/variables")}
-                  className="plasmo-text-xs plasmo-text-blue-600 hover:plasmo-text-blue-800 plasmo-flex plasmo-items-center"
-                >
-                  <svg className="plasmo-h-3.5 plasmo-w-3.5 plasmo-mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                  Manage Variables
-                  {isLoadingGlobalVariables ? (
-                    <svg className="plasmo-animate-spin plasmo-h-3 plasmo-w-3 plasmo-ml-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="plasmo-opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="plasmo-opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <span className="plasmo-ml-1 plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-full plasmo-bg-gray-100 plasmo-text-gray-600 plasmo-text-xs">
-                      {globalVariables.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-          
           {/* Variable Inputs */}
           {variables.length > 0 ? (
             <div className="plasmo-rounded-lg plasmo-border plasmo-border-gray-200 plasmo-bg-white plasmo-shadow-sm">
-              {/* Info about global variables */}
-              {globalVariables.length > 0 && (
-                <div className="plasmo-p-3 plasmo-bg-gray-50 plasmo-rounded-t-lg plasmo-border-b plasmo-border-gray-200">
-                  <div className="plasmo-flex plasmo-items-center plasmo-text-xs plasmo-text-gray-600">
-                    <svg className="plasmo-h-4 plasmo-w-4 plasmo-mr-1.5 plasmo-text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span>Variables with a <span className="plasmo-text-green-600 plasmo-font-medium">green background</span> are using values from your global variables.</span>
-                  </div>
-                </div>
-              )}
-              
-              <div className="plasmo-p-4 plasmo-space-y-4">
+              <div className="plasmo-p-3 plasmo-space-y-3">
                 {variables.map((variable: typeof TemplateVariable, index: number) => {
                   const globalVariable = Array.isArray(globalVariables) && globalVariables.find(g => g && typeof g === 'object' && 'name' in g && g.name === variable.name);
                   const state = values[variable.name] || { value: '', isDirty: false, isValid: true, errors: [] };
                   const isGlobalValue = !!globalVariable;
                   
                   return (
-                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-2">
+                    <div key={index} className="plasmo-flex plasmo-flex-col plasmo-gap-1">
                       <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
                         <div className="plasmo-flex plasmo-items-center">
                           <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">
@@ -480,16 +410,16 @@ try {
                             {variable.isRequired && <span className="plasmo-text-red-500 plasmo-ml-0.5">*</span>}
                           </label>
                           
-                          {/* Status badges */}
+                          {/* Simplified status badges */}
                           {state.isDirty && (
-                            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
-                              Modified
+                            <span className="plasmo-ml-1 plasmo-inline-flex plasmo-items-center plasmo-px-1 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-blue-100 plasmo-text-blue-800">
+                              ●
                             </span>
                           )}
                           
                           {isGlobalValue && (
-                            <span className="plasmo-ml-2 plasmo-inline-flex plasmo-items-center plasmo-px-1.5 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-green-100 plasmo-text-green-800">
-                              Global
+                            <span className="plasmo-ml-1 plasmo-inline-flex plasmo-items-center plasmo-px-1 plasmo-py-0.5 plasmo-rounded-md plasmo-text-xs plasmo-font-medium plasmo-bg-green-100 plasmo-text-green-800">
+                              ●
                             </span>
                           )}
                         </div>
@@ -524,8 +454,8 @@ try {
               </div>
             </div>
           ) : (
-            <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-p-4 plasmo-bg-gray-50 plasmo-rounded-lg plasmo-border plasmo-border-gray-200">
-              No variables defined in this template
+            <div className="plasmo-text-sm plasmo-text-gray-500 plasmo-italic plasmo-p-2 plasmo-text-center">
+              No variables
             </div>
           )}
         </div>
@@ -533,7 +463,6 @@ try {
         {/* Template Content Section - Now below variables */}
         <div className="plasmo-flex plasmo-flex-col plasmo-gap-2">
           <div className="plasmo-flex plasmo-items-center plasmo-justify-between">
-            <label className="plasmo-text-sm plasmo-font-medium plasmo-text-gray-700">Template Content</label>
             {!isCreate && !isEditingContent && (
               <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
                 <button
@@ -603,14 +532,28 @@ try {
   console.error("Error in TemplateDetails component initialization:", error);
   
   // Provide a fallback component if the main one fails to load
-  function FallbackTemplateDetails(props) {
+  interface TemplateDetailsProps {
+    template?: {
+      id: number;
+      name: string;
+      content: string;
+      category?: string;
+      variables?: Record<string, string>;
+    };
+    onBack: () => void;
+    onTemplateChange?: (template: any) => void;
+  }
+  
+  function FallbackTemplateDetails(props: TemplateDetailsProps) {
+    const errorMessage = error instanceof Error ? error.message : 'Component failed to load';
+    
     return (
       <div className="plasmo-p-4 plasmo-bg-red-50 plasmo-border plasmo-border-red-200 plasmo-rounded-md plasmo-text-red-600">
         <h3 className="plasmo-text-sm plasmo-font-medium">Error Loading Template Details</h3>
         <p className="plasmo-mt-2 plasmo-text-sm">
           There was an error loading the template details component. Please try refreshing the page.
         </p>
-        {error && <p className="plasmo-mt-1 plasmo-text-xs">{String(error)}</p>}
+        <p className="plasmo-mt-1 plasmo-text-xs">{errorMessage}</p>
         <button 
           className="plasmo-mt-3 plasmo-px-3 plasmo-py-1 plasmo-text-xs plasmo-text-white plasmo-bg-blue-500 plasmo-rounded" 
           onClick={props.onBack}
