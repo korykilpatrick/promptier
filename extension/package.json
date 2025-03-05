@@ -30,18 +30,12 @@
     "typescript": "5.3.3"
   },
   "manifest": {
-    "key": "$CRX_PUBLIC_KEY",
     "permissions": [
       "cookies",
       "storage",
       "sidePanel"
     ],
-    "host_permissions": [
-      "http://localhost/*",
-      "https://enhanced-kangaroo-68.clerk.accounts.dev/*",
-      "https://clerk.korykilpatrick.com/*",
-      "$CLERK_FRONTEND_API/*"
-    ],
+    "host_permissions": [],
     "side_panel": {
       "default_path": "sidepanel.html"
     },
