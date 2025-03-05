@@ -237,7 +237,14 @@ router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
       }
 
       await client.query('COMMIT');
-      res.json({ message: 'Template removed from your list' });
+      
+      // Modified response format to include data property that the frontend expects
+      res.json({
+        data: {
+          message: 'Template removed successfully',
+          id: templateId
+        }
+      });
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
