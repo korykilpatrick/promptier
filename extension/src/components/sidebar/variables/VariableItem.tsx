@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { UserVariable } from '../../../../shared/types/variables';
 import {
-  activeFetchFileContent,
   activeResolveAllFileContents,
   reacquireFileHandles
 } from '../../../utils/file-content-resolver';
 import { useToast } from '../../../hooks/useToast';
+import { fs } from '../../../filesystem';
 
 interface VariableItemProps {
   variable: UserVariable;
@@ -32,8 +32,6 @@ export const VariableItem: React.FC<VariableItemProps> = ({
 
   // Get preview text
   const getPreviewText = () => {
-    if (!variable.value) return '';
-    
     if (Array.isArray(variable.value)) {
       // Look for text entries first
       const textEntries = variable.value.filter(entry => entry && entry.type === 'text');
@@ -76,18 +74,28 @@ export const VariableItem: React.FC<VariableItemProps> = ({
     }
     
     // If we have a handle, try to fetch content directly
-    if (fileEntry.metadata?.handleId || fileEntry.metadata?.handle) {
+    console.log("[VariableItem] File entry metadata:", fileEntry.metadata);
+    console.log("[VariableItem] File entry handleId:", fileEntry.metadata?.handleId);
+    
+    if (fileEntry.metadata?.handleId) {
       try {
         console.log("[VariableItem] Attempting to fetch content using the file handle");
-        const fileContent = await activeFetchFileContent(fileEntry);
-        if (fileContent) {
-          console.log("[VariableItem] Successfully fetched file content:",
-            fileContent.substring(0, 100) + (fileContent.length > 100 ? '...' : ''));
-          return fileContent;
+        const handleId = fileEntry.metadata.handleId;
+        const handle = fs.registry.getHandle(handleId);
+        if (handle && handle.kind === 'file') {
+          try {
+            const fileContent = await fs.readFile(handle as FileSystemFileHandle, { encoding: 'utf-8' });
+            console.log("[VariableItem] Successfully fetched file content:",
+              fileContent.substring(0, 100) + (fileContent.length > 100 ? '...' : ''));
+            return fileContent;
+          } catch (err) {
+            console.error("[VariableItem] Error reading file:", err);
+          }
+        } else {
+          console.log("[VariableItem] Handle not found or not a file handle:", handle);
         }
       } catch (err) {
         console.error("[VariableItem] Error fetching file content:", err);
-        // We'll fall back to reacquiring handles below
       }
     }
     
@@ -184,7 +192,6 @@ export const VariableItem: React.FC<VariableItemProps> = ({
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
           onEdit();
         }
       }}
@@ -243,7 +250,7 @@ export const VariableItem: React.FC<VariableItemProps> = ({
 
         {/* Variable Content Preview */}
         <div className="plasmo-template-description-compact plasmo-mt-1.5">
-          {previewText ? previewText.substring(0, 150) + (previewText.length > 150 ? '...' : '') : 'No content'}
+          {previewText}
         </div>
       </div>
     </div>
