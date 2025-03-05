@@ -38,6 +38,8 @@
     ],
     "host_permissions": [
       "http://localhost/*",
+      "https://enhanced-kangaroo-68.clerk.accounts.dev/*",
+      "https://clerk.korykilpatrick.com/*",
       "$CLERK_FRONTEND_API/*"
     ],
     "side_panel": {
