@@ -26,9 +26,9 @@ import expressModule from 'express';
 const express = expressModule;
 import type { Request, Response } from 'express';
 import cors from 'cors';
-import templatesRouter from './routes/templates.js';
-import chainsRouter from './routes/chains.js';
-import variablesRouter from './routes/variables.js';
+import templatesRouter from './routes/templates';
+import chainsRouter from './routes/chains';
+import variablesRouter from './routes/variables';
 import { requireAuth } from '@clerk/express';
 import dotenv from 'dotenv';
 
