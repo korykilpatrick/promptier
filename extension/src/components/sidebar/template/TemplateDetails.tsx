@@ -20,24 +20,17 @@ try {
   const { Template } = require("shared/types/templates")
   const { parseTemplate } = _templateParser
   
-  // Try to import potentially missing hooks with fallbacks
-  let useGlobalVariables;
-  try {
-    useGlobalVariables = require("../../../hooks/useGlobalVariables").useGlobalVariables;
-  } catch (error) {
-    console.warn("useGlobalVariables not available, using fallback:", error);
-    // Simple fallback implementation if the hook is missing
-    useGlobalVariables = function(options = {}) {
-      return {
-        variables: [],
-        isLoading: false,
-        getVariableByName: () => undefined,
-        getValueByName: () => undefined,
-        variableMap: {},
-        refreshVariables: async () => {},
-      };
+  const useGlobalVariables = function(options = {}) {
+    return {
+      variables: [],
+      isLoading: false,
+      getVariableByName: () => undefined,
+      getValueByName: () => undefined,
+      variableMap: {},
+      refreshVariables: async () => {},
     };
-  }
+  };
+  
   
   const { useTemplateVariables } = require("../../../hooks/useTemplateVariables")
   const { useTemplateParser } = require("../../../hooks/useTemplateParser")

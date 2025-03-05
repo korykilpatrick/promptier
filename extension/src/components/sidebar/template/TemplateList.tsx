@@ -185,9 +185,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     }
     
     return (
-      <div className="plasmo-mb-1">
+      <div key={template.id} className="plasmo-mb-1">
         <TemplateItem
-          key={template.id}
           template={highlightedTemplate}
           isFavorite={template.isFavorite}
           isSelected={template.id === selectedTemplateId}
