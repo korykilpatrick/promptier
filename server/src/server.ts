@@ -63,8 +63,8 @@ app.use('/templates', authMiddleware, templatesRouter);
 app.use('/chains', authMiddleware, chainsRouter);
 app.use('/variables', authMiddleware, variablesRouter);
 
-// Start the server on the specified port (default 3000)
-const port = process.env.PORT || 3000;
+// Start the server on the specified port (default 3003)
+const port = process.env.PORT || 3003;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
